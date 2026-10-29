@@ -1,5 +1,6 @@
 package com.emailagent.store;
 
+import com.emailagent.model.GroupedBy;
 import com.emailagent.model.SlotOwner;
 import com.emailagent.model.SlotStatus;
 import com.emailagent.model.SlotType;
@@ -54,7 +55,11 @@ public class SlotEntity extends PanacheEntityBase {
     @Size(max = 500)
     public String source;
 
+    /** The input card (cluster) this slot waits on; set by grouping, checked by the database (V0801). */
     public Long requestId;
+
+    @Enumerated(EnumType.STRING)
+    public GroupedBy groupedBy;
 
     /** Sets value and source together: a value without a source is refused by the database. */
     public void fill(String value, String source, SlotStatus status) {

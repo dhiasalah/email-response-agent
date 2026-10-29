@@ -1,6 +1,7 @@
 package com.emailagent.mailbox;
 
 import com.emailagent.config.AppConfig;
+import com.emailagent.model.SenderRole;
 import com.emailagent.model.SenderScope;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -21,9 +22,10 @@ import java.util.Map;
 @ApplicationScoped
 public class SenderDirectory {
 
-    record Entry(String email, String program, String track, String year) {}
+    record Entry(String email, String program, String track, String year, SenderRole role) {}
 
     private final Map<String, SenderScope> byAddress = new HashMap<>();
+    private final Map<String, SenderRole> roles = new HashMap<>();
 
     public SenderDirectory(ObjectMapper mapper, AppConfig config) {
         String fixture = config.senderDirectoryFixture();
@@ -32,7 +34,9 @@ public class SenderDirectory {
                 throw new IllegalStateException("sender directory not found: " + fixture);
             }
             for (Entry e : mapper.readValue(in, new TypeReference<List<Entry>>() {})) {
-                byAddress.put(e.email().toLowerCase(Locale.ROOT), new SenderScope(e.program(), e.track(), e.year()));
+                String address = e.email().toLowerCase(Locale.ROOT);
+                byAddress.put(address, new SenderScope(e.program(), e.track(), e.year()));
+                roles.put(address, e.role() == null ? SenderRole.STUDENT : e.role());
             }
         } catch (IOException e) {
             throw new UncheckedIOException("cannot read sender directory " + fixture, e);
@@ -45,5 +49,13 @@ public class SenderDirectory {
             return SenderScope.UNKNOWN;
         }
         return byAddress.getOrDefault(address.toLowerCase(Locale.ROOT), SenderScope.UNKNOWN);
+    }
+
+    /** Role for card priority (design doc §7.4), same exact-match rule: unknown address, no weight. */
+    public SenderRole roleOf(String address) {
+        if (address == null) {
+            return SenderRole.UNKNOWN;
+        }
+        return roles.getOrDefault(address.toLowerCase(Locale.ROOT), SenderRole.UNKNOWN);
     }
 }
