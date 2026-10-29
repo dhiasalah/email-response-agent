@@ -69,8 +69,8 @@ git add -A; git commit -m "Lesson 03: untrusted-data envelope"
 git push -u origin HEAD
 gh pr create --fill --reviewer KacemAbdelbaki   # Kacem uses --reviewer dhiasalah
 ```
-Claude also runs `gh pr merge <N> --auto --squash --delete-branch`: GitHub merges by itself after the other's approval
-(and green CI, once it's required). At the start of every session Claude fetches, tells you what the other person merged,
+Claude also runs `gh pr merge <N> --auto --squash --delete-branch`: GitHub merges by itself, with no approval needed
+(after green CI, once it's required). At the start of every session Claude fetches, tells you what the other person merged,
 lists PRs waiting for your review, and brings your branch up to date (`git merge origin/main`).
 Before `git add -A`, always run `git status` and read the list: that's your last chance to see a `.env` or a real email.
 
@@ -209,9 +209,8 @@ git push -u origin HEAD; gh pr create --fill --reviewer dhiasalah
 
 ### 5. Dhia: require CI on `main` (after your CI PR is merged)
 `main` is **already protected**: Claude created the `protect-main` ruleset on 2026-10-29 (your account supports rulesets on
-this private repo). It blocks direct pushes, force-pushes and deleting `main`, and needs 1 approval from the *other*
-person. New pushes dismiss old approvals, and review threads must be resolved. Auto-merge is on, so GitHub merges a PR by
-itself as soon as those conditions hold.
+this private repo). It blocks direct pushes, force-pushes and deleting `main`, so every change goes through a PR. **No
+approval is required** (your choice), and auto-merge is on, so GitHub merges a PR by itself as soon as its checks pass.
 
 The ruleset doesn't require CI yet, because the `build` check didn't exist and requiring a missing check blocks every merge.
 Once your `ci.yml` PR is merged and `build` has run once, add it:
@@ -229,12 +228,12 @@ Expected output:
 ```
 ["deletion","non_fast_forward","pull_request","required_status_checks"]
 ```
-There's no bypass list, so the rules apply to Dhia too, even as the repo owner. `require_last_push_approval` closes a classic
-trick: you can't get an approval and then push new code under it.
+There's no bypass list, so the rules apply to Dhia too, even as the repo owner. With no approval step, this CI check is the
+**only automatic gate** before `main`, which is why it matters to add it as soon as CI exists.
 
 ## 📚 Key concepts
-- **Separation of duties**: the author never approves their own change. It's the human version of "the LLM proposes,
-  code decides".
+- **Separation of duties (trade-off you chose):** with no required approval, nobody checks a change before it lands. CI
+  (build, tests, gitleaks) and Claude's verification replace the human gate, and you each read the other's merged PRs at sync time.
 - **Shift left**: catch problems (broken build, leaked secret, vulnerable dependency) on the PR, before they reach `main`.
 - **Least privilege in CI**: `permissions: contents: read`, no stored credentials, and changes to `.github/` owned by the security owner.
 - **Squash-merge**: one lesson = one commit on `main`, so `main` reads like your course and is easy to revert.
@@ -249,10 +248,10 @@ trick: you can't get an approval and then push new code under it.
 gh pr checks
 gh pr view --json reviewDecision,mergeStateStatus
 ```
-Expected output (after CI and the other person's approval):
+Expected output (after CI):
 ```
 build   pass   ...
-{"mergeStateStatus":"CLEAN","reviewDecision":"APPROVED"}
+{"mergeStateStatus":"CLEAN","reviewDecision":""}
 ```
 Auto-merge then merges it by itself. Also try `git push origin main` from a local
 commit on `main`: it should be **rejected**.

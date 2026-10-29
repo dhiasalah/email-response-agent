@@ -65,8 +65,8 @@ Expected output:
 Branch: `<name>/NN-short-name`. When the step is verified, **Claude** syncs, checks for secrets, commits, pushes, opens the PR
 (reviewer: <dhiasalah | KacemAbdelbaki>), turns on auto-merge and switches to the next lesson's branch. You only need to:
 - read the PR description and the diff once,
-- ask the other student to review; they check the security checklist against the diff,
-- nothing else: auto-merge is on, so GitHub squash-merges after the approval (and green CI).
+- nothing else: auto-merge is on and no approval is required, so GitHub squash-merges it (after green CI, once required).
+  The other student is notified and can read it later.
 
 ## ➡️ Next step
 What comes next — tell Claude "I finished lesson NN, please review" or "go next".

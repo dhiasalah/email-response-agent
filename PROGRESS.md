@@ -46,7 +46,8 @@ Suggested order after M0: **Kacem starts with 02** (Dhia's 06 needs it); **Dhia 
 ## Shared decisions
 - 2026-10-29: Java 21 + Quarkus (not Spring Boot, not Python); plain Java agents + code orchestrator (not JADE);
   PostgreSQL via Dev Services (state must survive restarts, idempotence); Ollama local (free, data stays on the PC); mock mailbox.
-- 2026-10-29: split "security vs agents"; each reviews the other's PRs; Dhia does the security review of Kacem's PRs.
+- 2026-10-29: split "security vs agents". PRs need **no approval** (Dhia's choice): auto-merge after checks; each reads the other's
+  merged PRs at sync time, and Dhia keeps a security eye on Kacem's.
 
 ## Blockers / questions to revisit
 - `protect-main` ruleset is active (2026-10-29) and auto-merge is on; **add the required `build` check** once the CI workflow (00b, Dhia) is merged.

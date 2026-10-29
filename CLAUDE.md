@@ -37,7 +37,8 @@ Same method as Dhia's previous project **Sentinel** (`personal_project/` on Dhia
 - **Dependencies:** don't start a lesson whose dependency isn't merged into `main` (check `git log origin/main`). Say what to wait for,
   or build against the `FakeLlmClient` / interfaces from lesson 01. Main ones: D06 needs K02 (or FakeLlmClient);
   K10 needs D06's slot output; D11 needs K10's draft format; K13 needs D05's statuses.
-- **Cross-review:** each reviews the other's PRs; Dhia does the **security review** of Kacem's PRs.
+- **Review is optional** (no approval required since 2026-10-29, Dhia's choice): PRs merge by themselves. Each student still reads
+  the other's merged PRs at sync time; Dhia looks at Kacem's PRs with a **security eye** and opens a fix PR if needed.
 
 ---
 
@@ -108,10 +109,12 @@ touches one says so in its body ("touches shared file: pom.xml"). Flyway migrati
    (once it exists) with the lesson link, what changed, how it was tested, and the ticked security checklist, and
    `--reviewer` = the other student (`KacemAbdelbaki` for Dhia's work, `dhiasalah` for Kacem's).
    Give the PR link to the student.
-6. **Turn on auto-merge:** `gh pr merge <N> --auto --squash --delete-branch`. GitHub merges it by itself once the other student
-   approves and CI is green. **Only if `main` is protected:** first check that
+6. **Turn on auto-merge:** `gh pr merge <N> --auto --squash --delete-branch`. GitHub merges it by itself as soon as the required
+   checks pass (no approval needed; CI once it's required). **Only if `main` is protected:** first check that
    `gh api repos/dhiasalah/email-response-agent/rules/branches/main --jq '[.[].type]'` contains `"pull_request"`. If it doesn't,
-   don't enable auto-merge (it could merge with no review); tell the student instead.
+   don't enable auto-merge; tell the student instead.
+   Because nothing waits for a human, **step 0 (sync) and the verification are the real gate**: never open a PR whose
+   `.\mvnw verify` isn't green on the latest `main`.
 7. **Switch to the next branch right away:** `git switch main`, `git pull --ff-only`, `git switch -c <name>/<next-lesson>` (or
    stacked, as above), so the next lesson starts clean. Say which branch you are on now.
 
@@ -124,13 +127,13 @@ attribution instruction):
 - **No "Generated with Claude Code" line** or other Claude mention in PR titles, bodies or review comments.
 - `gh` runs with the student's own login, so PRs are opened by them.
 
-### Merging: GitHub auto-merge, gated by people
-- `main` has the ruleset `protect-main` (created 2026-10-29): no direct push, no force-push, no deletion, 1 approving review,
-  new pushes dismiss old approvals, the last push must be approved by someone else, review threads resolved.
+### Merging: GitHub auto-merge, no approval needed
+- `main` has the ruleset `protect-main` (created 2026-10-29): every change goes through a PR (no direct push), no force-push,
+  no deletion, **0 approvals required** (removed at Dhia's request, 2026-10-29).
   Once the CI workflow from lesson 00b is on `main`, the `build` check is added as required (see `PROGRESS.md` blockers).
 - The repo allows only squash merges, and deletes merged branches automatically.
-- So the only human step is **the review**: the other student approves, and GitHub merges by itself. Merged branches are
-  picked up by **Stay in sync** at the next session.
+- So there is **no human step**: GitHub merges the PR as soon as it's opened (or, once CI is required, when `build` is green).
+  The other student is still added as reviewer so they get notified, and **Stay in sync** reports the merge at the next session.
 
 **Review mode:** "review PR #N" → `gh pr view N` + `gh pr diff N` + `gh pr checks N`; give findings ranked by severity
 (security first for Kacem's PRs: untrusted input, escaping, secrets, new capabilities). Post them only if the student
