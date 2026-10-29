@@ -1,0 +1,9 @@
+[
+  { "email": "lina.benali@student.univ.example",  "program": "M2", "track": "IA", "year": "2026-2027" },
+  { "email": "youssef.amri@student.univ.example", "program": "M2", "track": "IA", "year": "2026-2027" },
+  { "email": "theo.martin@student.univ.example",  "program": "M2", "track": "IA", "year": "2026-2027" },
+  { "email": "ines.k@student.univ.example",       "program": "M2", "track": "IA", "year": "2026-2027" },
+  { "email": "adam.roussel@student.univ.example", "program": "M2", "track": "IA", "year": "2026-2027" },
+  { "email": "nora.fares@student.univ.example",   "program": "M2", "track": "IA", "year": "2026-2027" },
+  { "email": "lucas.petit@student.univ.example",  "program": "M1", "track": "IA", "year": "2026-2027" }
+]
