@@ -3,7 +3,7 @@
 > Claude reads this at session start and updates it after each verified lesson.
 
 ## Current position
-- **Lesson:** 04 — Mock mailbox, pre-filter, sanitizer
+- **Lesson:** 05 — Orchestrator: state machine, idempotence, audit log
 - **Mode:** Claude builds every lesson end to end, in a row; Dhia reads the lesson files (🎓 sections) to defend the project
 - **Level:** experienced in coding and LLMs; deep on multi-agent design, AI security and app security · English
 
@@ -14,7 +14,7 @@
 - [x] 01b Contracts: `LlmClient`, `LlmRequest`, `LlmException`, strict `LlmOutputParser`, `FakeLlmClient`, obedient-model attack test (2026-10-29)
 - [x] 02 `OllamaLlmClient`: JSON schema, strict parse, retry once, timeouts, tier → model (2026-10-29)
 - [x] 03 Prompt injection 101: attacks on a naive agent, untrusted-data envelope (2026-10-29)
-- [ ] 04 Mock mailbox, pre-filter (loops, auto-replies), sanitizer (hidden HTML, Unicode)
+- [x] 04 Mock mailbox, pre-filter (loops, auto-replies), sanitizer (hidden HTML, Unicode) (2026-10-29)
 - [ ] 05 Orchestrator: state machine, idempotence, append-only decision log
 - [ ] 06 Triage agent + injection detector
 - [ ] 07 Resolver: memory, KB, mock calendar, recent answers, scope checks
@@ -39,6 +39,7 @@
 | 2026-10-29 | Lesson 01b: 16/16 tests; 10 obedient-model attacks refused; a lenient mapper accepted 5 of them | Instructions vs data as separate fields; strict Jackson; checked exception = fail closed by the compiler; fake in `src/test` |
 | 2026-10-29 | Lesson 02: `OllamaLlmClient` (2 tiers, schema, strict parse, 1 retry, typed failures); 21 tests + 2 Ollama tests green | Low-level ChatModel vs AI services; retry once; retry note never echoes model text; valid ≠ correct (`REQUEST` vs `QUESTION`) |
 | 2026-10-29 | Lesson 03: `UntrustedEnvelope` (rules + random-id markers, attacker markers neutralized) in every call; experiment naive 5/6 vs protected 4/6 | Direct vs indirect injection; spotlighting; make injection harmless, not impossible |
+| 2026-10-29 | Lesson 04: `MockMailbox` + `MailboxImporter` (per-email transactions), `PreFilter` (6 reasons), `Sanitizer` (jsoup + NFKC + flags), `V0401`; 33 tests | Rules before LLM; hidden-text injection; Unicode tricks; flags as evidence; data minimization; availability |
 
 ## Blockers / questions to revisit
 - Claude's shell can inherit a stale `JAVA_HOME=C:\jdk-21.0.2\bin`; the user variable (Adoptium 21.0.12) is right.
