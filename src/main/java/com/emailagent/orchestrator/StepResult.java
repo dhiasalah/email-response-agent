@@ -27,6 +27,18 @@ public record StepResult(
         return new StepResult(next, output, null, null, null, null);
     }
 
+    /**
+     * Nothing to do yet: the email stays where it is and nothing is recorded (a waiting status checked by a timer).
+     * A result that stays in the same status <em>with</em> an output is committed: writes and log row, no transition.
+     */
+    public static StepResult waiting(EmailStatus current) {
+        return new StepResult(current, null, null, null, null, null);
+    }
+
+    public boolean isWait(EmailStatus current) {
+        return next == current && output == null;
+    }
+
     public StepResult withWrites(Consumer<EmailEntity> writes) {
         return new StepResult(next, output, confidence, sources, modelVersion, writes);
     }

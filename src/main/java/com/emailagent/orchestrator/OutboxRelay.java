@@ -19,7 +19,7 @@ import java.util.List;
 @ApplicationScoped
 public class OutboxRelay {
 
-    private record Pending(long id, long emailId, OutgoingMessage message) {}
+    private record Pending(long id, Long emailId, OutgoingMessage message) {}
 
     private final Mailbox mailbox;
     private final int batchSize;
@@ -33,8 +33,8 @@ public class OutboxRelay {
     public int deliverPending() {
         List<Pending> pending = QuarkusTransaction.requiringNew().call(() ->
                 OutboxEntity.<OutboxEntity>find("deliveredAt is null order by id").page(0, batchSize).list().stream()
-                        .map(o -> new Pending(o.id, o.email.id, new OutgoingMessage(o.kind, o.recipient, o.subject,
-                                o.body, o.inReplyTo, o.messageId)))
+                        .map(o -> new Pending(o.id, o.email == null ? null : o.email.id, new OutgoingMessage(o.kind,
+                                o.recipient, o.subject, o.body, o.inReplyTo, o.messageId)))
                         .toList());
         int delivered = 0;
         for (Pending p : pending) {
@@ -48,7 +48,7 @@ public class OutboxRelay {
                 int rows = OutboxEntity.update("deliveredAt = ?1 where id = ?2 and deliveredAt is null",
                         Instant.now(), p.id());
                 if (rows == 1) {
-                    DecisionLogEntry.record(p.emailId(), "outbox", "email " + p.emailId() + " outbox " + p.id(),
+                    DecisionLogEntry.record(p.emailId(), "outbox", "outbox " + p.id(),
                             "{\"delivered\":\"" + p.message().kind().name().toLowerCase() + "\"}");
                 }
                 return rows == 1;

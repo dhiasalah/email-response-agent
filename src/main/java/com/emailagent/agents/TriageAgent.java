@@ -7,6 +7,7 @@ import com.emailagent.llm.ModelTier;
 import com.emailagent.mailbox.SenderDirectory;
 import com.emailagent.model.EmailStatus;
 import com.emailagent.model.SenderScope;
+import com.emailagent.model.SlotOwner;
 import com.emailagent.orchestrator.AgentStep;
 import com.emailagent.orchestrator.EmailSnapshot;
 import com.emailagent.orchestrator.StepResult;
@@ -14,6 +15,7 @@ import com.emailagent.security.InjectionDetector;
 import com.emailagent.store.EmailEntity;
 import com.emailagent.store.SlotEntity;
 import jakarta.enterprise.context.ApplicationScoped;
+import java.util.Set;
 import java.util.stream.Collectors;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
@@ -102,7 +104,7 @@ public class TriageAgent implements AgentStep {
                 slot.entity = q.entity().strip().toLowerCase();
                 slot.qualifier = q.qualifier().isBlank() ? null : q.qualifier().strip().toLowerCase();
                 slot.question = q.text().strip();
-                slot.owner = q.owner();
+                slot.owner = owner(slot.entity, q.owner());
                 slot.persist();
             }
         });
@@ -132,6 +134,20 @@ public class TriageAgent implements AgentStep {
         e.replyNeeded = out.replyNeeded();
         e.injectionScore = a.score();
         e.injectionSignals = a.signalsCsv();
+    }
+
+    /** Words that say what kind of thing is meant, never which one: "the exam" could be any exam. */
+    static final Set<String> GENERIC_ENTITIES = Set.of("exam", "exams", "the exam", "test", "course", "class",
+            "project", "assignment", "homework", "document", "documents", "slides", "deadline", "grades", "results",
+            "room", "procedure", "examen", "cours", "projet", "devoir", "notes", "salle");
+
+    /**
+     * Who must supply the missing piece (design doc §7.5). The model may say SENDER; code also says SENDER when the
+     * entity names no particular thing. Measured on qwen2.5: "when is the exam?" came back USER-owned with entity
+     * "exam", which would have put an unanswerable card in front of the owner.
+     */
+    static SlotOwner owner(String entity, SlotOwner modelOwner) {
+        return GENERIC_ENTITIES.contains(entity) ? SlotOwner.SENDER : modelOwner;
     }
 
     /** Audit row: labels and slot types only, never the question texts (personal data stays in the email row). */

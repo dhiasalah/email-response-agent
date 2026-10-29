@@ -1,15 +1,21 @@
 package com.emailagent.mailbox;
 
+import com.emailagent.agents.CuratorAgent;
 import com.emailagent.model.EmailStatus;
 import com.emailagent.model.FilterReason;
 import com.emailagent.security.PreFilter;
 import com.emailagent.security.Sanitizer;
 import com.emailagent.store.DecisionLogEntry;
 import com.emailagent.store.EmailEntity;
+import com.emailagent.store.NoticeEntity;
+import com.emailagent.store.OutboxEntity;
 import io.quarkus.logging.Log;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import jakarta.enterprise.context.ApplicationScoped;
 import java.time.Duration;
+import java.time.Instant;
+import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 import java.util.Set;
 import java.util.TreeSet;
@@ -21,7 +27,7 @@ import java.util.TreeSet;
 @ApplicationScoped
 public class MailboxImporter {
 
-    public record ImportResult(int imported, int filtered, int duplicates, int rejected) {}
+    public record ImportResult(int imported, int filtered, int duplicates, int rejected, int merged) {}
 
     private final Mailbox mailbox;
     private final PreFilter preFilter;
@@ -34,17 +40,24 @@ public class MailboxImporter {
     }
 
     public ImportResult importNew() {
+        return importNew(mailbox.fetch());
+    }
+
+    /** Imports the given messages (the mailbox's, or a test's), each in its own transaction. */
+    public ImportResult importNew(List<IncomingEmail> messages) {
         int imported = 0;
         int filtered = 0;
         int duplicates = 0;
         int rejected = 0;
-        for (IncomingEmail in : mailbox.fetch()) {
+        int merged = 0;
+        for (IncomingEmail in : messages) {
             try {
                 Outcome outcome = QuarkusTransaction.requiringNew().call(() -> importOne(in));
                 switch (outcome) {
                     case IMPORTED -> imported++;
                     case FILTERED -> filtered++;
                     case DUPLICATE -> duplicates++;
+                    case MERGED -> merged++;
                 }
             } catch (RuntimeException e) {
                 // never log the content; the exception type is enough to investigate with the message id
@@ -52,10 +65,10 @@ public class MailboxImporter {
                 rejected++;
             }
         }
-        return new ImportResult(imported, filtered, duplicates, rejected);
+        return new ImportResult(imported, filtered, duplicates, rejected, merged);
     }
 
-    private enum Outcome { IMPORTED, FILTERED, DUPLICATE }
+    private enum Outcome { IMPORTED, FILTERED, DUPLICATE, MERGED }
 
     private Outcome importOne(IncomingEmail in) {
         if (EmailEntity.findByMessageId(in.messageId()).isPresent()) {
@@ -85,14 +98,64 @@ public class MailboxImporter {
         }
 
         Sanitizer.Sanitized body = sanitizer.clean(in.bodyHtml(), in.bodyText());
-        email.body = body.text();
         Set<String> flags = new TreeSet<>(body.flags());
         name.flags().forEach(f -> flags.add("name_" + f));
         subject.flags().forEach(f -> flags.add("subject_" + f));
+
+        Optional<EmailEntity> answered = answeredEmail(in);
+        if (answered.isPresent()) {
+            merge(answered.get(), email, body.text(), flags);
+            return Outcome.MERGED;
+        }
+
+        email.body = body.text();
         email.sanitizerFlags = flags.isEmpty() ? null : String.join(",", flags);
         email.persist();
         DecisionLogEntry.record(email.id, "prefilter", "message " + email.id,
                 "{\"filtered\":null,\"flags\":\"" + (email.sanitizerFlags == null ? "" : email.sanitizerFlags) + "\"}");
         return Outcome.IMPORTED;
     }
+
+    /**
+     * The email this message answers, if it is the sender's reply to a clarification (design doc §6 thread rule):
+     * same sender address, exactly, and the same thread or a reply to one of our questions.
+     */
+    private static Optional<EmailEntity> answeredEmail(IncomingEmail in) {
+        String inReplyTo = in.header("In-Reply-To");
+        List<EmailEntity> waiting = EmailEntity.list("status = ?1 and lower(sender) = ?2 order by receivedAt desc",
+                EmailStatus.AWAITING_SENDER, in.from().toLowerCase(Locale.ROOT));
+        return waiting.stream().filter(e -> (e.threadId != null && e.threadId.equals(in.threadId()))
+                        || (inReplyTo != null && OutboxEntity.count("email.id = ?1 and notice is not null"
+                                + " and messageId = ?2", e.id, inReplyTo.strip()) > 0))
+                .findFirst();
+    }
+
+    /**
+     * Adds the sender's new words (quoted text cut) to the waiting email, marks the question answered, and keeps the
+     * reply itself as a filtered row without body, so it is never imported twice. Triage runs again later.
+     */
+    private static void merge(EmailEntity target, EmailEntity reply, String text, Set<String> flags) {
+        String own = CuratorAgent.ownerText(text);
+        String merged = (target.body == null ? "" : target.body) + "\n\n[Reply of the sender]\n" + own;
+        target.body = merged.length() > MAX_BODY ? merged.substring(0, MAX_BODY) : merged;
+        if (!flags.isEmpty()) {
+            Set<String> all = new TreeSet<>(flags);
+            if (target.sanitizerFlags != null) {
+                all.addAll(List.of(target.sanitizerFlags.split(",")));
+            }
+            String csv = String.join(",", all);
+            target.sanitizerFlags = csv.length() > 500 ? csv.substring(0, 500) : csv;
+        }
+        target.senderReplied = true;
+        NoticeEntity.latestClarification(target.id).filter(n -> n.answeredAt == null)
+                .ifPresent(n -> n.answeredAt = Instant.now());
+
+        reply.status = EmailStatus.FILTERED_OUT;
+        reply.filterReason = FilterReason.MERGED_REPLY;
+        reply.persist();
+        DecisionLogEntry.record(target.id, "prefilter", "message " + reply.id,
+                "{\"merged_into\":" + target.id + "}");
+    }
+
+    private static final int MAX_BODY = 50_000;
 }

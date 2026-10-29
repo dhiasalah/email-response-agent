@@ -118,7 +118,12 @@ public class Orchestrator {
             Log.warnf("step %s failed on email %d (%s)", step.name(), email.id(), e.getClass().getSimpleName());
             return escalate(email, step.name(), "step_error");
         }
-        if (result == null || !EmailLifecycle.allowed(email.status(), result.next())) {
+        if (result != null && result.isWait(email.status()) && EmailLifecycle.isWaiting(email.status())) {
+            return false;
+        }
+        // a waiting email may record a follow-up (a clarification sent) without moving; any other status must move
+        boolean stays = result != null && result.next() == email.status() && EmailLifecycle.isWaiting(email.status());
+        if (result == null || !(stays || EmailLifecycle.allowed(email.status(), result.next()))) {
             // an agent (or a model talking through it) asked for a jump the lifecycle forbids: refuse, hand to a human
             Log.warnf("step %s proposed an illegal transition on email %d", step.name(), email.id());
             return escalate(email, step.name(), "illegal_transition");

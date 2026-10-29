@@ -3,6 +3,7 @@ package com.emailagent.config;
 import com.emailagent.model.SlotType;
 import io.smallrye.config.ConfigMapping;
 import io.smallrye.config.WithDefault;
+import java.time.Duration;
 import java.util.Optional;
 import java.util.Set;
 
@@ -115,6 +116,38 @@ public interface AppConfig {
     /** Outgoing replies handed to the mailbox per run. */
     @WithDefault("20")
     int outboxBatchSize();
+
+    /** Classpath JSON of cohort mailing lists (program, track, year → list address): where a broadcast can go. */
+    @WithDefault("directory/cohorts.json")
+    String cohortDirectoryFixture();
+
+    /**
+     * Clarifications and holding replies may be sent without the owner when send-mode is auto (design doc §7.5:
+     * low risk, so they can move to auto-send before answers). Off at launch: they are saved as drafts.
+     */
+    @WithDefault("false")
+    boolean noticeAutoSend();
+
+    /** No answer to a clarification after this long: the email is closed (design doc §7.5). */
+    @WithDefault("72h")
+    Duration clarificationTimeout();
+
+    /**
+     * A question still waiting on a card after this long gets one holding reply (design doc §6 timeouts, §15 open
+     * question: decided at 48 hours by default).
+     */
+    @WithDefault("48h")
+    Duration holdingReplyAfter();
+
+    @WithDefault("true")
+    boolean holdingReplyEnabled();
+
+    /** Questions on one card, within the window, that make a broadcast worth suggesting (design doc §7.7). */
+    @WithDefault("5")
+    int broadcastMinQuestions();
+
+    @WithDefault("7")
+    int broadcastWindowDays();
 
     /** How often the orchestrator imports mail and moves emails forward. */
     @WithDefault("30s")
