@@ -21,6 +21,10 @@ public interface AppConfig {
     @WithDefault("mailbox/inbox.json")
     String mailboxFixture();
 
+    /** Classpath JSON roster that gives each known sender a scope (program, track, year). */
+    @WithDefault("directory/senders.json")
+    String senderDirectoryFixture();
+
     /** How often the orchestrator imports mail and moves emails forward. */
     @WithDefault("30s")
     String orchestratorEvery();

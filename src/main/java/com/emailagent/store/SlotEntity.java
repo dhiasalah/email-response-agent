@@ -38,6 +38,10 @@ public class SlotEntity extends PanacheEntityBase {
     @Size(max = 200)
     public String qualifier;
 
+    /** The question as the sender asked it: what grouping compares (design doc §7.2). */
+    @Size(max = 500)
+    public String question;
+
     @NotNull @Enumerated(EnumType.STRING)
     public SlotOwner owner;
 

@@ -75,6 +75,15 @@ public class EmailEntity extends PanacheEntityBase {
     @Enumerated(EnumType.STRING)
     public FilterReason filterReason;
 
+    /** Triage's answer to "does this need a reply?". Null until triaged. */
+    public Boolean replyNeeded;
+
+    /** Injection detector result: the score and the signals that produced it. */
+    public Double injectionScore;
+
+    @Size(max = 500)
+    public String injectionSignals;
+
     @Version
     public long version;
 
