@@ -375,6 +375,26 @@ can happen when it does.** Prompts lower the success rate; code limits the damag
 - **Secrets in environment variables / `.env`, never in `application.properties`.** `.env` is git-ignored.
 - **Fail closed** on configuration (the `SendMode` enum).
 
+## 🎓 Questions the professor may ask
+- **Why is this a multi-agent system and not one big prompt?** Each agent has one job, its own prompt, model size and
+  output schema, so each can be tested and evaluated alone. Splitting also limits damage: the agent that reads the raw
+  email (triage) has no ability to write or send anything.
+- **Why is the orchestrator code and not an LLM (or JADE)?** Routing must be predictable, testable and cheap. An LLM
+  router can be talked into skipping the reviewer; a state machine in code can't. JADE's message passing would add an
+  agent-to-agent channel we deliberately don't want.
+- **What is your threat model?** Assets (student data, the professor's authority, the memory, the send capability),
+  trust levels (email and LLM output untrusted; owner via the panel trusted), and the OWASP LLM Top 10 (2025) mapped to a
+  concrete defense per lesson.
+- **What is the main principle against prompt injection?** Email is data, never instructions; prompts reduce the success
+  rate but code limits the damage: no agent has a send tool, every output is schema-validated, and the worst case (an
+  obedient model) is tested.
+- **Why a local model (Ollama) rather than a cloud API?** Free, and student emails never leave the machine (GDPR). The
+  cost is a weaker model, which is why the guardrails are in code, not in the model's judgment.
+- **What does "fail closed" mean here?** When something is wrong or missing, the system does the safe thing: a typo in
+  `SEND_MODE` stops the start-up instead of defaulting to auto-send; an invalid model answer escalates instead of replying.
+- **Why does `@Pattern` not work with structured output, but `enum` does?** Ollama's constrained decoder enforces JSON
+  schema `enum`s but ignores regex patterns; we saw qwen2.5 return other values. So closed lists are enums.
+
 ## ✅ Check it works
 Docker Desktop and Ollama must be running.
 ```powershell

@@ -1,55 +1,51 @@
-# Email Response Agent — Team progress
+# Email Response Agent — Progress
 
-> Shared overview. Each student's details live in `progress/dhia.md` and `progress/kacem.md`.
-> Claude updates only the line or row of the student it's talking to.
+> Overview. Details and session log: `progress/dhia.md`.
 
 ## Current position
-- **Dhia:** lesson 01b (shared) `LlmClient` contract on `both/01b-llm-contract` · details: `progress/dhia.md`
-- **Kacem:** lesson 00 (shared): accept the GitHub invitation, install tools, review Dhia's PR, clone · details: `progress/kacem.md`
+- **Dhia:** lesson 02 `OllamaLlmClient` next (01b in PR) · details: `progress/dhia.md`
 - **Repo:** https://github.com/dhiasalah/email-response-agent (private)
 - **Stack:** Java 21 · Quarkus 3 · Maven wrapper · PostgreSQL (Dev Services) · LangChain4j + Ollama (local, free)
 
-## Lessons and owners
-| # | Lesson | Owner | File | Status |
-|---|---|---|---|---|
-| 00 | Roadmap, setup, threat model | Both | `lessons/shared/00-roadmap-setup-threat-model.md` | ✅ merged (Kacem: install + clone + verify) |
-| 00b | GitHub collaboration: CI, CODEOWNERS, PR template, Dependabot | Both | `lessons/shared/00b-github-collaboration.md` | ✅ merged, `build` required (Kacem: `gh auth login` + git config) |
-| 01 | Data model (enums, schema, entities, append-only log) | Both | `lessons/shared/01-data-model.md` | ✅ PR opened (auto-merge) |
-| 01b | Contracts: `LlmClient` + `FakeLlmClient` | Both | `lessons/shared/01b-llm-contract.md` | 🔄 written |
-| 02 | LlmClient (LangChain4j + Ollama, validate, retry, timeouts) | Kacem | — | ⏳ |
-| 03 | Prompt injection 101 + untrusted envelope | Dhia | — | ⏳ |
-| 04 | Mock mailbox, pre-filter, sanitizer | Dhia | — | ⏳ |
-| 05 | Orchestrator: state machine, idempotence, audit log | Dhia | — | ⏳ |
-| 06 | Triage agent + injection detector | Dhia | — | ⏳ |
-| 07 | Resolver (memory, KB, calendar, recent answers) | Kacem | — | ⏳ |
-| 08 | Grouping (embeddings, clusters, cards, priority) | Kacem | — | ⏳ |
-| 09 | Curator + knowledge memory (anti-poisoning) | Kacem | — | ⏳ |
-| 10 | Writer (grounded replies) | Kacem | — | ⏳ |
-| 11 | Reviewer (rules + LLM check, send modes) | Dhia | — | ⏳ |
-| 12 | Sender clarification, broadcast, timers | Kacem | — | ⏳ |
-| 13 | Web review panel (Qute, auth, CSRF, XSS) | Kacem | — | ⏳ |
-| 14 | Security test suite (attack corpus, obedient-LLM worst case) | Dhia | — | ⏳ |
-| 15 | Evaluation and metrics report | Kacem | — | ⏳ |
-| 16 | Hardening + GDPR | Dhia | — | ⏳ |
-| 17 | (Optional) Real Outlook via Microsoft Graph | Both | — | ⏳ |
+## Lessons
+| # | Lesson | File | Status |
+|---|---|---|---|
+| 00 | Roadmap, setup, threat model | `lessons/shared/00-roadmap-setup-threat-model.md` | ✅ merged |
+| 00b | GitHub workflow: CI, CODEOWNERS, PR template, Dependabot | `lessons/shared/00b-github-collaboration.md` | ✅ merged, `build` required |
+| 01 | Data model (enums, schema, entities, append-only log) | `lessons/shared/01-data-model.md` | ✅ merged (#12) |
+| 01b | Contracts: `LlmClient`, strict parser, `FakeLlmClient` | `lessons/shared/01b-llm-contract.md` | 🔄 PR |
+| 02 | LlmClient (LangChain4j + Ollama, validate, retry, timeouts) | — | ⏳ |
+| 03 | Prompt injection 101 + untrusted envelope | — | ⏳ |
+| 04 | Mock mailbox, pre-filter, sanitizer | — | ⏳ |
+| 05 | Orchestrator: state machine, idempotence, audit log | — | ⏳ |
+| 06 | Triage agent + injection detector | — | ⏳ |
+| 07 | Resolver (memory, KB, calendar, recent answers) | — | ⏳ |
+| 08 | Grouping (embeddings, clusters, cards, priority) | — | ⏳ |
+| 09 | Curator + knowledge memory (anti-poisoning) | — | ⏳ |
+| 10 | Writer (grounded replies) | — | ⏳ |
+| 11 | Reviewer (rules + LLM check, send modes) | — | ⏳ |
+| 12 | Sender clarification, broadcast, timers | — | ⏳ |
+| 13 | Web review panel (Qute, auth, CSRF, XSS) | — | ⏳ |
+| 14 | Security test suite (attack corpus, obedient-LLM worst case) | — | ⏳ |
+| 15 | Evaluation and metrics report | — | ⏳ |
+| 16 | Hardening + GDPR | — | ⏳ |
+| 17 | (Optional) Real Outlook via Microsoft Graph | — | ⏳ not planned |
+| 99 | Defense guide (whole system + professor questions) | — | ⏳ |
 
 ## Milestones
 | Milestone | Needs | Result | Status |
 |---|---|---|---|
-| M0 Shared base | 00, 00b, 01, 01b | Repo, CI green, contracts on `main` | 🔄 00 + 00b + 01 done |
-| M1 Core loop (doc Phase 1) | D03–D06, D11, K02, K10 | Demo: email → triage → draft → review (drafts only) | ⏳ |
-| M2 Grouping (Phase 2) | K07, K08 | One card answers many emails | ⏳ |
-| M3 Memory (Phase 3) | K09, K12 | Scoped facts reused safely | ⏳ |
-| M4 Finish (Phase 4) | D14, D16, K13, K15 | Panel + green security suite + metrics report | ⏳ |
+| M0 Shared base | 00, 00b, 01, 01b | Repo, CI green, contracts on `main` | 🔄 01b in PR |
+| M1 Core loop (doc Phase 1) | 02–06, 10, 11 | Demo: email → triage → draft → review (drafts only) | ⏳ |
+| M2 Grouping (Phase 2) | 07, 08 | One card answers many emails | ⏳ |
+| M3 Memory (Phase 3) | 09, 12 | Scoped facts reused safely | ⏳ |
+| M4 Finish (Phase 4) | 13–16 | Panel + green security suite + metrics report | ⏳ |
 
-Suggested order after M0: **Kacem starts with 02** (Dhia's 06 needs it); **Dhia does 03 → 04 → 05 → 06** meanwhile.
-
-## Shared decisions
+## Decisions
 - 2026-10-29: Java 21 + Quarkus (not Spring Boot, not Python); plain Java agents + code orchestrator (not JADE);
   PostgreSQL via Dev Services (state must survive restarts, idempotence); Ollama local (free, data stays on the PC); mock mailbox.
-- 2026-10-29: split "security vs agents". PRs need **no approval** (Dhia's choice): auto-merge after checks; each reads the other's
-  merged PRs at sync time, and Dhia keeps a security eye on Kacem's.
+- 2026-10-29: **solo project**: Dhia alone, Claude builds every lesson end to end; lessons explain the design for the
+  oral defense. PRs auto-merge after the `build` check, no approval.
 
 ## Blockers / questions to revisit
-- `protect-main` ruleset is active (2026-10-29) with the required `build` check (CI: build, tests, gitleaks); auto-merge waits for it.
-- Open questions from design doc §15 (sender scope source, AI disclosure, holding-reply delay): decide by lessons 07 / 12.
+- Open questions from design doc §15 (sender scope source, AI disclosure, holding-reply delay): decided by default in 07 / 12.

@@ -693,6 +693,25 @@ And in the log, Flyway applying your migration:
 Successfully applied 1 migration to schema "public", now at version v0101
 ```
 
+## 🎓 Questions the professor may ask
+- **Your agents never talk to each other. How do they cooperate?** Through a shared store, the blackboard pattern: each
+  agent reads its inputs from the database and writes a structured result; the deterministic orchestrator moves the email
+  to the next status. Every hand-off is an inspectable row, and an injected agent has no channel to command another one.
+- **Why enums instead of free text for intent and slots?** Free text gives `grades_question` one time and
+  `inquiry_about_results` the next, so grouping and memory never match. Enums become JSON-schema `enum`s that the decoder
+  enforces, and the database CHECKs refuse anything else.
+- **Why validate in Java *and* in the database?** Defense in depth. Java gives clear errors early; the database holds even
+  for code that bypasses Hibernate (raw SQL, a script, a SQL injection).
+- **What is `automatable = false` on `INDIVIDUAL_RESULT` for?** Policy in code, not in a prompt: a question like "what is
+  my grade?" can never be answered automatically, whatever the model says. The reviewer checks the flag.
+- **How do you prevent sending the same reply twice?** `UNIQUE(message_id)` stops double import; `@Version` (optimistic
+  locking) makes the second of two concurrent updates fail; steps are keyed by status, so a replay does nothing.
+- **Why is the decision log append-only, and how is it enforced?** It's the audit trail (non-repudiation, STRIDE "R").
+  `@Immutable` stops Hibernate updates; a PostgreSQL trigger refuses UPDATE, DELETE and TRUNCATE for everyone. The attack
+  test proves a raw `UPDATE … SET output = '{"pass":true}'` fails.
+- **Append-only log vs GDPR right to erasure?** The log stores short summaries and ids, never the email body, so erasing
+  the email row erases the personal data; the log keeps only non-personal decisions (lesson 16).
+
 ## 🌿 Branch & PR
 Branch: `both/01-data-model`. When `verify` is green, tell Claude "done". Claude reviews, syncs, checks for secrets,
 commits, pushes, opens the PR (reviewer: Kacem), turns on auto-merge (it now waits for the `build` check), and switches to
