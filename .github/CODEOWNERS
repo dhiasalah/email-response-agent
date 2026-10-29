@@ -1,0 +1,15 @@
+# Default: both of you see everything
+*                                         @dhiasalah @KacemAbdelbaki
+
+# Dhia's track: security + pipeline
+/src/main/java/com/emailagent/security/      @dhiasalah
+/src/main/java/com/emailagent/mailbox/       @dhiasalah
+/src/main/java/com/emailagent/orchestrator/  @dhiasalah
+
+# Kacem's track: agents + UI
+/src/main/java/com/emailagent/llm/           @KacemAbdelbaki
+/src/main/java/com/emailagent/web/           @KacemAbdelbaki
+/src/main/resources/templates/               @KacemAbdelbaki
+
+# Changing the rules themselves needs Dhia (security owner)
+/.github/                                    @dhiasalah

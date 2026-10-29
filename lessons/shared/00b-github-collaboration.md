@@ -89,6 +89,7 @@ on:
 
 permissions:
   contents: read
+  pull-requests: read # gitleaks lists the PR's commits to scan them
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -120,14 +121,17 @@ jobs:
 ```
 The job is called `build`; that name becomes the required check in step 4. `permissions: contents: read` gives the
 workflow's token the least access possible, so even a malicious dependency running in CI can't push to your repo.
-`persist-credentials: false` stops that token from being left in `.git/config` for later steps. Tests tagged
+`pull-requests: read` was added after the first CI run failed with `403 Resource not accessible by integration`: on a PR,
+gitleaks asks the API for the PR's commits, which needs that (still read-only) scope. Grant the minimum, then add exactly
+what the error asks for. `persist-credentials: false` stops that token from being left in `.git/config` for later steps. Tests tagged
 `ollama` are excluded by the `pom.xml` property from lesson 00, so CI never needs a model; this is why lesson 01
 gives you a `FakeLlmClient`. GitHub's runners have Docker, so Dev Services Postgres works there too.
 Supply-chain note: `actions/*` are GitHub's own; `gitleaks-action` is third-party, so Dependabot (Kacem's piece) keeps
 it updated, and pinning it to a full commit SHA is even stricter.
 
 ### 2. Dhia: who owns what
-**Where:** `.github/CODEOWNERS` — new file, same branch.
+**Where:** `.github/CODEOWNERS` — new file, same branch. Directly in `.github/`, **not** in `.github/workflows/`:
+GitHub only reads CODEOWNERS from `.github/`, the repo root or `docs/`, and silently ignores it anywhere else.
 
 ```text
 # Default: both of you see everything
