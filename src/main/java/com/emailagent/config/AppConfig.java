@@ -159,6 +159,21 @@ public interface AppConfig {
      */
     Optional<String> ownerPasswordHash();
 
+    /** Finished emails are erased this long after their last change (design doc §13: one academic year). */
+    @WithDefault("365")
+    int retentionDays();
+
+    /** When the retention job runs (Quartz-style cron): every night at 03:00. */
+    @WithDefault("0 0 3 * * ?")
+    String retentionCron();
+
+    /**
+     * The models run on this machine, so student emails never leave it (design doc §13, model provider). A
+     * non-local Ollama address stops the application at start-up unless this is set on purpose.
+     */
+    @WithDefault("false")
+    boolean allowRemoteLlm();
+
     /** How often the orchestrator imports mail and moves emails forward. */
     @WithDefault("30s")
     String orchestratorEvery();

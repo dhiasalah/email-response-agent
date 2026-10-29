@@ -87,6 +87,9 @@ public class EmailEntity extends PanacheEntityBase {
     /** The sender answered a clarification and the answer was merged into this email; triage must run again. */
     public boolean senderReplied;
 
+    /** Set when retention or an erasure request reduced this row to a tombstone (design doc §13). */
+    public Instant erasedAt;
+
     @Version
     public long version;
 
