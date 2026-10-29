@@ -1,0 +1,31 @@
+# Build output
+target/
+!.mvn/wrapper/maven-wrapper.jar
+
+# Secrets and local settings: never commit
+.env
+*.env.local
+*.pem
+*.key
+
+# Data: the database and real emails never go to git (fixtures in src/test/resources are fake)
+*.db
+*.db-*
+data/private/
+*.eml
+*.msg
+
+# IDEs and OS
+.idea/
+*.iml
+.vscode/
+.classpath
+.project
+.settings/
+.DS_Store
+Thumbs.db
+
+# Quarkus / tooling
+.quarkus/
+*.log
+ruleset.json

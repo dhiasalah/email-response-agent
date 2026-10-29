@@ -1,0 +1,122 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 760" width="1200" height="760" role="img" aria-labelledby="t d">
+  <title id="t">Team workflow: one branch per lesson, PR, CI, cross-review, squash-merge</title>
+  <desc id="d">Dhia and Kacem each branch off main for every lesson, for example dhia/06-triage and kacem/07-resolver. They make small commits, push, and open a pull request. CI on GitHub runs the Maven build, the tests without Ollama, and a gitleaks secret scan. The other person reviews: Kacem reviews Dhia's PRs, Dhia reviews Kacem's PRs with a security focus. After CI passes and the review approves, the PR is squash-merged into main, which stays green. Both then switch to main and pull.</desc>
+  <defs>
+    <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#17191e"/>
+    </marker>
+    <marker id="arrB" viewBox="0 0 10 10" refX="9" refY="5" markerUnits="userSpaceOnUse" markerWidth="14" markerHeight="14" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#17191e"/>
+    </marker>
+    <style>
+      text { font-family: "Segoe UI", system-ui, -apple-system, Roboto, sans-serif; fill: #17191e; }
+      .title { font-size: 22px; font-weight: 600; }
+      .sub { font-size: 13px; fill: #62666f; }
+      .h { font-size: 14px; font-weight: 600; }
+      .s { font-size: 12px; fill: #62666f; }
+      .mono { font-family: "Cascadia Mono", Consolas, monospace; font-size: 11.5px; }
+      .zone { font-family: "Cascadia Mono", Consolas, monospace; font-size: 11.5px; font-weight: 700; letter-spacing: 1.5px; }
+      .num { font-family: "Cascadia Mono", Consolas, monospace; font-size: 12px; font-weight: 700; fill: #fffefb; }
+    </style>
+  </defs>
+
+  <rect width="1200" height="760" fill="#fffefb"/>
+  <text x="30" y="45" class="title">How Dhia and Kacem share work on GitHub</text>
+  <text x="30" y="68" class="sub">One branch per lesson → pull request → CI + review by the other → squash-merge. main is always green.</text>
+
+  <!-- MAIN -->
+  <line x1="60" y1="380" x2="1150" y2="380" stroke="#17191e" stroke-width="5" stroke-linecap="round"/>
+  <text x="60" y="356" class="zone">MAIN</text>
+  <text x="200" y="362" class="s">protected: PR + 1 approval + CI green, no force-push</text>
+  <circle cx="120" cy="380" r="10" fill="#17191e"/>
+  <text x="60" y="410" class="mono">01 merged</text>
+  <circle cx="730" cy="380" r="10" fill="#2b5fa8" stroke="#17191e" stroke-width="2"/>
+  <text x="744" y="366" class="mono">squash: D06 triage</text>
+  <circle cx="960" cy="380" r="10" fill="#6b4fa0" stroke="#17191e" stroke-width="2"/>
+  <text x="976" y="410" class="mono">squash: K07 resolver</text>
+
+  <!-- DHIA BRANCH -->
+  <text x="230" y="150" class="zone" style="fill:#2b5fa8">DHIA · SECURITY + PIPELINE</text>
+  <path d="M120,380 C165,380 170,220 225,220 H426" fill="none" stroke="#2b5fa8" stroke-width="3.5" marker-end="url(#arrB)"/>
+  <text x="235" y="200" class="mono" style="fill:#2b5fa8">dhia/06-triage</text>
+  <circle cx="270" cy="220" r="8" fill="#fffefb" stroke="#2b5fa8" stroke-width="3"/>
+  <circle cx="330" cy="220" r="8" fill="#fffefb" stroke="#2b5fa8" stroke-width="3"/>
+  <circle cx="390" cy="220" r="8" fill="#fffefb" stroke="#2b5fa8" stroke-width="3"/>
+  <text x="330" y="250" class="s" text-anchor="middle">small commits</text>
+
+  <rect x="430" y="180" width="230" height="80" rx="8" fill="#eef3fb" stroke="#2b5fa8" stroke-width="1.6"/>
+  <text x="446" y="204" class="h">Pull request #12</text>
+  <text x="446" y="225" class="mono">CI: mvnw verify ✓ gitleaks ✓</text>
+  <text x="446" y="246" class="mono">review: Kacem ✓</text>
+  <path d="M660,220 C705,220 705,380 718,380" fill="none" stroke="#2b5fa8" stroke-width="3.5" marker-end="url(#arrB)"/>
+
+  <!-- KACEM BRANCH -->
+  <text x="230" y="640" class="zone" style="fill:#6b4fa0">KACEM · AGENTS + UI</text>
+  <path d="M120,380 C165,380 170,540 225,540 H446" fill="none" stroke="#6b4fa0" stroke-width="3.5" marker-end="url(#arrB)"/>
+  <text x="235" y="570" class="mono" style="fill:#6b4fa0">kacem/07-resolver</text>
+  <circle cx="270" cy="540" r="8" fill="#fffefb" stroke="#6b4fa0" stroke-width="3"/>
+  <circle cx="330" cy="540" r="8" fill="#fffefb" stroke="#6b4fa0" stroke-width="3"/>
+  <circle cx="390" cy="540" r="8" fill="#fffefb" stroke="#6b4fa0" stroke-width="3"/>
+  <text x="330" y="516" class="s" text-anchor="middle">small commits</text>
+
+  <rect x="450" y="500" width="270" height="80" rx="8" fill="#f3effa" stroke="#6b4fa0" stroke-width="1.6"/>
+  <text x="466" y="524" class="h">Pull request #13</text>
+  <text x="466" y="545" class="mono">CI: mvnw verify ✓ gitleaks ✓</text>
+  <text x="466" y="566" class="mono">security review: Dhia ✓</text>
+  <path d="M720,540 C925,540 935,390 948,383" fill="none" stroke="#6b4fa0" stroke-width="3.5" marker-end="url(#arrB)"/>
+
+  <!-- PULL -->
+  <rect x="1000" y="190" width="170" height="92" rx="8" fill="#eef7f1" stroke="#2f7d4f" stroke-width="1.6"/>
+  <text x="1014" y="214" class="h">Both, after a merge</text>
+  <text x="1014" y="238" class="mono">git switch main</text>
+  <text x="1014" y="258" class="mono">git pull</text>
+  <path d="M975,370 C1000,330 1040,320 1060,286" fill="none" stroke="#2f7d4f" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#arr)"/>
+
+  <!-- RULES -->
+  <rect x="1000" y="460" width="170" height="130" rx="8" fill="#fbefe9" stroke="#c0531f" stroke-width="1.6"/>
+  <text x="1014" y="484" class="h" style="fill:#c0531f">Never push</text>
+  <text x="1014" y="506" class="s" style="fill:#17191e">.env, secrets, tokens</text>
+  <text x="1014" y="526" class="s" style="fill:#17191e">real student emails</text>
+  <text x="1014" y="546" class="s" style="fill:#17191e">database dumps</text>
+  <text x="1014" y="572" class="s">gitleaks in CI catches slips</text>
+
+  <!-- STEPS -->
+  <g transform="translate(40,670)">
+    <g>
+      <rect x="0" y="0" width="175" height="62" rx="7" fill="#fffefb" stroke="#17191e"/>
+      <circle cx="18" cy="18" r="11" fill="#17191e"/><text x="18" y="22" class="num" text-anchor="middle">1</text>
+      <text x="36" y="23" class="h" style="font-size:13px">Branch per lesson</text>
+      <text x="12" y="48" class="mono" style="font-size:10.5px">git switch -c dhia/06-…</text>
+    </g>
+    <g transform="translate(187,0)">
+      <rect x="0" y="0" width="175" height="62" rx="7" fill="#fffefb" stroke="#17191e"/>
+      <circle cx="18" cy="18" r="11" fill="#17191e"/><text x="18" y="22" class="num" text-anchor="middle">2</text>
+      <text x="36" y="23" class="h" style="font-size:13px">Small commits</text>
+      <text x="12" y="48" class="mono" style="font-size:10.5px">one idea per commit</text>
+    </g>
+    <g transform="translate(374,0)">
+      <rect x="0" y="0" width="175" height="62" rx="7" fill="#fffefb" stroke="#17191e"/>
+      <circle cx="18" cy="18" r="11" fill="#17191e"/><text x="18" y="22" class="num" text-anchor="middle">3</text>
+      <text x="36" y="23" class="h" style="font-size:13px">Push + open PR</text>
+      <text x="12" y="48" class="mono" style="font-size:10.5px">gh pr create --fill</text>
+    </g>
+    <g transform="translate(561,0)">
+      <rect x="0" y="0" width="175" height="62" rx="7" fill="#fffefb" stroke="#17191e"/>
+      <circle cx="18" cy="18" r="11" fill="#17191e"/><text x="18" y="22" class="num" text-anchor="middle">4</text>
+      <text x="36" y="23" class="h" style="font-size:13px">CI runs</text>
+      <text x="12" y="48" class="mono" style="font-size:10.5px">build · tests · gitleaks</text>
+    </g>
+    <g transform="translate(748,0)">
+      <rect x="0" y="0" width="175" height="62" rx="7" fill="#fffefb" stroke="#17191e"/>
+      <circle cx="18" cy="18" r="11" fill="#17191e"/><text x="18" y="22" class="num" text-anchor="middle">5</text>
+      <text x="36" y="23" class="h" style="font-size:13px">The other reviews</text>
+      <text x="12" y="48" class="mono" style="font-size:10.5px">approve or request changes</text>
+    </g>
+    <g transform="translate(935,0)">
+      <rect x="0" y="0" width="175" height="62" rx="7" fill="#fffefb" stroke="#17191e"/>
+      <circle cx="18" cy="18" r="11" fill="#17191e"/><text x="18" y="22" class="num" text-anchor="middle">6</text>
+      <text x="36" y="23" class="h" style="font-size:13px">Squash-merge</text>
+      <text x="12" y="48" class="mono" style="font-size:10.5px">then both git pull</text>
+    </g>
+  </g>
+</svg>

@@ -1,0 +1,157 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 800" width="1200" height="800" role="img" aria-labelledby="t d">
+  <title id="t">Email Response Agent: trust boundaries</title>
+  <desc id="d">Untrusted inputs (email body, attachments, headers, links) enter trusted code through a pre-filter, a sanitizer and an untrusted-data envelope, then reach the orchestrator. The orchestrator triggers six local LLM agents (triage, resolver, grouping, writer, reviewer, curator) with structured input and receives schema-validated JSON back. The agents cannot send, forward or add recipients. The orchestrator reads and writes the shared PostgreSQL state and is the only part that can create drafts or send replies, and only after the reviewer passes. The mailbox owner answers cards and approves drafts through an authenticated web panel.</desc>
+  <defs>
+    <pattern id="hatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+      <line x1="0" y1="0" x2="0" y2="6" stroke="#c0531f" stroke-width="1.2" opacity="0.3"/>
+    </pattern>
+    <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#17191e"/>
+    </marker>
+    <style>
+      text { font-family: "Segoe UI", system-ui, -apple-system, Roboto, sans-serif; fill: #17191e; }
+      .mono { font-family: "Cascadia Mono", Consolas, monospace; }
+      .title { font-size: 22px; font-weight: 600; }
+      .sub { font-size: 13px; fill: #62666f; }
+      .h { font-size: 14px; font-weight: 600; }
+      .s { font-size: 12px; fill: #62666f; }
+      .lbl { font-family: "Cascadia Mono", Consolas, monospace; font-size: 11px; fill: #17191e; }
+      .zone { font-family: "Cascadia Mono", Consolas, monospace; font-size: 11.5px; font-weight: 700; letter-spacing: 1.5px; }
+      .line { stroke: #17191e; stroke-width: 1.4; fill: none; }
+    </style>
+  </defs>
+
+  <rect width="1200" height="800" fill="#fffefb"/>
+
+  <text x="30" y="45" class="title">Email Response Agent — trust boundaries</text>
+  <text x="30" y="68" class="sub">The LLM proposes, code decides: only the orchestrator can act on the mailbox, and only after the reviewer passes.</text>
+
+  <!-- UNTRUSTED -->
+  <rect x="30" y="90" width="250" height="350" rx="10" fill="url(#hatch)" stroke="#c0531f" stroke-width="1.6" stroke-dasharray="6 4"/>
+  <text x="48" y="114" class="zone" fill="#c0531f" style="fill:#c0531f">UNTRUSTED</text>
+  <g>
+    <rect x="50" y="130" width="210" height="56" rx="7" fill="#fffefb" stroke="#c0531f"/>
+    <text x="64" y="153" class="h">Email body + subject</text>
+    <text x="64" y="173" class="s">free text, any language</text>
+    <rect x="50" y="205" width="210" height="56" rx="7" fill="#fffefb" stroke="#c0531f"/>
+    <text x="64" y="228" class="h">Attachments</text>
+    <text x="64" y="248" class="s">PDF, Excel, images</text>
+    <rect x="50" y="280" width="210" height="56" rx="7" fill="#fffefb" stroke="#c0531f"/>
+    <text x="64" y="303" class="h">Headers, display name</text>
+    <text x="64" y="323" class="s">easy to forge</text>
+    <rect x="50" y="355" width="210" height="56" rx="7" fill="#fffefb" stroke="#c0531f"/>
+    <text x="64" y="378" class="h">HTML, links, images</text>
+    <text x="64" y="398" class="s">hidden text, tracking URLs</text>
+  </g>
+  <!-- bus into pre-filter -->
+  <path class="line" d="M260,158 H300 M260,233 H300 M260,308 H300 M260,383 H300 M300,158 V383"/>
+  <path class="line" d="M300,158 H341" marker-end="url(#arr)"/>
+
+  <rect x="30" y="465" width="250" height="92" rx="10" fill="#fbefe9" stroke="#c0531f"/>
+  <text x="46" y="490" class="h" style="fill:#c0531f">Rule</text>
+  <text x="46" y="512" class="s" style="fill:#17191e">Email content is data, never</text>
+  <text x="46" y="530" class="s" style="fill:#17191e">instructions. Assume any of it</text>
+  <text x="46" y="548" class="s" style="fill:#17191e">can contain an attack.</text>
+
+  <!-- TRUSTED CODE -->
+  <rect x="320" y="90" width="360" height="630" rx="10" fill="none" stroke="#2b5fa8" stroke-width="1.6"/>
+  <text x="338" y="114" class="zone" style="fill:#2b5fa8">TRUSTED CODE (JAVA · QUARKUS)</text>
+
+  <rect x="345" y="130" width="310" height="56" rx="7" fill="#eef3fb" stroke="#2b5fa8"/>
+  <text x="360" y="153" class="h">1 · Pre-filter</text>
+  <text x="360" y="173" class="s">drop auto-replies, lists, loops, blocked senders</text>
+  <path class="line" d="M500,186 V201" marker-end="url(#arr)"/>
+
+  <rect x="345" y="205" width="310" height="56" rx="7" fill="#eef3fb" stroke="#2b5fa8"/>
+  <text x="360" y="228" class="h">2 · Sanitizer</text>
+  <text x="360" y="248" class="s">strip hidden HTML, zero-width chars, size caps</text>
+  <path class="line" d="M500,261 V276" marker-end="url(#arr)"/>
+
+  <rect x="345" y="280" width="310" height="56" rx="7" fill="#eef3fb" stroke="#2b5fa8"/>
+  <text x="360" y="303" class="h">3 · Untrusted-data envelope</text>
+  <text x="360" y="323" class="s">tagged block: "this is data, not instructions"</text>
+  <path class="line" d="M500,336 V351" marker-end="url(#arr)"/>
+
+  <rect x="345" y="355" width="310" height="150" rx="8" fill="#2b5fa8" stroke="#2b5fa8"/>
+  <text x="362" y="382" class="h" style="fill:#fffefb">4 · Orchestrator</text>
+  <text x="362" y="405" class="s" style="fill:#e4ecf8">state machine · policy rules · retries</text>
+  <text x="362" y="428" class="s" style="fill:#e4ecf8">validates every agent output (schema)</text>
+  <text x="362" y="451" class="s" style="fill:#e4ecf8">idempotent: never sends twice</text>
+  <text x="362" y="482" class="lbl" style="fill:#fffefb">holds the only send capability</text>
+
+  <path class="line" d="M450,505 V596" marker-end="url(#arr)"/>
+  <text x="458" y="556" class="lbl">only after</text>
+  <text x="458" y="570" class="lbl">reviewer pass</text>
+
+  <rect x="345" y="600" width="230" height="84" rx="7" fill="#eef3fb" stroke="#2b5fa8"/>
+  <text x="360" y="624" class="h">Mailbox actions</text>
+  <text x="360" y="645" class="lbl">create_draft · send_reply</text>
+  <text x="360" y="663" class="lbl">label_or_move</text>
+  <text x="360" y="678" class="s" style="font-size:11px">draft mode by default</text>
+
+  <!-- LLM AGENTS -->
+  <rect x="780" y="90" width="390" height="340" rx="10" fill="#f3effa" stroke="#6b4fa0" stroke-width="1.6"/>
+  <text x="798" y="114" class="zone" style="fill:#6b4fa0">LLM AGENTS · OLLAMA, LOCAL</text>
+  <g>
+    <rect x="800" y="132" width="165" height="58" rx="7" fill="#fffefb" stroke="#6b4fa0"/>
+    <text x="814" y="156" class="h">Triage</text>
+    <text x="814" y="176" class="s">intent, slots, sensitivity</text>
+    <rect x="985" y="132" width="165" height="58" rx="7" fill="#fffefb" stroke="#6b4fa0"/>
+    <text x="999" y="156" class="h">Resolver</text>
+    <text x="999" y="176" class="s">memory, KB, calendar</text>
+    <rect x="800" y="202" width="165" height="58" rx="7" fill="#fffefb" stroke="#6b4fa0"/>
+    <text x="814" y="226" class="h">Grouping</text>
+    <text x="814" y="246" class="s">clusters, input cards</text>
+    <rect x="985" y="202" width="165" height="58" rx="7" fill="#fffefb" stroke="#6b4fa0"/>
+    <text x="999" y="226" class="h">Writer</text>
+    <text x="999" y="246" class="s">one reply per email</text>
+    <rect x="800" y="272" width="165" height="58" rx="7" fill="#fffefb" stroke="#6b4fa0"/>
+    <text x="814" y="296" class="h">Reviewer</text>
+    <text x="814" y="316" class="s">rules + model check</text>
+    <rect x="985" y="272" width="165" height="58" rx="7" fill="#fffefb" stroke="#6b4fa0"/>
+    <text x="999" y="296" class="h">Curator</text>
+    <text x="999" y="316" class="s">scoped, expiring facts</text>
+  </g>
+  <text x="800" y="362" class="lbl" style="fill:#6b4fa0;font-weight:700">✗ no send · no forward · no new recipients</text>
+  <text x="800" y="382" class="lbl" style="fill:#6b4fa0">output = JSON only, checked by code</text>
+  <text x="800" y="402" class="lbl" style="fill:#6b4fa0">never call each other directly</text>
+
+  <!-- orchestrator <-> agents -->
+  <path class="line" d="M655,372 H776" marker-end="url(#arr)"/>
+  <text x="717" y="364" class="lbl" text-anchor="middle">triggers</text>
+  <path class="line" d="M780,420 H659" marker-end="url(#arr)"/>
+  <text x="717" y="412" class="lbl" text-anchor="middle">JSON result</text>
+
+  <!-- STORAGE -->
+  <rect x="780" y="460" width="390" height="92" rx="10" fill="#f2f3f5" stroke="#8a8f98" stroke-width="1.6"/>
+  <text x="798" y="485" class="h">Shared state · PostgreSQL</text>
+  <text x="798" y="507" class="lbl">emails · slots · cards · facts · recent answers</text>
+  <text x="798" y="527" class="lbl">decision log (append-only)</text>
+  <path class="line" d="M655,490 H776" marker-end="url(#arr)" marker-start="url(#arr)"/>
+  <text x="717" y="482" class="lbl" text-anchor="middle">read / write</text>
+  <path class="line" d="M1110,430 V456" stroke-dasharray="4 3" marker-end="url(#arr)"/>
+  <text x="1104" y="448" class="lbl" text-anchor="end">reads inputs</text>
+
+  <!-- HUMAN -->
+  <rect x="780" y="590" width="390" height="110" rx="10" fill="#eef7f1" stroke="#2f7d4f" stroke-width="1.6"/>
+  <text x="798" y="614" class="zone" style="fill:#2f7d4f">HUMAN · MAILBOX OWNER</text>
+  <text x="798" y="640" class="h">Web review panel (authenticated)</text>
+  <text x="798" y="662" class="s">answers input cards · approves drafts</text>
+  <text x="798" y="682" class="s">confirms fact scope · edits memory</text>
+  <path class="line" d="M780,645 H620 V509" marker-end="url(#arr)" marker-start="url(#arr)"/>
+  <text x="700" y="637" class="lbl" text-anchor="middle">answers, approvals</text>
+
+  <!-- LEGEND -->
+  <g transform="translate(30,748)">
+    <rect x="0" y="0" width="14" height="14" fill="url(#hatch)" stroke="#c0531f"/>
+    <text x="22" y="12" class="s">untrusted</text>
+    <rect x="110" y="0" width="14" height="14" fill="#eef3fb" stroke="#2b5fa8"/>
+    <text x="132" y="12" class="s">trusted code</text>
+    <rect x="240" y="0" width="14" height="14" fill="#f3effa" stroke="#6b4fa0"/>
+    <text x="262" y="12" class="s">LLM agent (output untrusted until validated)</text>
+    <rect x="560" y="0" width="14" height="14" fill="#f2f3f5" stroke="#8a8f98"/>
+    <text x="582" y="12" class="s">storage</text>
+    <rect x="660" y="0" width="14" height="14" fill="#eef7f1" stroke="#2f7d4f"/>
+    <text x="682" y="12" class="s">human</text>
+  </g>
+</svg>
