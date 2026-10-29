@@ -103,7 +103,7 @@ group `com.emailagent`, artifact `email-response-agent`, Java 21, and download t
   <scope>test</scope>
 </dependency>
 ```
-In `<properties>`, add:
+In the top-level `<properties>` (not the one inside the `native` profile), add:
 ```xml
 <excludedGroups>ollama</excludedGroups>
 ```
@@ -194,6 +194,33 @@ public interface AppConfig {
 security setting must never fall back quietly to a best guess. (Quarkus maps `draft` to `DRAFT` without regard to case.)
 Later lessons add rate limits, size caps and timeouts here, each with a validation annotation.
 
+**Where:** `src/main/java/com/emailagent/config/StartupConfigCheck.java` — new file.
+
+```java
+package com.emailagent.config;
+
+import io.quarkus.logging.Log;
+import io.quarkus.runtime.StartupEvent;
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.event.Observes;
+
+/**
+ * Reads AppConfig at start-up. Quarkus only validates a @ConfigMapping that something injects,
+ * so without this bean a typo like SEND_MODE=autto would not stop the application.
+ */
+@ApplicationScoped
+public class StartupConfigCheck {
+
+    void onStart(@Observes StartupEvent event, AppConfig config) {
+        Log.infof("Send mode: %s", config.sendMode());
+    }
+}
+```
+**Found while verifying (2026-10-29):** without this bean, the app started happily with `SEND_MODE=autto`. Nothing
+injected `AppConfig` yet, so Quarkus never checked it. A safety check that never runs is worse than none, because you
+believe you're protected. Observing `StartupEvent` forces the check on every start, and the log line shows which mode is
+active. Lesson: **test that the defense fires**, don't assume it.
+
 ### 5. Smoke test: schema-constrained JSON from Ollama
 **Where:** `src/test/java/com/emailagent/OllamaSmokeTest.java` — new file.
 
@@ -202,6 +229,7 @@ package com.emailagent;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
@@ -215,7 +243,7 @@ import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import jakarta.validation.Validator;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.NotNull;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
@@ -223,10 +251,15 @@ import org.junit.jupiter.api.Test;
 @Tag("ollama") // needs a running Ollama: excluded from normal builds and CI
 class OllamaSmokeTest {
 
+    // An enum becomes a JSON-schema "enum", which the decoder enforces; a regex @Pattern is not
+    enum Language { fr, en }
+
+    // required = true puts the field in the schema's "required" list (LangChain4j makes fields optional by default)
+    // and makes Jackson reject an answer that leaves it out
     record Classification(
-            @NotBlank String intent,
-            boolean replyNeeded,
-            @Pattern(regexp = "fr|en") String language) {}
+            @JsonProperty(required = true) @NotBlank String intent,
+            @JsonProperty(required = true) @NotNull Boolean replyNeeded, // Boolean: missing must fail, not become false
+            @JsonProperty(required = true) @NotNull Language language) {}
 
     static final String EMAIL =
             "Bonjour Monsieur, quand les notes du S2 seront-elles publiées ? Merci, Lina (M2 IA)";
@@ -238,6 +271,7 @@ class OllamaSmokeTest {
     @Test
     void ollamaAnswersWithSchemaValidJson() throws Exception {
         JsonSchema schema = JsonSchemas.jsonSchemaFrom(Classification.class).orElseThrow();
+        System.out.println("schema: " + schema.rootElement());
 
         ChatRequest request = ChatRequest.builder()
                 .messages(
@@ -261,8 +295,16 @@ class OllamaSmokeTest {
 ```
 There are two layers. The `jsonSchema` makes Ollama **constrain** generation, so the model can only produce tokens that fit
 the record's shape. `readValue` + `validator.validate` **check** the result again in Java, because constrained decoding is
-a convenience, not a guarantee (a regex `@Pattern`, for example, isn't enforced by the decoder). `temperature=0` makes
-classification repeatable, which matters for grouping later. In lesson 02 Kacem turns this into the standard loop from §3:
+a convenience, not a guarantee.
+**What we learned running it (2026-10-29), three silent failures:**
+- With `@Pattern(regexp = "fr|en") String language`, qwen2.5 answered with another value. The decoder ignores regexes;
+  an `enum` becomes a schema `enum`, which it does enforce.
+- LangChain4j generated `required = []`, so the model simply **left out** `replyNeeded`. `@JsonProperty(required = true)`
+  fixes the schema *and* makes Jackson reject a missing field.
+- With a primitive `boolean`, the missing field silently became `false` ("no reply needed" for a real question). A boxed
+  `Boolean` + `@NotNull` fails instead. **Fail closed: a missing answer is an error, never a default.**
+
+`temperature=0` makes classification repeatable, which matters for grouping later. In lesson 02 Kacem turns this into the standard loop from §3:
 validate, retry once with the error, then escalate.
 LangChain4j renames things between versions. If an import doesn't resolve, paste the error and the
 `quarkus-langchain4j` version from `pom.xml`, and we'll adapt it.
