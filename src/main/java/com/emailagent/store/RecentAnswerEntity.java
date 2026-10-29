@@ -44,10 +44,18 @@ public class RecentAnswerEntity extends PanacheEntityBase {
     @NotNull
     public Instant answeredAt;
 
+    /** The sent reply it was read from; null for entries made another way. */
+    @Size(max = 998)
+    public String sourceReplyId;
+
+    /** Set when a later owner reply gave another value: the entry is no longer used. */
+    public Instant supersededAt;
+
     /** Answers to exactly this key and scope since {@code since}, newest first. */
     public static List<RecentAnswerEntity> find(SlotKey key, SenderScope scope, Instant since) {
         return list("slotType = ?1 and entityKey = ?2 and coalesce(qualifierKey, '') = ?3 and scopeProgram = ?4"
-                        + " and scopeTrack = ?5 and scopeYear = ?6 and answeredAt >= ?7 order by answeredAt desc",
+                        + " and scopeTrack = ?5 and scopeYear = ?6 and answeredAt >= ?7 and supersededAt is null"
+                        + " order by answeredAt desc",
                 key.type(), key.entity(), key.qualifier() == null ? "" : key.qualifier(),
                 scope.program(), scope.track(), scope.year(), since);
     }

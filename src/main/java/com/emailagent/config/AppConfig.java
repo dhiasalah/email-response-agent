@@ -24,6 +24,10 @@ public interface AppConfig {
     @WithDefault("mailbox/inbox.json")
     String mailboxFixture();
 
+    /** Classpath JSON file of replies the owner sent by hand (the mock Sent folder). */
+    @WithDefault("mailbox/sent.json")
+    String mailboxSentFixture();
+
     /** Classpath JSON roster that gives each known sender a scope (program, track, year). */
     @WithDefault("directory/senders.json")
     String senderDirectoryFixture();
@@ -39,6 +43,10 @@ public interface AppConfig {
     /** A fact older than this is proposed for review instead of used directly (design doc §8.1). */
     @WithDefault("90")
     int factFreshnessDays();
+
+    /** A fact that isn't a date gets a review date this far ahead (design doc §8.2: "procedures get a review date"). */
+    @WithDefault("120")
+    int factReviewDays();
 
     /** How far back the recent answer log is searched (design doc §8.4). */
     @WithDefault("7")
