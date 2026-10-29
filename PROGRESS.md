@@ -12,7 +12,7 @@
 ## Lessons and owners
 | # | Lesson | Owner | File | Status |
 |---|---|---|---|---|
-| 00 | Roadmap, setup, threat model | Both | `lessons/shared/00-roadmap-setup-threat-model.md` | 🔄 written |
+| 00 | Roadmap, setup, threat model | Both | `lessons/shared/00-roadmap-setup-threat-model.md` | ✅ merged (Kacem: install + clone + verify) |
 | 00b | GitHub collaboration: CI, CODEOWNERS, PR template, Dependabot | Both | `lessons/shared/00b-github-collaboration.md` | 🔄 written |
 | 01 | Data model + contracts (`LlmClient`, `FakeLlmClient`) | Both | — | ⏳ |
 | 02 | LlmClient (LangChain4j + Ollama, validate, retry, timeouts) | Kacem | — | ⏳ |

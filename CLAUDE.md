@@ -48,6 +48,10 @@ Same method as Dhia's previous project **Sentinel** (`personal_project/` on Dhia
    - `lessons/` (lesson files, concept notes, SVG diagrams in `lessons/assets/`)
    - `PROGRESS.md`, `progress/<current student>.md`
    - `CLAUDE.md` (only if a student asks to change the rules)
+   - **Smoke tests** (requested by Dhia, 2026-10-29): you write them yourself, directly in `src/test/` (e.g.
+     `OllamaSmokeTest.java`): small end-to-end "does the wiring work" checks such as Ollama answering with schema-valid JSON.
+     Still explain each one in the lesson (what it checks and why) so the student understands it. Unit tests, security tests
+     (lesson 14) and the code under test stay the student's to write.
 2. **Code in parts, never whole files at once.** Give complete, working snippets (a record, a method, a prompt, a config block),
    one piece at a time. For each snippet:
    - say **where it goes**: file path + "new file / add at the top / under X / replace Y";
