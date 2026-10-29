@@ -1,0 +1,13 @@
+[
+  { "id": "kb1", "slotType": "PROCEDURE", "entity": "grade appeal",
+    "value": "Send a written request to the exam office within 15 days of the publication of grades (form R-12).",
+    "source": "Règlement des études 2026-2027, art. 14" },
+  { "id": "kb2", "slotType": "DEADLINE", "entity": "multi-agent systems project",
+    "program": "M2", "track": "IA", "year": "2026-2027",
+    "value": "Friday 20 November 2026, 23:59, on Moodle",
+    "source": "Syllabus Systèmes multi-agents, M2 IA 2026-2027" },
+  { "id": "kb3", "slotType": "DOCUMENT_AVAILABILITY", "entity": "machine learning slides",
+    "program": "M2", "track": "IA", "year": "2026-2027",
+    "value": "Yes, on Moodle, section Cours",
+    "source": "Moodle page, Machine Learning M2 IA" }
+]

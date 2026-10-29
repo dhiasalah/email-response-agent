@@ -9,6 +9,7 @@ import com.emailagent.llm.LlmRequest;
 import com.emailagent.mailbox.MailboxImporter;
 import com.emailagent.mailbox.SenderDirectory;
 import com.emailagent.model.EmailStatus;
+import com.emailagent.model.SlotStatus;
 import com.emailagent.model.SlotType;
 import com.emailagent.orchestrator.Orchestrator;
 import com.emailagent.security.InjectionDetector;
@@ -34,6 +35,7 @@ class TriageFlowTest {
     @Inject InjectionDetector detector;
     @Inject SenderDirectory directory;
     @Inject LlmOutputParser parser;
+    @Inject ResolverAgent resolver;
 
     static final Map<String, String> ANSWERS = Map.of(
             "Notes du S2", answer("QUESTION", "LOW", "FR", true,
@@ -82,6 +84,20 @@ class TriageFlowTest {
             assertThat(m01.scopeProgram).isEqualTo("M2");
             assertThat(m01.injectionScore).isZero();
             assertThat(email("m08").injectionSignals).contains("override_instructions", "bidi_control");
+        });
+
+        // next stage: the resolver finds what it can, the rest waits for the owner
+        orchestrator.process(List.of(resolver));
+        for (String id : List.of("m01", "m02", "m03", "m12")) {
+            assertThat(status(id)).as(id).isEqualTo(EmailStatus.AWAITING_INPUT);
+        }
+        QuarkusTransaction.requiringNew().run(() -> {
+            assertThat(email("m01").slots).singleElement().satisfies(s -> {
+                assertThat(s.status).isEqualTo(SlotStatus.PROPOSED); // calendar event, M2 IA
+                assertThat(s.source).startsWith("calendar:ev1");
+            });
+            // Sarah's scope is unknown: the M2 IA calendar entries don't apply to her
+            assertThat(email("m03").slots).allSatisfy(s -> assertThat(s.status).isEqualTo(SlotStatus.UNRESOLVED));
         });
     }
 
