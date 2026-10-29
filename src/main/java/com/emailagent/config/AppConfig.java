@@ -20,4 +20,12 @@ public interface AppConfig {
     /** Classpath JSON file the mock mailbox reads. */
     @WithDefault("mailbox/inbox.json")
     String mailboxFixture();
+
+    /** How often the orchestrator imports mail and moves emails forward. */
+    @WithDefault("30s")
+    String orchestratorEvery();
+
+    /** Emails handled per step and per run: bounds the work (and LLM calls) of one tick. */
+    @WithDefault("20")
+    int orchestratorBatchSize();
 }
