@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Email agent: metrics</title>
+  <link rel="stylesheet" href="/panel.css">
+</head>
+<body>
+<header>
+  <h1>Metrics</h1>
+  <p class="muted"><a href="/panel">Back to the review panel</a> · computed from the audit log and the shared state</p>
+</header>
+
+<section>
+  <h2>Auto-send readiness per slot type</h2>
+  <p class="muted">Owner decisions on saved drafts over the last 4 weeks. Target (design doc §12): acceptance above 90%.
+    A ready type is only a suggestion: auto-send stays off until you list it in auto-send-types.</p>
+  <table>
+    <tr><th>Slot type</th><th>Sent as drafted</th><th>Rejected</th><th>Acceptance</th><th>Status</th></tr>
+    {#for r in m.readiness}
+    <tr><td>{r.type}</td><td>{r.accepted}</td><td>{r.rejected}</td><td>{r.rate}</td>
+      <td>{#if r.ready}<strong>ready</strong>{#else}not yet{/if}: {r.why}</td></tr>
+    {/for}
+  </table>
+</section>
+
+<section>
+  <h2>Memory reuse</h2>
+  <p>Slots answered without asking you: <strong>{m.memoryReuse}</strong></p>
+  <table>
+    <tr><th>Filled from</th><th>Slots</th></tr>
+    {#for e in m.filledFrom}
+    <tr><td>{e.key}</td><td>{e.value}</td></tr>
+    {/for}
+  </table>
+</section>
+
+<section>
+  <h2>Reviewer</h2>
+  <p>{m.reviewsPassed} passed · {m.reviewsFailed} failed</p>
+  <table>
+    <tr><th>Code rule that failed</th><th>Count</th></tr>
+    {#for e in m.ruleFailures}
+    <tr><td>{e.key}</td><td>{e.value}</td></tr>
+    {/for}
+    <tr><th>Model issue</th><th>Count</th></tr>
+    {#for e in m.modelIssues}
+    <tr><td>{e.key}</td><td>{e.value}</td></tr>
+    {/for}
+  </table>
+</section>
+
+<section>
+  <h2>Escalations by reason</h2>
+  <table>
+    <tr><th>Step: reason</th><th>Count</th></tr>
+    {#for e in m.escalations}
+    <tr><td>{e.key}</td><td>{e.value}</td></tr>
+    {/for}
+  </table>
+</section>
+
+<section>
+  <h2>Emails by status</h2>
+  <table>
+    <tr><th>Status</th><th>Emails</th></tr>
+    {#for e in m.byStatus}
+    <tr><td>{e.key}</td><td>{e.value}</td></tr>
+    {/for}
+  </table>
+</section>
+</body>
+</html>

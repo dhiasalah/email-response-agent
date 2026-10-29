@@ -60,7 +60,9 @@ public class TriageRouter implements AgentStep {
         if (e.slots().stream().anyMatch(s -> !s.type().automatable())) {
             return new Route(EmailStatus.ESCALATED, "not_automatable");
         }
-        if (!e.replyNeeded()) {
+        // a question with a registered slot needs an answer, whatever the model's flag says. Measured on qwen2.5:
+        // "When will the S2 grades be published?" came back INFORMATION, replyNeeded=false, with its slot
+        if (!e.replyNeeded() && e.slots().isEmpty()) {
             return new Route(EmailStatus.IGNORED, "no_reply_needed");
         }
         if (e.slots().isEmpty()) {
