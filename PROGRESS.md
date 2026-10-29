@@ -4,7 +4,7 @@
 > Claude updates only the line or row of the student it's talking to.
 
 ## Current position
-- **Dhia:** lesson 00 (shared): set up tools, generate the Quarkus skeleton, open the first PR · details: `progress/dhia.md`
+- **Dhia:** 00 + 00b done; next: lesson 01 (shared, pair session with Kacem) · details: `progress/dhia.md`
 - **Kacem:** lesson 00 (shared): accept the GitHub invitation, install tools, review Dhia's PR, clone · details: `progress/kacem.md`
 - **Repo:** https://github.com/dhiasalah/email-response-agent (private)
 - **Stack:** Java 21 · Quarkus 3 · Maven wrapper · PostgreSQL (Dev Services) · LangChain4j + Ollama (local, free)
@@ -13,7 +13,7 @@
 | # | Lesson | Owner | File | Status |
 |---|---|---|---|---|
 | 00 | Roadmap, setup, threat model | Both | `lessons/shared/00-roadmap-setup-threat-model.md` | ✅ merged (Kacem: install + clone + verify) |
-| 00b | GitHub collaboration: CI, CODEOWNERS, PR template, Dependabot | Both | `lessons/shared/00b-github-collaboration.md` | 🔄 written |
+| 00b | GitHub collaboration: CI, CODEOWNERS, PR template, Dependabot | Both | `lessons/shared/00b-github-collaboration.md` | ✅ merged, `build` required (Kacem: `gh auth login` + git config) |
 | 01 | Data model + contracts (`LlmClient`, `FakeLlmClient`) | Both | — | ⏳ |
 | 02 | LlmClient (LangChain4j + Ollama, validate, retry, timeouts) | Kacem | — | ⏳ |
 | 03 | Prompt injection 101 + untrusted envelope | Dhia | — | ⏳ |
@@ -50,5 +50,5 @@ Suggested order after M0: **Kacem starts with 02** (Dhia's 06 needs it); **Dhia 
   merged PRs at sync time, and Dhia keeps a security eye on Kacem's.
 
 ## Blockers / questions to revisit
-- `protect-main` ruleset is active (2026-10-29) and auto-merge is on; **add the required `build` check** once the CI workflow (00b, Dhia) is merged.
+- `protect-main` ruleset is active (2026-10-29) with the required `build` check (CI: build, tests, gitleaks); auto-merge waits for it.
 - Open questions from design doc §15 (sender scope source, AI disclosure, holding-reply delay): decide by lessons 07 / 12.
