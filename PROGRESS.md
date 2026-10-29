@@ -3,7 +3,7 @@
 > Overview. Details and session log: `progress/dhia.md`.
 
 ## Current position
-- **Dhia:** lesson 05 — Orchestrator: state machine, idempotence, audit log next · details: `progress/dhia.md`
+- **Dhia:** lesson 06 — Triage agent + injection detector next · details: `progress/dhia.md`
 - **Repo:** https://github.com/dhiasalah/email-response-agent (private)
 - **Stack:** Java 21 · Quarkus 3 · Maven wrapper · PostgreSQL (Dev Services) · LangChain4j + Ollama (local, free)
 
@@ -17,7 +17,7 @@
 | 02 | LlmClient (LangChain4j + Ollama, validate, retry, timeouts) | `lessons/dhia/02-ollama-client.md` | ✅ PR |
 | 03 | Prompt injection 101 + untrusted envelope | `lessons/dhia/03-prompt-injection.md` | ✅ PR |
 | 04 | Mock mailbox, pre-filter, sanitizer | `lessons/dhia/04-mailbox-sanitizer.md` | ✅ PR |
-| 05 | Orchestrator: state machine, idempotence, audit log | — | ⏳ |
+| 05 | Orchestrator: state machine, idempotence, audit log | `lessons/dhia/05-orchestrator.md` | ✅ PR |
 | 06 | Triage agent + injection detector | — | ⏳ |
 | 07 | Resolver (memory, KB, calendar, recent answers) | — | ⏳ |
 | 08 | Grouping (embeddings, clusters, cards, priority) | — | ⏳ |

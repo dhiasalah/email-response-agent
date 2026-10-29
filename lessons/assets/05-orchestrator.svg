@@ -1,0 +1,139 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 630" width="960" height="630" role="img" aria-labelledby="t d">
+  <title id="t">Lesson 05: the orchestrator, the lifecycle and idempotent steps</title>
+  <desc id="d">A scheduler tick imports new mail, then the orchestrator picks a batch of emails waiting in one status and gives each agent a read-only snapshot with id, status and version. The agent calls the LLM outside any transaction and returns a proposed next status, a log output and its writes. The orchestrator checks the transition against the lifecycle table; an illegal jump, a model failure or a write error escalates the email to a human with our own reason code. Otherwise one transaction re-reads the email and commits only if status and version are unchanged: the agent's writes, the status change and an append-only decision log row are saved together, or a stale result is discarded and retried on the next tick. A database trigger holds the same transition table. The lower part shows the lifecycle: NEW, TRIAGED, RESOLVING, READY, DRAFTED, REVIEWED, then SENT or DRAFT_SAVED, with side branches and escalation from every active status.</desc>
+  <defs>
+    <style>
+      text { font-family: "Segoe UI", system-ui, sans-serif; fill: #17191e; font-size: 13px; }
+      .h { font-size: 20px; font-weight: 600; }
+      .h2 { font-size: 14px; font-weight: 600; }
+      .sub { font-size: 13px; fill: #62666f; }
+      .white { fill: #ffffff; font-weight: 600; }
+      .wsmall { fill: #ffffff; font-size: 11.5px; }
+      .small { font-size: 11.5px; }
+      .muted { font-size: 11.5px; fill: #62666f; }
+      .code { font-family: Consolas, monospace; font-size: 11px; }
+      .wcode { font-family: Consolas, monospace; font-size: 11px; fill: #ffffff; }
+      .lbl { font-size: 11.5px; fill: #62666f; font-style: italic; }
+      .node { fill: #eef3fa; stroke: #2b5fa8; stroke-width: 1.2; }
+      .term { fill: #f0f1f3; stroke: #8a8f98; stroke-width: 2.2; }
+      .esc { fill: #e8f3ec; stroke: #2f7d4f; stroke-width: 1.5; }
+      .a { stroke: #17191e; stroke-width: 1.4; fill: none; }
+      .ar { stroke: #2f7d4f; stroke-width: 1.4; fill: none; stroke-dasharray: 5 3; }
+    </style>
+    <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#17191e"/>
+    </marker>
+    <marker id="arrg" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#2f7d4f"/>
+    </marker>
+  </defs>
+  <rect width="960" height="630" fill="#fffefb"/>
+  <text x="24" y="36" class="h">Lesson 05: code decides the route, the database guards it</text>
+  <text x="24" y="58" class="sub">Each step is keyed by (email id, status, version): a restart, a second tick or a concurrent worker never applies it twice.</text>
+
+  <!-- main loop -->
+  <rect x="24" y="86" width="164" height="118" rx="8" fill="#2b5fa8"/>
+  <text x="106" y="110" text-anchor="middle" class="white">Scheduler tick</text>
+  <text x="38" y="132" class="wsmall">every 30 s, never 2 at once</text>
+  <text x="38" y="152" class="wsmall">1. import mail (lesson 04)</text>
+  <text x="38" y="172" class="wsmall">2. processPending():</text>
+  <text x="50" y="190" class="wsmall">repeat until stable</text>
+  <line x1="188" y1="145" x2="210" y2="145" class="a" marker-end="url(#arr)"/>
+
+  <rect x="212" y="86" width="168" height="118" rx="8" fill="#2b5fa8"/>
+  <text x="296" y="110" text-anchor="middle" class="white">1. Pick a batch</text>
+  <text x="226" y="132" class="wsmall">status = step's trigger</text>
+  <text x="226" y="150" class="wsmall">oldest first, max 20</text>
+  <text x="226" y="170" class="wsmall">→ read-only EmailSnapshot</text>
+  <text x="226" y="190" class="wcode">(id, status, version)</text>
+  <line x1="380" y1="145" x2="402" y2="145" class="a" marker-end="url(#arr)"/>
+
+  <rect x="404" y="86" width="182" height="118" rx="8" fill="#6b4fa0"/>
+  <text x="495" y="110" text-anchor="middle" class="white">2. agent.run(snapshot)</text>
+  <text x="418" y="132" class="wsmall">LLM call: slow, outside any</text>
+  <text x="418" y="150" class="wsmall">transaction, no DB access</text>
+  <text x="418" y="170" class="wsmall">returns StepResult:</text>
+  <text x="418" y="190" class="wcode">next, output, writes</text>
+  <line x1="586" y1="145" x2="608" y2="145" class="a" marker-end="url(#arr)"/>
+
+  <rect x="610" y="86" width="150" height="118" rx="8" fill="#2b5fa8"/>
+  <text x="685" y="110" text-anchor="middle" class="white">3. Lifecycle check</text>
+  <text x="624" y="132" class="wsmall">is trigger → next in</text>
+  <text x="624" y="150" class="wsmall">the allowed table?</text>
+  <text x="624" y="170" class="wsmall">READY → SENT: no</text>
+  <text x="624" y="190" class="wsmall">(skips the reviewer)</text>
+  <line x1="760" y1="145" x2="782" y2="145" class="a" marker-end="url(#arr)"/>
+
+  <rect x="784" y="86" width="152" height="118" rx="8" fill="#2b5fa8"/>
+  <text x="860" y="106" text-anchor="middle" class="white">4. Commit (1 tx)</text>
+  <text x="796" y="126" class="wsmall">re-read: same status</text>
+  <text x="796" y="143" class="wsmall">and version? no → drop</text>
+  <text x="796" y="160" class="wsmall">stale result, retry later</text>
+  <text x="796" y="177" class="wsmall">yes → writes + status</text>
+  <text x="796" y="194" class="wsmall">+ log row: all or none</text>
+
+  <!-- escalation -->
+  <rect x="212" y="244" width="374" height="64" rx="8" class="esc"/>
+  <text x="399" y="266" text-anchor="middle" class="h2" style="fill:#2f7d4f">ESCALATED → a human takes over (fail closed)</text>
+  <text x="226" y="286" class="small">LlmException (after 1 retry) · step error · illegal transition</text>
+  <text x="226" y="302" class="small">· write error → reason code is ours, never the model's text</text>
+  <line x1="495" y1="204" x2="495" y2="242" class="ar" marker-end="url(#arrg)"/>
+  <path d="M650,204 L650,276 L588,276" class="ar" marker-end="url(#arrg)"/>
+  <text x="658" y="268" class="lbl">illegal</text>
+
+  <!-- storage -->
+  <rect x="610" y="300" width="160" height="96" rx="8" fill="#8a8f98"/>
+  <text x="690" y="322" text-anchor="middle" class="white">email</text>
+  <text x="622" y="342" class="wsmall">@Version optimistic lock</text>
+  <text x="622" y="360" class="wsmall">trigger email_status_guard:</text>
+  <text x="622" y="378" class="wsmall">same table as the Java code</text>
+  <rect x="786" y="300" width="150" height="96" rx="8" fill="#8a8f98"/>
+  <text x="861" y="322" text-anchor="middle" class="white">decision_log</text>
+  <text x="798" y="342" class="wsmall">append-only (lesson 01)</text>
+  <text x="798" y="360" class="wsmall">agent, from → to,</text>
+  <text x="798" y="378" class="wsmall">output, model, sources</text>
+  <line x1="890" y1="204" x2="890" y2="298" class="a" marker-end="url(#arr)"/>
+  <path d="M830,204 L830,282 L700,282 L700,298" class="a" marker-end="url(#arr)"/>
+
+  <!-- lifecycle -->
+  <text x="24" y="438" class="h2">Lifecycle: EmailLifecycle.java and the V0501 trigger hold the same table (a test compares all 182 pairs)</text>
+  <rect x="24" y="456" width="72" height="28" rx="5" class="node"/><text x="60" y="474" text-anchor="middle" class="code">NEW</text>
+  <rect x="120" y="456" width="86" height="28" rx="5" class="node"/><text x="163" y="474" text-anchor="middle" class="code">TRIAGED</text>
+  <rect x="230" y="456" width="96" height="28" rx="5" class="node"/><text x="278" y="474" text-anchor="middle" class="code">RESOLVING</text>
+  <rect x="396" y="456" width="72" height="28" rx="5" class="node"/><text x="432" y="474" text-anchor="middle" class="code">READY</text>
+  <rect x="492" y="456" width="80" height="28" rx="5" class="node"/><text x="532" y="474" text-anchor="middle" class="code">DRAFTED</text>
+  <rect x="596" y="456" width="90" height="28" rx="5" class="node"/><text x="641" y="474" text-anchor="middle" class="code">REVIEWED</text>
+  <rect x="760" y="456" width="66" height="28" rx="5" class="term"/><text x="793" y="474" text-anchor="middle" class="code">SENT</text>
+  <line x1="96" y1="470" x2="118" y2="470" class="a" marker-end="url(#arr)"/>
+  <line x1="206" y1="470" x2="228" y2="470" class="a" marker-end="url(#arr)"/>
+  <line x1="326" y1="470" x2="394" y2="470" class="a" marker-end="url(#arr)"/>
+  <line x1="468" y1="470" x2="490" y2="470" class="a" marker-end="url(#arr)"/>
+  <line x1="572" y1="470" x2="594" y2="470" class="a" marker-end="url(#arr)"/>
+  <line x1="686" y1="470" x2="758" y2="470" class="a" marker-end="url(#arr)"/>
+  <text x="696" y="462" class="lbl">auto mode</text>
+
+  <rect x="16" y="530" width="100" height="28" rx="5" class="term"/><text x="66" y="548" text-anchor="middle" class="code">FILTERED_OUT</text>
+  <rect x="126" y="530" width="74" height="28" rx="5" class="term"/><text x="163" y="548" text-anchor="middle" class="code">IGNORED</text>
+  <rect x="210" y="530" width="124" height="28" rx="5" class="node"/><text x="272" y="548" text-anchor="middle" class="code">AWAITING_SENDER</text>
+  <rect x="344" y="530" width="120" height="28" rx="5" class="node"/><text x="404" y="548" text-anchor="middle" class="code">AWAITING_INPUT</text>
+  <rect x="592" y="530" width="100" height="28" rx="5" class="node"/><text x="642" y="548" text-anchor="middle" class="code">DRAFT_SAVED</text>
+  <line x1="60" y1="484" x2="60" y2="528" class="a" marker-end="url(#arr)"/>
+  <line x1="163" y1="484" x2="163" y2="528" class="a" marker-end="url(#arr)"/>
+  <line x1="262" y1="484" x2="262" y2="528" class="a" marker-end="url(#arr)"/>
+  <path d="M300,484 L370,528" class="a" marker-end="url(#arr)"/>
+  <line x1="440" y1="530" x2="440" y2="486" class="a" marker-end="url(#arr)"/>
+  <line x1="641" y1="484" x2="641" y2="528" class="a" marker-end="url(#arr)"/>
+  <path d="M692,544 L793,544 L793,486" class="a" marker-end="url(#arr)"/>
+  <text x="700" y="538" class="lbl">user validates</text>
+
+  <rect x="846" y="456" width="90" height="28" rx="5" class="esc"/><text x="891" y="474" text-anchor="middle" class="code" style="fill:#2f7d4f">ESCALATED</text>
+  <text x="846" y="502" class="muted">from every</text>
+  <text x="846" y="518" class="muted">active status;</text>
+  <text x="846" y="534" class="muted">user → READY</text>
+  <text x="846" y="550" class="muted">or CLOSED</text>
+
+  <rect x="24" y="580" width="14" height="14" class="term"/><text x="44" y="592" class="small">terminal: no exit</text>
+  <rect x="160" y="580" width="14" height="14" class="node"/><text x="180" y="592" class="small">active</text>
+  <text x="240" y="592" class="small">AWAITING_SENDER → TRIAGED when the sender replies, → CLOSED on timeout · nothing ever goes back to NEW</text>
+  <text x="24" y="616" class="muted">Colors: blue = trusted code · purple = LLM agent · green = human · grey = storage</text>
+</svg>

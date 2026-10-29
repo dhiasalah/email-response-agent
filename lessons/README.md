@@ -8,7 +8,7 @@ One file per lesson, written to **understand and defend** the project (each ends
 | Part | Lessons | Status |
 |---|---|---|
 | Foundations | 00, 00b, 01, 01b | ✅ |
-| Pipeline + agents | 02–13 | 🔄 02 |
+| Pipeline + agents | 02–13 | 🔄 06 |
 | Proof + finish | 14, 15, 16, 99 | ⏳ |
 
 ## Foundations
@@ -21,6 +21,7 @@ One file per lesson, written to **understand and defend** the project (each ends
 - [02 `OllamaLlmClient`: two model tiers, JSON-schema decoding, strict parsing, one retry, typed failures](dhia/02-ollama-client.md)
 - [03 Prompt injection 101: measured on our model (naive 5/6, enveloped 4/6), untrusted envelope with random id](dhia/03-prompt-injection.md)
 - [04 Mock mailbox (12 fake emails), deterministic pre-filter (loops, lists, floods), sanitizer (hidden HTML, invisible Unicode, look-alikes)](dhia/04-mailbox-sanitizer.md)
+- [05 Orchestrator: lifecycle table in Java + DB trigger, idempotent steps keyed by (id, status, version), escalate on any failure, audit of every transition](dhia/05-orchestrator.md)
 
 ## Proof + finish
 
