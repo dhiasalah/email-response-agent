@@ -9,6 +9,8 @@ import jakarta.enterprise.context.ApplicationScoped;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -29,7 +31,7 @@ public class SenderDirectory {
 
     public SenderDirectory(ObjectMapper mapper, AppConfig config) {
         String fixture = config.senderDirectoryFixture();
-        try (InputStream in = Thread.currentThread().getContextClassLoader().getResourceAsStream(fixture)) {
+        try (InputStream in = open(fixture)) {
             if (in == null) {
                 throw new IllegalStateException("sender directory not found: " + fixture);
             }
@@ -41,6 +43,18 @@ public class SenderDirectory {
         } catch (IOException e) {
             throw new UncheckedIOException("cannot read sender directory " + fixture, e);
         }
+    }
+
+    /**
+     * A classpath fixture, or {@code file:<path>} for a roster kept outside the project (real addresses never go
+     * into the repository).
+     */
+    static InputStream open(String fixture) throws IOException {
+        if (fixture.startsWith("file:")) {
+            Path path = Path.of(fixture.substring("file:".length()));
+            return Files.exists(path) ? Files.newInputStream(path) : null;
+        }
+        return Thread.currentThread().getContextClassLoader().getResourceAsStream(fixture);
     }
 
     /** Exact address match only: a look-alike address gets no scope. */

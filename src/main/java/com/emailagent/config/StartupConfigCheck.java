@@ -22,6 +22,7 @@ public class StartupConfigCheck {
             @ConfigProperty(name = "quarkus.langchain4j.ollama.strong.base-url") String strongLlmUrl) {
         Set<SlotType> autoTypes = config.autoSendTypes().orElse(Set.of());
         checkAutoSendTypes(autoTypes);
+        checkGmailMode(config.mailbox(), config.sendMode(), config.noticeAutoSend());
         if (!config.allowRemoteLlm()) {
             checkLocal(llmUrl);
             checkLocal(strongLlmUrl);
@@ -44,6 +45,17 @@ public class StartupConfigCheck {
                 || host.equals("::1"))) {
             throw new IllegalStateException("the model address " + url + " is not on this machine; set "
                     + "emailagent.allow-remote-llm=true only with a data processing agreement");
+        }
+    }
+
+    /**
+     * The Gmail mailbox only creates drafts; a configuration that asks for automatic sending would record replies as
+     * sent that were only drafted, so it stops the start instead.
+     */
+    public static void checkGmailMode(String mailbox, SendMode sendMode, boolean noticeAutoSend) {
+        if ("gmail".equals(mailbox) && (sendMode != SendMode.DRAFT || noticeAutoSend)) {
+            throw new IllegalStateException("the Gmail mailbox only creates drafts: set send-mode=draft and "
+                    + "notice-auto-send=false");
         }
     }
 
