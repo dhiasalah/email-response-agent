@@ -1,5 +1,6 @@
 package com.emailagent.llm;
 
+import com.emailagent.security.UntrustedEnvelope;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.exception.TimeoutException;
@@ -58,8 +59,8 @@ public class OllamaLlmClient implements LlmClient {
     private String send(ChatModel model, LlmRequest request, JsonSchema schema, String retryNote) throws LlmException {
         ChatRequest chatRequest = ChatRequest.builder()
                 .messages(
-                        SystemMessage.from(request.instructions() + retryNote),
-                        UserMessage.from(request.untrustedInput().isEmpty() ? "(empty)" : request.untrustedInput()))
+                        SystemMessage.from(request.instructions() + "\n\n" + UntrustedEnvelope.RULES + retryNote),
+                        UserMessage.from(UntrustedEnvelope.wrap(request.untrustedInput())))
                 .responseFormat(ResponseFormat.builder()
                         .type(ResponseFormatType.JSON)
                         .jsonSchema(schema)
