@@ -1,4 +1,4 @@
--- Lesson 05: the email lifecycle is enforced by the database too, and the audit log records each transition
+-- The email lifecycle is enforced by the database too, and the audit log records each transition
 
 ALTER TABLE decision_log
     ADD COLUMN from_status VARCHAR(30)

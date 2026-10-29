@@ -29,7 +29,7 @@ class OllamaLlmClientSmokeTest {
                     "Classify the email: intent and language. Answer only with JSON.",
                     "Bonjour Monsieur, quand les notes du S2 seront-elles publiées ? Merci, Lina"), Classification.class);
 
-            // Wiring, not accuracy: qwen2.5 sometimes says REQUEST here (valid != correct; accuracy is lesson 15)
+            // Wiring, not accuracy: qwen2.5 sometimes says REQUEST here (valid != correct; accuracy is measured separately)
             assertThat(out.intent()).isIn(Intent.QUESTION, Intent.REQUEST);
             assertThat(out.language()).isEqualTo(Language.FR);
         }

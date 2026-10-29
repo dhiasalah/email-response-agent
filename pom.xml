@@ -67,7 +67,7 @@
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-jdbc-postgresql</artifactId>
         </dependency>
-        <!-- Lesson 04: HTML parsing for the email sanitizer -->
+        <!-- HTML parsing for the email sanitizer -->
         <dependency>
             <groupId>org.jsoup</groupId>
             <artifactId>jsoup</artifactId>

@@ -5,7 +5,7 @@ import java.util.Objects;
 /**
  * One call to a model. Trusted instructions and untrusted data are two separate fields, so they are never glued
  * into one string: implementations send {@code instructions} as the system message and {@code untrustedInput}
- * only as data (inside the untrusted envelope from lesson 03).
+ * only as data (inside the untrusted envelope, see UntrustedEnvelope).
  */
 public record LlmRequest(String agent, ModelTier tier, String instructions, String untrustedInput) {
 

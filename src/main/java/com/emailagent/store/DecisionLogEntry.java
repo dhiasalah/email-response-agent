@@ -31,7 +31,7 @@ public class DecisionLogEntry extends PanacheEntityBase {
     @NotBlank @Size(max = 50)
     public String agent;
 
-    /** A short description, never the full email (personal data, lesson 16). */
+    /** A short description, never the full email (personal data). */
     @Size(max = 1000)
     public String inputSummary;
 
@@ -45,7 +45,7 @@ public class DecisionLogEntry extends PanacheEntityBase {
     @Size(max = 100)
     public String modelVersion;
 
-    /** The transition this step made (lesson 05); null for rows that don't change a status. */
+    /** The transition this step made; null for rows that don't change a status. */
     @Enumerated(EnumType.STRING) public EmailStatus fromStatus;
     @Enumerated(EnumType.STRING) public EmailStatus toStatus;
 
