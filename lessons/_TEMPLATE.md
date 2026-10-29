@@ -62,13 +62,11 @@ Expected output:
 ```
 
 ## 🌿 Branch & PR
-```powershell
-git add -A; git status
-git commit -m "Lesson NN: <what>"
-git push -u origin HEAD
-gh pr create --fill --reviewer <dhiasalah | KacemAbdelbaki>
-```
-Reviewer checks: the PR template's security checklist against the diff.
+Branch: `<name>/NN-short-name`. When the step is verified, **Claude** checks for secrets, commits, pushes, opens the PR
+(reviewer: <dhiasalah | KacemAbdelbaki>) and switches to the next lesson's branch. You only need to:
+- read the PR description and the diff once,
+- ask the other student to review; they check the security checklist against the diff,
+- squash-merge after green CI + approval: `gh pr merge <N> --squash --delete-branch`.
 
 ## ➡️ Next step
 What comes next — tell Claude "I finished lesson NN, please review" or "go next".
