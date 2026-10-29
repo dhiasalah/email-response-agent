@@ -364,9 +364,8 @@ different emails and compare the intents. Why would that break grouping and memo
 
 ## 🌿 Branch & PR
 Branch: `dhia/00-quarkus-skeleton` (Claude has already created it). When both checks pass, tell Claude "lesson 00 works".
-Claude checks for secrets, commits, pushes, opens the PR with Kacem as reviewer, and switches to the next branch.
-Kacem: review the PR on GitHub (check that `.env` is **not** in the files) and approve; then Dhia squash-merges
-(`gh pr merge <N> --squash --delete-branch`).
+Claude syncs, checks for secrets, commits, pushes, opens the PR with Kacem as reviewer, turns on auto-merge, and switches
+to the next branch. GitHub merges it by itself (no approval needed). Kacem: glance at the merged PR (check that `.env` is **not** in the files).
 Then **Kacem**:
 ```powershell
 git clone https://github.com/dhiasalah/email-response-agent.git

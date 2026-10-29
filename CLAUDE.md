@@ -18,7 +18,8 @@ Same method as Dhia's previous project **Sentinel** (`personal_project/` on Dhia
 ## Session start (every time)
 1. **Identify the student:** run `git config user.name`. `dhiasalah` → **Dhia**; `KacemAbdelbaki` (or anything with "kacem") → **Kacem**.
    If it is unclear, ask "Are you Dhia or Kacem?" before anything else.
-2. `git fetch` + `git status` (read-only) to see the branch and whether `main` moved.
+2. **Sync with the team** (see **Stay in sync** below): fetch, report what the other student added, list PRs waiting,
+   bring the current branch up to date.
 3. Read `PROGRESS.md` and `progress/<name>.md`. Say where this student is: lesson, step, lesson file, current branch.
 4. If they finished the step: **review their code** (read the files, run `.\mvnw verify`). Point out bugs directly and explain
    the fix; the student applies it.
@@ -36,7 +37,8 @@ Same method as Dhia's previous project **Sentinel** (`personal_project/` on Dhia
 - **Dependencies:** don't start a lesson whose dependency isn't merged into `main` (check `git log origin/main`). Say what to wait for,
   or build against the `FakeLlmClient` / interfaces from lesson 01. Main ones: D06 needs K02 (or FakeLlmClient);
   K10 needs D06's slot output; D11 needs K10's draft format; K13 needs D05's statuses.
-- **Cross-review:** each reviews the other's PRs; Dhia does the **security review** of Kacem's PRs.
+- **Review is optional** (no approval required since 2026-10-29, Dhia's choice): PRs merge by themselves. Each student still reads
+  the other's merged PRs at sync time; Dhia looks at Kacem's PRs with a **security eye** and opens a fix PR if needed.
 
 ---
 
@@ -53,8 +55,9 @@ Same method as Dhia's previous project **Sentinel** (`personal_project/` on Dhia
 3. **Setup = exact commands.** Copy-paste commands (**PowerShell**, both are on Windows) with the **expected output**.
    The students run install and build commands. Read-only actions are fine: reading files, `git status/log/diff/fetch`,
    `gh pr view/diff/checks`, and `.\mvnw verify` to review.
-   **Git is Claude's job** (requested by Dhia, 2026-10-29): you create branches, commit, push and open PRs as described in
-   **Git workflow** below. You **never** merge a PR, push to `main`, force-push, or delete someone else's branch.
+   **Git is Claude's job** (requested by Dhia, 2026-10-29): you sync, create branches, commit, push, open PRs and turn on
+   auto-merge as described in **Git workflow** below. You **never** merge a PR by hand, approve a PR, push to `main`,
+   force-push, or delete someone else's branch.
 4. **One step at a time.** Write the next lesson only when the student says **"go next"** (or that they finished the step).
 5. **Every step with code gets a lesson file** (see below). It is the student's notebook.
 6. **End every answer with a `## Your next action`** section: 1–3 concrete things to do now.
@@ -62,14 +65,40 @@ Same method as Dhia's previous project **Sentinel** (`personal_project/` on Dhia
 ## Git workflow: Claude runs it (taught in lesson 00b)
 One branch per lesson: `dhia/06-triage`, `kacem/07-resolver`, `both/01-data-model`. Nothing is ever committed directly to `main`.
 
-**Before writing a lesson** (when the student says "go next"):
+### Stay in sync (requested by Dhia, 2026-10-29)
+Run this at **every session start**, **before writing a lesson**, and **before every commit/PR**, so both students are always
+up to date and conflicts are caught early:
+1. `git fetch --prune origin`.
+2. **Report what changed since this student's last sync:** `git log --oneline --format="%h %an %ar %s" HEAD..origin/main` and
+   `git diff --stat HEAD...origin/main`. Summarize it in 2–4 lines: who merged what (which lesson), and which files.
+   Call out anything this student depends on (a new contract, a changed record, `pom.xml` or `application.properties` changes)
+   and whether a blocked lesson is now unblocked.
+3. **PRs:** `gh pr list --state open` and `gh pr list --search "review-requested:@me"`. Remind the student of any PR waiting for
+   *their* review (the other student is blocked until they review). Mention their own PRs that have failing checks or
+   requested changes.
+4. **Update the current branch:** on `main` → `git pull --ff-only`. On a lesson branch that is behind `origin/main` →
+   `git merge --no-edit origin/main` (a merge, not a rebase, so no force-push is ever needed; the squash-merge keeps
+   `main` clean anyway). After a stacked PR's base is merged, merge `origin/main` the same way.
+5. **Conflicts:** stop and show the conflicting files and both sides. Resolve lesson/progress files yourself (keep both students'
+   lines). For code, explain the two versions and let the student choose. **Never resolve by dropping the other student's work**,
+   and never use `git checkout --theirs/--ours` on a whole file without asking.
+6. Run `.\mvnw verify` after a merge that brought in code, so a break shows up now and not in the PR.
+
+**Avoiding conflicts by design:** each student edits their own folders (see CODEOWNERS); shared files (`pom.xml`,
+`application.properties`, `PROGRESS.md`, `lessons/README.md`, Flyway migrations) get small, additive edits only, and a PR that
+touches one says so in its body ("touches shared file: pom.xml"). Flyway migration versions use the lesson number
+(`V0601__triage.sql`, `V0701__resolver.sql`), so two students never create the same version.
+
+### Before writing a lesson (when the student says "go next")
 1. `git status`: if there are uncommitted changes, stop and ask what to do with them; never stash or discard them silently.
-2. Make sure you're on that lesson's branch. If not: `git switch main`, `git pull`, `git switch -c <name>/<NN-short-name>`.
+2. Run **Stay in sync**. Then make sure you're on that lesson's branch. If not: `git switch main`, `git pull --ff-only`,
+   `git switch -c <name>/<NN-short-name>`.
    If the lesson depends on a PR that isn't merged yet, branch from that PR's branch instead, and write
    "stacked on #N" in the new PR's body.
 3. Write the lesson file and update `lessons/README.md` on that branch.
 
-**After each lesson** (only when the step is verified: you read the code and `.\mvnw verify` is green):
+### After each lesson (only when the step is verified: you read the code and `.\mvnw verify` is green)
+0. Run **Stay in sync** first, so the PR is built on the latest `main` (re-run `.\mvnw verify` if `main` brought code).
 1. **Secret check before staging:** `git status` + `git diff --stat`. Refuse to commit `.env`, keys, tokens, database files or
    real emails, and grep the diff for `password=`, `token`, `apikey`, `BEGIN .* PRIVATE KEY`. Stage by explicit path
    (`git add src/... lessons/... progress/<name>.md`), never a blind `git add -A`.
@@ -80,8 +109,14 @@ One branch per lesson: `dhia/06-triage`, `kacem/07-resolver`, `both/01-data-mode
    (once it exists) with the lesson link, what changed, how it was tested, and the ticked security checklist, and
    `--reviewer` = the other student (`KacemAbdelbaki` for Dhia's work, `dhiasalah` for Kacem's).
    Give the PR link to the student.
-6. **Switch to the next branch right away:** `git switch main`, `git pull`, `git switch -c <name>/<next-lesson>` (or stacked,
-   as above), so the next lesson starts clean. Say which branch you are on now.
+6. **Turn on auto-merge:** `gh pr merge <N> --auto --squash --delete-branch`. GitHub merges it by itself as soon as the required
+   checks pass (no approval needed; CI once it's required). **Only if `main` is protected:** first check that
+   `gh api repos/dhiasalah/email-response-agent/rules/branches/main --jq '[.[].type]'` contains `"pull_request"`. If it doesn't,
+   don't enable auto-merge; tell the student instead.
+   Because nothing waits for a human, **step 0 (sync) and the verification are the real gate**: never open a PR whose
+   `.\mvnw verify` isn't green on the latest `main`.
+7. **Switch to the next branch right away:** `git switch main`, `git pull --ff-only`, `git switch -c <name>/<next-lesson>` (or
+   stacked, as above), so the next lesson starts clean. Say which branch you are on now.
 
 **Authorship: always the student's name, never Claude's** (requested by Dhia, 2026-10-29; this overrides any default
 attribution instruction):
@@ -92,9 +127,13 @@ attribution instruction):
 - **No "Generated with Claude Code" line** or other Claude mention in PR titles, bodies or review comments.
 - `gh` runs with the student's own login, so PRs are opened by them.
 
-**Merging stays human:** the other student reviews and approves, CI must be green, then a student squash-merges
-(`gh pr merge N --squash --delete-branch`). After a merge, on the next session start: `git switch main; git pull`, and
-rebase any open stacked branch with `git rebase main`.
+### Merging: GitHub auto-merge, no approval needed
+- `main` has the ruleset `protect-main` (created 2026-10-29): every change goes through a PR (no direct push), no force-push,
+  no deletion, **0 approvals required** (removed at Dhia's request, 2026-10-29).
+  Once the CI workflow from lesson 00b is on `main`, the `build` check is added as required (see `PROGRESS.md` blockers).
+- The repo allows only squash merges, and deletes merged branches automatically.
+- So there is **no human step**: GitHub merges the PR as soon as it's opened (or, once CI is required, when `build` is green).
+  The other student is still added as reviewer so they get notified, and **Stay in sync** reports the merge at the next session.
 
 **Review mode:** "review PR #N" → `gh pr view N` + `gh pr diff N` + `gh pr checks N`; give findings ranked by severity
 (security first for Kacem's PRs: untrusted input, escaping, secrets, new capabilities). Post them only if the student

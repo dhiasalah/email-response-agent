@@ -69,7 +69,9 @@ git add -A; git commit -m "Lesson 03: untrusted-data envelope"
 git push -u origin HEAD
 gh pr create --fill --reviewer KacemAbdelbaki   # Kacem uses --reviewer dhiasalah
 ```
-After approval and green CI: `gh pr merge --squash --delete-branch`, then both `git switch main; git pull`.
+Claude also runs `gh pr merge <N> --auto --squash --delete-branch`: GitHub merges by itself, with no approval needed
+(after green CI, once it's required). At the start of every session Claude fetches, tells you what the other person merged,
+lists PRs waiting for your review, and brings your branch up to date (`git merge origin/main`).
 Before `git add -A`, always run `git status` and read the list: that's your last chance to see a `.env` or a real email.
 
 ## 🧩 Code, piece by piece
@@ -205,46 +207,33 @@ git add .github; git commit -m "Lesson 00b: PR template + Dependabot"
 git push -u origin HEAD; gh pr create --fill --reviewer dhiasalah
 ```
 
-### 5. Dhia: protect `main` (needs GitHub Pro: free with the Student Developer Pack)
-On **GitHub Free**, rulesets and branch protection don't apply to **private** repos owned by a personal account.
-Get GitHub Pro for free with the [Student Developer Pack](https://education.github.com/pack) (university email),
-then create the ruleset.
+### 5. Dhia: require CI on `main` (after your CI PR is merged)
+`main` is **already protected**: Claude created the `protect-main` ruleset on 2026-10-29 (your account supports rulesets on
+this private repo). It blocks direct pushes, force-pushes and deleting `main`, so every change goes through a PR. **No
+approval is required** (your choice), and auto-merge is on, so GitHub merges a PR by itself as soon as its checks pass.
 
-**Where:** `ruleset.json` — a temporary file outside git (delete it after).
+The ruleset doesn't require CI yet, because the `build` check didn't exist and requiring a missing check blocks every merge.
+Once your `ci.yml` PR is merged and `build` has run once, add it:
 
-```json
-{
-  "name": "protect-main",
-  "target": "branch",
-  "enforcement": "active",
-  "conditions": { "ref_name": { "include": ["~DEFAULT_BRANCH"], "exclude": [] } },
-  "rules": [
-    { "type": "deletion" },
-    { "type": "non_fast_forward" },
-    { "type": "pull_request", "parameters": {
-        "required_approving_review_count": 1,
-        "dismiss_stale_reviews_on_push": true,
-        "require_code_owner_review": false,
-        "require_last_push_approval": true,
-        "required_review_thread_resolution": true } },
-    { "type": "required_status_checks", "parameters": {
-        "strict_required_status_checks_policy": true,
-        "required_status_checks": [ { "context": "build" } ] } }
-  ]
-}
-```
 ```powershell
-gh api -X POST repos/dhiasalah/email-response-agent/rulesets --input ruleset.json
-Remove-Item ruleset.json
+$id = gh api repos/dhiasalah/email-response-agent/rulesets --jq '.[] | select(.name=="protect-main") | .id'
+gh api repos/dhiasalah/email-response-agent/rulesets/$id --jq '.rules' > rules.json
 ```
-This blocks direct pushes, force-pushes and deleting `main`, and requires one approval plus a green `build`
-check. `dismiss_stale_reviews_on_push` + `require_last_push_approval` close a classic trick: you can't get an
-approval and then push new code under it. No bypass list, so the rules apply to Dhia too, even though Dhia is the repo
-owner. Without Pro, apply the same rules by habit: never push to `main`, and never merge a red or unreviewed PR.
+Then ask Claude to add the `required_status_checks` rule (`build`, strict) to `rules.json` and apply it with
+`gh api -X PUT repos/dhiasalah/email-response-agent/rulesets/$id --input ...`. Check it:
+```powershell
+gh api repos/dhiasalah/email-response-agent/rules/branches/main --jq '[.[].type]'
+```
+Expected output:
+```
+["deletion","non_fast_forward","pull_request","required_status_checks"]
+```
+There's no bypass list, so the rules apply to Dhia too, even as the repo owner. With no approval step, this CI check is the
+**only automatic gate** before `main`, which is why it matters to add it as soon as CI exists.
 
 ## 📚 Key concepts
-- **Separation of duties**: the author never approves their own change. It's the human version of "the LLM proposes,
-  code decides".
+- **Separation of duties (trade-off you chose):** with no required approval, nobody checks a change before it lands. CI
+  (build, tests, gitleaks) and Claude's verification replace the human gate, and you each read the other's merged PRs at sync time.
 - **Shift left**: catch problems (broken build, leaked secret, vulnerable dependency) on the PR, before they reach `main`.
 - **Least privilege in CI**: `permissions: contents: read`, no stored credentials, and changes to `.github/` owned by the security owner.
 - **Squash-merge**: one lesson = one commit on `main`, so `main` reads like your course and is easy to revert.
@@ -259,12 +248,12 @@ owner. Without Pro, apply the same rules by habit: never push to `main`, and nev
 gh pr checks
 gh pr view --json reviewDecision,mergeStateStatus
 ```
-Expected output (after CI and the other person's approval):
+Expected output (after CI):
 ```
 build   pass   ...
-{"mergeStateStatus":"CLEAN","reviewDecision":"APPROVED"}
+{"mergeStateStatus":"CLEAN","reviewDecision":""}
 ```
-Then merge: `gh pr merge --squash --delete-branch`. If you made the ruleset, also try `git push origin main` from a local
+Auto-merge then merges it by itself. Also try `git push origin main` from a local
 commit on `main`: it should be **rejected**.
 
 ## 🌿 Branch & PR
@@ -278,4 +267,4 @@ Then the tracks split: Kacem starts lesson 02, and Dhia starts lesson 03. Tell C
 ## Your next action
 1. Kacem: accept the invitation, install `gh`, clone, set `user.name`/`user.email`.
 2. Each of you: open your 00b PR, review the other's, merge both.
-3. Dhia: claim the Student Developer Pack, then add the `protect-main` ruleset.
+3. Dhia: after the CI PR is merged, add the `build` check to `protect-main` (step 5).

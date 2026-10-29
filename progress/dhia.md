@@ -12,7 +12,7 @@
 ## Checklist
 ### Shared
 - [ ] 00 Setup (JDK 21, Docker, Ollama + models), Quarkus skeleton, `AppConfig` fail-closed, Ollama smoke test, PR merged
-- [ ] 00b CI workflow + CODEOWNERS (PR) · review Kacem's PR template + Dependabot · `protect-main` ruleset (after Student Pack)
+- [ ] 00b CI workflow + CODEOWNERS (PR) · review Kacem's PR template + Dependabot · add `build` check to `protect-main` (ruleset already active)
 - [ ] 01 Data model + contracts (pair session with Kacem)
 ### My track
 - [ ] 03 Prompt injection 101: attacks on a naive agent, untrusted-data envelope
@@ -29,4 +29,4 @@
 | 2026-10-29 | Chose stack (Java/Quarkus/Postgres/Ollama), split with Kacem, repo created + Kacem invited, lessons 00 + 00b written | Trust boundaries, OWASP LLM Top 10, team workflow | Why is a free-text `intent` dangerous? (lesson 01) |
 
 ## Blockers / questions to revisit
-- Claim the GitHub Student Developer Pack to enable rulesets on the private repo.
+- Add the required `build` check to `protect-main` after the CI PR is merged.
