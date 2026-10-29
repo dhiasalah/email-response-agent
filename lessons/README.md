@@ -7,8 +7,8 @@ One file per lesson, written to **understand and defend** the project (each ends
 
 | Part | Lessons | Status |
 |---|---|---|
-| Foundations | 00, 00b, 01, 01b | ✅ 00 + 00b + 01 · 🔄 01b |
-| Pipeline + agents | 02–13 | ⏳ |
+| Foundations | 00, 00b, 01, 01b | ✅ |
+| Pipeline + agents | 02–13 | 🔄 02 |
 | Proof + finish | 14, 15, 16, 99 | ⏳ |
 
 ## Foundations
@@ -18,6 +18,7 @@ One file per lesson, written to **understand and defend** the project (each ends
 - [01b The `LlmClient` contract: instructions vs untrusted input, strict output parser, `FakeLlmClient`, obedient-model attacks](shared/01b-llm-contract.md)
 
 ## Pipeline + agents
+- [02 `OllamaLlmClient`: two model tiers, JSON-schema decoding, strict parsing, one retry, typed failures](dhia/02-ollama-client.md)
 
 ## Proof + finish
 
