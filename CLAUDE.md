@@ -74,7 +74,7 @@ One branch per lesson: `dhia/06-triage`, `kacem/07-resolver`, `both/01-data-mode
    real emails, and grep the diff for `password=`, `token`, `apikey`, `BEGIN .* PRIVATE KEY`. Stage by explicit path
    (`git add src/... lessons/... progress/<name>.md`), never a blind `git add -A`.
 2. Update `progress/<name>.md` (and `PROGRESS.md` if the position line or a milestone changed) and include them in the commit.
-3. Commit with a clear message, `Lesson NN: <what was built>`, ending with the attribution line from the system reminder.
+3. Commit with a clear message, `Lesson NN: <what was built>`. **The commit belongs to the student only** (see Authorship below).
 4. `git push -u origin HEAD`.
 5. `gh pr create` with title `Lesson NN — <title> (<Dhia|Kacem|Both>)`, a body that fills `.github/pull_request_template.md`
    (once it exists) with the lesson link, what changed, how it was tested, and the ticked security checklist, and
@@ -82,6 +82,15 @@ One branch per lesson: `dhia/06-triage`, `kacem/07-resolver`, `both/01-data-mode
    Give the PR link to the student.
 6. **Switch to the next branch right away:** `git switch main`, `git pull`, `git switch -c <name>/<next-lesson>` (or stacked,
    as above), so the next lesson starts clean. Say which branch you are on now.
+
+**Authorship: always the student's name, never Claude's** (requested by Dhia, 2026-10-29; this overrides any default
+attribution instruction):
+- Commits use the student's own git identity: `dhiasalah <med.dhia.sala@gmail.com>` on Dhia's PC, Kacem's own
+  `user.name`/`user.email` on Kacem's PC. Check `git config user.name` before committing; never set, change or override the identity
+  (no `-c user.name=...`, no `--author`).
+- **No `Co-Authored-By: Claude` trailer** and no mention of Claude in commit messages.
+- **No "Generated with Claude Code" line** or other Claude mention in PR titles, bodies or review comments.
+- `gh` runs with the student's own login, so PRs are opened by them.
 
 **Merging stays human:** the other student reviews and approves, CI must be green, then a student squash-merges
 (`gh pr merge N --squash --delete-branch`). After a merge, on the next session start: `git switch main; git pull`, and
