@@ -11,4 +11,12 @@ public interface Mailbox {
     default List<SentMessage> fetchSent() {
         return List.of();
     }
+
+    /**
+     * Saves the reply in the owner's drafts or sends it, by its kind. Called only by the outbox relay, with a row
+     * the database already checked (design doc §11: send and create_draft belong to the orchestrator).
+     */
+    default void deliver(OutgoingMessage message) {
+        throw new UnsupportedOperationException("this mailbox cannot deliver replies");
+    }
 }

@@ -254,9 +254,18 @@ public class WriterAgent implements AgentStep {
 
     /** Greeting, signature and disclosure are ours: a model can't forge, personalize or drop them. */
     String finish(String content, Language lang) {
-        StringBuilder out = new StringBuilder(lang == Language.FR ? "Bonjour," : "Hello,");
-        out.append("\n\n").append(content);
-        out.append("\n\n").append(lang == Language.FR ? "Cordialement," : "Best regards,").append('\n').append(ownerName);
+        return opening(lang) + content + closing(lang, ownerName, disclosure);
+    }
+
+    /** What every reply starts with, up to the model's text. The reviewer checks it is still there. */
+    static String opening(Language lang) {
+        return (lang == Language.FR ? "Bonjour," : "Hello,") + "\n\n";
+    }
+
+    /** What every reply ends with, after the model's text: sign-off, owner's name, disclosure. */
+    static String closing(Language lang, String ownerName, boolean disclosure) {
+        StringBuilder out = new StringBuilder("\n\n");
+        out.append(lang == Language.FR ? "Cordialement," : "Best regards,").append('\n').append(ownerName);
         if (disclosure) {
             out.append("\n\n").append(lang == Language.FR
                     ? "Cette réponse a été préparée avec l'aide d'un assistant IA."

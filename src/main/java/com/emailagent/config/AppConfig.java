@@ -97,6 +97,25 @@ public interface AppConfig {
     @WithDefault("0.1")
     double priorityWeightSender();
 
+    /**
+     * Slot types whose reviewed replies may be sent without the owner (design doc §9, send modes), when send-mode is
+     * auto. Empty at launch: every reply is a draft until a type has proven reliable. Only shareable types are
+     * accepted; a personal type here stops the application at start-up.
+     */
+    Optional<Set<SlotType>> autoSendTypes();
+
+    /** Automatic replies to one sender within 24 hours; beyond it, replies become drafts (design doc §9). */
+    @WithDefault("3")
+    int maxAutoRepliesPerSenderPerDay();
+
+    /** Automatic replies in total within 24 hours: bounds a loop or mass-mailing incident. */
+    @WithDefault("50")
+    int maxAutoRepliesPerDay();
+
+    /** Outgoing replies handed to the mailbox per run. */
+    @WithDefault("20")
+    int outboxBatchSize();
+
     /** How often the orchestrator imports mail and moves emails forward. */
     @WithDefault("30s")
     String orchestratorEvery();

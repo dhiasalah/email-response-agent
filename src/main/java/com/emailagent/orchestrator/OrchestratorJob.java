@@ -16,13 +16,15 @@ public class OrchestratorJob {
     private final Orchestrator orchestrator;
     private final GroupingRun grouping;
     private final ReplyLearning replyLearning;
+    private final OutboxRelay relay;
 
     public OrchestratorJob(MailboxImporter importer, Orchestrator orchestrator, GroupingRun grouping,
-            ReplyLearning replyLearning) {
+            ReplyLearning replyLearning, OutboxRelay relay) {
         this.importer = importer;
         this.orchestrator = orchestrator;
         this.grouping = grouping;
         this.replyLearning = replyLearning;
+        this.relay = relay;
     }
 
     @Scheduled(every = "{emailagent.orchestrator-every}", concurrentExecution = Scheduled.ConcurrentExecution.SKIP)
@@ -33,11 +35,14 @@ public class OrchestratorJob {
         int moved = orchestrator.processPending();
         // emails now AWAITING_INPUT get their questions onto cards
         GroupingRun.Result grouped = grouping.run();
+        // replies committed to the outbox this tick (or left by a crash) reach the mailbox
+        int delivered = relay.deliverPending();
         if (imported.imported() + imported.filtered() + learned.pairs() + moved + grouped.assigned()
-                + grouped.closed() > 0) {
+                + grouped.closed() + delivered > 0) {
             Log.infof("tick: %d imported, %d filtered, %d answers learned, %d transitions, %d questions grouped"
-                            + " (%d new cards), %d cards closed", imported.imported(), imported.filtered(),
-                    learned.pairs(), moved, grouped.assigned(), grouped.newCards(), grouped.closed());
+                            + " (%d new cards), %d cards closed, %d replies delivered", imported.imported(),
+                    imported.filtered(), learned.pairs(), moved, grouped.assigned(), grouped.newCards(),
+                    grouped.closed(), delivered);
         }
     }
 }
