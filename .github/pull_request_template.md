@@ -1,5 +1,5 @@
 ## Lesson
-<!-- e.g. Lesson 07 — Resolver (lessons/kacem/07-resolver.md) -->
+<!-- e.g. Lesson 07 — Resolver (lessons/dhia/07-resolver.md) -->
 
 ## What changed
 -

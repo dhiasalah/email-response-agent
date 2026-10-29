@@ -1,5 +1,9 @@
 # Lesson 00b — Working as a team on GitHub
 
+> **Note (2026-10-29):** written when the project had two students. It is now a solo project: CODEOWNERS is
+> `* @dhiasalah`, PRs have no reviewer, and Claude runs the Git workflow. The mechanisms (CI, protected `main`,
+> gitleaks, Dependabot) are unchanged.
+
 **Owner:** Both (Dhia: CI + CODEOWNERS · Kacem: PR template + Dependabot; each reviews the other's PR)
 
 ## 🗺️ In plain words: what we're doing today
