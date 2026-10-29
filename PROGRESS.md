@@ -4,7 +4,7 @@
 > Claude updates only the line or row of the student it's talking to.
 
 ## Current position
-- **Dhia:** 00 + 00b done; next: lesson 01 (shared, pair session with Kacem) · details: `progress/dhia.md`
+- **Dhia:** lesson 01b (shared) `LlmClient` contract on `both/01b-llm-contract` · details: `progress/dhia.md`
 - **Kacem:** lesson 00 (shared): accept the GitHub invitation, install tools, review Dhia's PR, clone · details: `progress/kacem.md`
 - **Repo:** https://github.com/dhiasalah/email-response-agent (private)
 - **Stack:** Java 21 · Quarkus 3 · Maven wrapper · PostgreSQL (Dev Services) · LangChain4j + Ollama (local, free)
@@ -14,7 +14,8 @@
 |---|---|---|---|---|
 | 00 | Roadmap, setup, threat model | Both | `lessons/shared/00-roadmap-setup-threat-model.md` | ✅ merged (Kacem: install + clone + verify) |
 | 00b | GitHub collaboration: CI, CODEOWNERS, PR template, Dependabot | Both | `lessons/shared/00b-github-collaboration.md` | ✅ merged, `build` required (Kacem: `gh auth login` + git config) |
-| 01 | Data model + contracts (`LlmClient`, `FakeLlmClient`) | Both | — | ⏳ |
+| 01 | Data model (enums, schema, entities, append-only log) | Both | `lessons/shared/01-data-model.md` | ✅ PR opened (auto-merge) |
+| 01b | Contracts: `LlmClient` + `FakeLlmClient` | Both | `lessons/shared/01b-llm-contract.md` | 🔄 written |
 | 02 | LlmClient (LangChain4j + Ollama, validate, retry, timeouts) | Kacem | — | ⏳ |
 | 03 | Prompt injection 101 + untrusted envelope | Dhia | — | ⏳ |
 | 04 | Mock mailbox, pre-filter, sanitizer | Dhia | — | ⏳ |
@@ -35,7 +36,7 @@
 ## Milestones
 | Milestone | Needs | Result | Status |
 |---|---|---|---|
-| M0 Shared base | 00, 00b, 01 | Repo, CI green, contracts on `main` | ⏳ |
+| M0 Shared base | 00, 00b, 01, 01b | Repo, CI green, contracts on `main` | 🔄 00 + 00b + 01 done |
 | M1 Core loop (doc Phase 1) | D03–D06, D11, K02, K10 | Demo: email → triage → draft → review (drafts only) | ⏳ |
 | M2 Grouping (Phase 2) | K07, K08 | One card answers many emails | ⏳ |
 | M3 Memory (Phase 3) | K09, K12 | Scoped facts reused safely | ⏳ |
