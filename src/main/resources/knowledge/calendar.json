@@ -1,0 +1,8 @@
+[
+  { "id": "ev1", "title": "Publication des notes S2 — M2 IA", "date": "2027-06-18",
+    "slotType": "GRADES_PUBLICATION_DATE", "entity": "s2 exams", "value": "18 June 2027",
+    "program": "M2", "track": "IA", "year": "2026-2027" },
+  { "id": "ev2", "title": "Rattrapage S2 — M2 IA, salle B204", "date": "2027-07-02",
+    "slotType": "EXAM_ROOM", "entity": "s2 exams", "qualifier": "retake", "value": "Room B204",
+    "program": "M2", "track": "IA", "year": "2026-2027" }
+]

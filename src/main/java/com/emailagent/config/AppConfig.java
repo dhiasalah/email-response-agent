@@ -1,7 +1,10 @@
 package com.emailagent.config;
 
+import com.emailagent.model.SlotType;
 import io.smallrye.config.ConfigMapping;
 import io.smallrye.config.WithDefault;
+import java.util.Optional;
+import java.util.Set;
 
 /** All emailagent.* settings, typed and checked at start-up. */
 @ConfigMapping(prefix = "emailagent")
@@ -24,6 +27,28 @@ public interface AppConfig {
     /** Classpath JSON roster that gives each known sender a scope (program, track, year). */
     @WithDefault("directory/senders.json")
     String senderDirectoryFixture();
+
+    /** Classpath JSON knowledge base (syllabus, regulations): a match fills a slot. */
+    @WithDefault("knowledge/kb.json")
+    String knowledgeBaseFixture();
+
+    /** Classpath JSON calendar: a tagged event proposes a value for the owner to confirm. */
+    @WithDefault("knowledge/calendar.json")
+    String calendarFixture();
+
+    /** A fact older than this is proposed for review instead of used directly (design doc §8.1). */
+    @WithDefault("90")
+    int factFreshnessDays();
+
+    /** How far back the recent answer log is searched (design doc §8.4). */
+    @WithDefault("7")
+    int recentAnswerWindowDays();
+
+    /**
+     * Slot types whose repeated recent answers may fill a slot without validation. Empty at launch:
+     * every recent-answer fill is only proposed until the type has proven reliable (design doc §8.4, §12).
+     */
+    Optional<Set<SlotType>> recentAnswerTrustedTypes();
 
     /** How often the orchestrator imports mail and moves emails forward. */
     @WithDefault("30s")
