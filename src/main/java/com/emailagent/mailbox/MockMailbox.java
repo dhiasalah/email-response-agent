@@ -3,6 +3,7 @@ package com.emailagent.mailbox;
 import com.emailagent.config.AppConfig;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.quarkus.arc.properties.UnlessBuildProperty;
 import jakarta.enterprise.context.ApplicationScoped;
 import java.io.IOException;
 import java.io.InputStream;
@@ -13,6 +14,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 /** A mailbox backed by a JSON file on the classpath: repeatable demos and tests, no real student data. */
 @ApplicationScoped
+@UnlessBuildProperty(name = "emailagent.mailbox", stringValue = "gmail", enableIfMissing = true)
 public class MockMailbox implements Mailbox {
 
     private final ObjectMapper mapper;

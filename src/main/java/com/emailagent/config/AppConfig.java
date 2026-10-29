@@ -4,6 +4,7 @@ import com.emailagent.model.SlotType;
 import io.smallrye.config.ConfigMapping;
 import io.smallrye.config.WithDefault;
 import java.time.Duration;
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
@@ -31,6 +32,27 @@ public interface AppConfig {
     /** More emails than this from one sender within an hour are filtered out (flood protection). */
     @WithDefault("10")
     int maxEmailsPerSenderPerHour();
+
+    /**
+     * Which mailbox the system reads and writes: {@code mock} (JSON fixtures, the default, tests and CI) or {@code gmail}
+     * (the owner's Gmail account). Chosen when the application is built or started in dev mode.
+     */
+    @WithDefault("mock")
+    String mailbox();
+
+    /**
+     * Gmail mode: only messages from these exact addresses are read; everything else in the mailbox is never fetched
+     * or stored (personal mail of people who didn't agree). Empty: nothing is read (fail closed).
+     */
+    Optional<List<String>> gmailAllowedSenders();
+
+    /** Gmail mode: the folder holding gmail-client.json and the tokens, outside the project. */
+    @WithDefault("${user.home}/.emailagent")
+    String gmailCredentialsDir();
+
+    /** Gmail mode: how far back the inbox and Sent folder are searched. */
+    @WithDefault("14")
+    int gmailLookbackDays();
 
     /** Classpath JSON file the mock mailbox reads. */
     @WithDefault("mailbox/inbox.json")
