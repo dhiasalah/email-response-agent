@@ -1,6 +1,7 @@
 package com.emailagent.store;
 
 import com.emailagent.model.EmailStatus;
+import com.emailagent.model.FilterReason;
 import com.emailagent.model.Intent;
 import com.emailagent.model.Language;
 import com.emailagent.model.SenderScope;
@@ -43,6 +44,10 @@ public class EmailEntity extends PanacheEntityBase {
     @NotBlank @Email @Size(max = 320)
     public String sender;
 
+    /** Display name as written by the sender: untrusted, can impersonate ("Prof. Martin"). */
+    @Size(max = 200)
+    public String senderName;
+
     @Size(max = 998)
     public String subject;
 
@@ -62,6 +67,13 @@ public class EmailEntity extends PanacheEntityBase {
 
     @NotNull @Enumerated(EnumType.STRING)
     public EmailStatus status = EmailStatus.NEW;
+
+    /** What the sanitizer removed or noticed (hidden_html, invisible_unicode…): signals for the detector. */
+    @Size(max = 500)
+    public String sanitizerFlags;
+
+    @Enumerated(EnumType.STRING)
+    public FilterReason filterReason;
 
     @Version
     public long version;
