@@ -316,8 +316,13 @@ public class GroupingAgent {
         String what = key.entity() + (key.qualifier() == null ? "" : " (" + key.qualifier() + ")");
         String who = personal || !scope.isKnown() ? "this sender only"
                 : scope.program() + " " + scope.track() + " " + scope.year();
-        String q = LABELS.get(key.type()) + ": " + what + " — " + who;
+        String q = label(key.type()) + ": " + what + " — " + who;
         return q.length() > 500 ? q.substring(0, 500) : q;
+    }
+
+    /** A short human label for a slot type, written by us: safe to show the owner or a model. */
+    public static String label(SlotType type) {
+        return LABELS.get(type);
     }
 
     private static String nullToEmpty(String s) {

@@ -95,6 +95,18 @@ public class Orchestrator {
         return moved;
     }
 
+    /**
+     * Runs one step on one email, if it is waiting in that step's trigger status (an owner action on one email,
+     * tests). Same checks and commit as a batch run.
+     */
+    public boolean runStep(AgentStep step, long emailId) {
+        EmailSnapshot email = QuarkusTransaction.requiringNew().call(() -> {
+            EmailEntity e = EmailEntity.findById(emailId);
+            return e == null || e.status != step.trigger() ? null : EmailSnapshot.of(e);
+        });
+        return email != null && runOne(step, email);
+    }
+
     private boolean runOne(AgentStep step, EmailSnapshot email) {
         StepResult result;
         try {

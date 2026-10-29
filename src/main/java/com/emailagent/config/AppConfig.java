@@ -16,6 +16,17 @@ public interface AppConfig {
     /** The mailbox owner's address. Mail from it is never processed (reply loops). */
     String ownerAddress();
 
+    /** How replies are signed. The writer model never signs: code adds this. */
+    @WithDefault("Prof. Martin")
+    String ownerName();
+
+    /**
+     * Adds a line saying the reply was prepared with an AI assistant (design doc §13, §15: decided on by default;
+     * the institution's DPO may require it, and students deserve to know).
+     */
+    @WithDefault("true")
+    boolean aiDisclosure();
+
     /** More emails than this from one sender within an hour are filtered out (flood protection). */
     @WithDefault("10")
     int maxEmailsPerSenderPerHour();
