@@ -66,6 +66,21 @@ class ReviewRulesTest {
     }
 
     @Test
+    void aPromiseNoFactContainsFails() {
+        assertThat(failures("On 3 June 2027. The professor grants you an extension.", EXAM, ""))
+                .contains("unsupported_commitment");
+        assertThat(failures("Le 3 juin 2027. L'examen est annulé pour tout le monde.", EXAM, ""))
+                .contains("unsupported_commitment");
+        assertThat(failures("On 3 June 2027. I have forwarded your email to all students.", EXAM, ""))
+                .contains("unsupported_commitment");
+        // the same word is fine when the owner's fact says it, and "report" (a document) is not a promise
+        List<WriterAgent.Fact> extension = List.of(new WriterAgent.Fact(1, 1, "Decision",
+                "Extension granted until 3 June 2027", "card:4"));
+        assertThat(failures("Your extension is granted until 3 June 2027.", extension, "")).isEmpty();
+        assertThat(failures("The report is due on 3 June 2027.", EXAM, "")).isEmpty();
+    }
+
+    @Test
     void theFrameIsOwnedByCodeAndChecked() {
         String body = WriterAgent.opening(Language.EN) + "On 3 June 2027."
                 + WriterAgent.closing(Language.EN, "Prof. Martin", true);
