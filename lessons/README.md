@@ -20,6 +20,7 @@ One file per lesson, written to **understand and defend** the project (each ends
 ## Pipeline + agents
 - [02 `OllamaLlmClient`: two model tiers, JSON-schema decoding, strict parsing, one retry, typed failures](dhia/02-ollama-client.md)
 - [03 Prompt injection 101: measured on our model (naive 5/6, enveloped 4/6), untrusted envelope with random id](dhia/03-prompt-injection.md)
+- [04 Mock mailbox (12 fake emails), deterministic pre-filter (loops, lists, floods), sanitizer (hidden HTML, invisible Unicode, look-alikes)](dhia/04-mailbox-sanitizer.md)
 
 ## Proof + finish
 
