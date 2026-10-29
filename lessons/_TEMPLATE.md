@@ -62,11 +62,11 @@ Expected output:
 ```
 
 ## 🌿 Branch & PR
-Branch: `<name>/NN-short-name`. When the step is verified, **Claude** checks for secrets, commits, pushes, opens the PR
-(reviewer: <dhiasalah | KacemAbdelbaki>) and switches to the next lesson's branch. You only need to:
+Branch: `<name>/NN-short-name`. When the step is verified, **Claude** syncs, checks for secrets, commits, pushes, opens the PR
+(reviewer: <dhiasalah | KacemAbdelbaki>), turns on auto-merge and switches to the next lesson's branch. You only need to:
 - read the PR description and the diff once,
 - ask the other student to review; they check the security checklist against the diff,
-- squash-merge after green CI + approval: `gh pr merge <N> --squash --delete-branch`.
+- nothing else: auto-merge is on, so GitHub squash-merges after the approval (and green CI).
 
 ## ➡️ Next step
 What comes next — tell Claude "I finished lesson NN, please review" or "go next".

@@ -49,5 +49,5 @@ Suggested order after M0: **Kacem starts with 02** (Dhia's 06 needs it); **Dhia 
 - 2026-10-29: split "security vs agents"; each reviews the other's PRs; Dhia does the security review of Kacem's PRs.
 
 ## Blockers / questions to revisit
-- Branch protection on a private repo needs GitHub Pro (Student Developer Pack); until then, apply the rules by habit (lesson 00b).
+- `protect-main` ruleset is active (2026-10-29) and auto-merge is on; **add the required `build` check** once the CI workflow (00b, Dhia) is merged.
 - Open questions from design doc §15 (sender scope source, AI disclosure, holding-reply delay): decide by lessons 07 / 12.
