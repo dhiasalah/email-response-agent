@@ -50,6 +50,34 @@ public interface AppConfig {
      */
     Optional<Set<SlotType>> recentAnswerTrustedTypes();
 
+    /**
+     * Cosine similarity above which a question is a candidate for a card with a different key (design doc §7.2).
+     * Only a candidate: the slot type and scope must match and the verifier model must agree.
+     */
+    @WithDefault("0.80")
+    double groupingSimilarityThreshold();
+
+    /** Unassigned questions handled per grouping run, newest first (design doc §7.2, bootstrap cap). */
+    @WithDefault("200")
+    int groupingBatchSize();
+
+    /** An empty card closes after this long without activity (design doc §6.1). */
+    @WithDefault("7")
+    int clusterExpiryDays();
+
+    /** Card priority weights (design doc §7.4): urgency first, then volume. */
+    @WithDefault("0.4")
+    double priorityWeightUrgency();
+
+    @WithDefault("0.3")
+    double priorityWeightVolume();
+
+    @WithDefault("0.2")
+    double priorityWeightAge();
+
+    @WithDefault("0.1")
+    double priorityWeightSender();
+
     /** How often the orchestrator imports mail and moves emails forward. */
     @WithDefault("30s")
     String orchestratorEvery();

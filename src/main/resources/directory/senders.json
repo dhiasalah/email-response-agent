@@ -5,5 +5,6 @@
   { "email": "ines.k@student.univ.example",       "program": "M2", "track": "IA", "year": "2026-2027" },
   { "email": "adam.roussel@student.univ.example", "program": "M2", "track": "IA", "year": "2026-2027" },
   { "email": "nora.fares@student.univ.example",   "program": "M2", "track": "IA", "year": "2026-2027" },
-  { "email": "lucas.petit@student.univ.example",  "program": "M1", "track": "IA", "year": "2026-2027" }
+  { "email": "lucas.petit@student.univ.example",  "program": "M1", "track": "IA", "year": "2026-2027" },
+  { "email": "head.ia@univ.example", "program": "M2", "track": "IA", "year": "2026-2027", "role": "MANAGEMENT" }
 ]
