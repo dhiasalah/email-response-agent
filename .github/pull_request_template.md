@@ -1,5 +1,5 @@
-## Lesson
-<!-- e.g. Lesson 07 — Resolver (lessons/dhia/07-resolver.md) -->
+## Summary
+<!-- What this PR adds and why -->
 
 ## What changed
 -

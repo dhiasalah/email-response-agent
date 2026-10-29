@@ -1,6 +1,6 @@
 package com.emailagent.model;
 
-/** Why the deterministic pre-filter dropped an email before any LLM saw it (lesson 04). */
+/** Why the deterministic pre-filter dropped an email before any LLM saw it. */
 public enum FilterReason {
     AUTO_REPLY,
     MAILING_LIST,

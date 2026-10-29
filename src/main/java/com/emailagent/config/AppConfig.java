@@ -17,11 +17,11 @@ public interface AppConfig {
     @WithDefault("10")
     int maxEmailsPerSenderPerHour();
 
-    /** Classpath JSON file the mock mailbox reads (lesson 04). */
+    /** Classpath JSON file the mock mailbox reads. */
     @WithDefault("mailbox/inbox.json")
     String mailboxFixture();
 
-    /** How often the orchestrator imports mail and moves emails forward (lesson 05). */
+    /** How often the orchestrator imports mail and moves emails forward. */
     @WithDefault("30s")
     String orchestratorEvery();
 

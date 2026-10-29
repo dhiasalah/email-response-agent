@@ -29,3 +29,9 @@ Thumbs.db
 .quarkus/
 *.log
 ruleset.json
+
+# Personal study notes and working files, kept local only
+lessons/
+PROGRESS.md
+progress/
+CLAUDE.md

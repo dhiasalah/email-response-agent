@@ -1,4 +1,4 @@
--- Lesson 04: what the mailbox import adds to each email
+-- What the mailbox import adds to each email
 
 ALTER TABLE email
     ADD COLUMN sender_name     VARCHAR(200),

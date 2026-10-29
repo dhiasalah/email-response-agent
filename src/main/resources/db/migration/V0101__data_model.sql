@@ -1,4 +1,4 @@
--- Lesson 01: emails, their slots, and the append-only decision log (design doc §5)
+-- Emails, their slots, and the append-only decision log (design doc §5)
 
 CREATE TABLE email (
     id            BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
