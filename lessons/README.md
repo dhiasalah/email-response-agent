@@ -7,13 +7,14 @@ One file per step. Claude adds a line here each time a new lesson is created.
 
 | Track | Lessons | Status |
 |---|---|---|
-| Shared | 00, 00b, 01, 17 | 🔄 00 + 00b written |
+| Shared | 00, 00b, 01, 01b, 17 | ✅ 00 + 00b · 🔄 01 written |
 | Dhia — security + pipeline | 03, 04, 05, 06, 11, 14, 16 | ⏳ |
 | Kacem — agents + UI | 02, 07, 08, 09, 10, 12, 13, 15 | ⏳ |
 
 ## Shared
 - [00 Roadmap, setup (JDK 21, Docker, Ollama, Quarkus skeleton, fail-closed config), threat model: trust boundaries + OWASP LLM Top 10](shared/00-roadmap-setup-threat-model.md)
 - [00b Working as a team on GitHub: branch per lesson, PRs, CI (build + gitleaks), CODEOWNERS, PR template, Dependabot, protect `main`](shared/00b-github-collaboration.md)
+- [01 The shared data model: enums with policy (slot taxonomy), Flyway schema with CHECKs, Panache entities, append-only decision log](shared/01-data-model.md)
 
 ## Dhia — security + pipeline
 - (starts with 03 after lesson 01)

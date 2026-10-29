@@ -1,0 +1,129 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 620" width="960" height="620" role="img" aria-labelledby="t d">
+  <title id="t">Lesson 01 data model</title>
+  <desc id="d">Three tables created in lesson 01 (email, slot, decision_log) and two added later (input_request in lesson 08, fact in lesson 09). Untrusted email content enters email.body; LLM agent outputs pass through code validation before being stored; only the orchestrator changes email.status. Values are checked three times: Java enum, Bean Validation, database CHECK.</desc>
+  <defs>
+    <style>
+      text { font-family: "Segoe UI", system-ui, sans-serif; fill: #17191e; font-size: 13px; }
+      .h { font-size: 20px; font-weight: 600; }
+      .sub { font-size: 13px; fill: #62666f; }
+      .tname { font-size: 14px; font-weight: 600; fill: #ffffff; }
+      .col { font-family: Consolas, monospace; font-size: 12px; }
+      .muted { fill: #62666f; font-size: 12px; }
+      .lbl { font-size: 12px; fill: #62666f; font-style: italic; }
+      .small { font-size: 11.5px; }
+      .white { fill: #ffffff; font-weight: 600; }
+    </style>
+    <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#17191e"/>
+    </marker>
+    <pattern id="hatch" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+      <rect width="8" height="8" fill="#fbeee6"/>
+      <line x1="0" y1="0" x2="0" y2="8" stroke="#c0531f" stroke-width="2" opacity="0.35"/>
+    </pattern>
+  </defs>
+
+  <rect width="960" height="620" fill="#fffefb"/>
+  <text x="24" y="36" class="h">Lesson 01: the shared state (PostgreSQL)</text>
+  <text x="24" y="58" class="sub">Agents never talk to each other: they read and write these tables, and the orchestrator moves each email forward.</text>
+
+  <!-- Writers (left column) -->
+  <rect x="24" y="96" width="190" height="66" rx="8" fill="url(#hatch)" stroke="#c0531f" stroke-width="1.5"/>
+  <text x="119" y="122" text-anchor="middle" font-weight="600">Incoming email</text>
+  <text x="119" y="142" text-anchor="middle" class="small">untrusted: body, subject</text>
+
+  <rect x="24" y="214" width="190" height="66" rx="8" fill="#6b4fa0"/>
+  <text x="119" y="240" text-anchor="middle" class="white">LLM agents</text>
+  <text x="119" y="260" text-anchor="middle" class="small" fill="#ffffff" style="fill:#ffffff">propose JSON only</text>
+
+  <rect x="24" y="332" width="190" height="66" rx="8" fill="#2b5fa8"/>
+  <text x="119" y="358" text-anchor="middle" class="white">Orchestrator (code)</text>
+  <text x="119" y="378" text-anchor="middle" class="small" style="fill:#ffffff">only one to change status</text>
+
+  <!-- validation gate -->
+  <rect x="240" y="226" width="62" height="42" rx="6" fill="#ffffff" stroke="#2b5fa8" stroke-width="1.5"/>
+  <text x="271" y="244" text-anchor="middle" class="small" style="fill:#2b5fa8;font-weight:600">validate</text>
+  <text x="271" y="259" text-anchor="middle" class="small" style="fill:#2b5fa8">(code)</text>
+
+  <!-- email table -->
+  <rect x="330" y="90" width="250" height="236" rx="8" fill="#ffffff" stroke="#8a8f98" stroke-width="1.5"/>
+  <rect x="330" y="90" width="250" height="30" rx="8" fill="#8a8f98"/>
+  <rect x="330" y="110" width="250" height="10" fill="#8a8f98"/>
+  <text x="345" y="110" class="tname">email</text>
+  <text x="345" y="142" class="col">id · message_id (unique)</text>
+  <text x="345" y="162" class="col">sender · subject</text>
+  <text x="345" y="182" class="col" style="fill:#c0531f">body  (untrusted text)</text>
+  <text x="345" y="202" class="col">scope_program/track/year</text>
+  <text x="345" y="222" class="col">intent · sensitivity · language</text>
+  <text x="345" y="242" class="col" style="fill:#2b5fa8">status  (NEW ... SENT)</text>
+  <text x="345" y="262" class="col">version  (optimistic lock)</text>
+  <text x="345" y="282" class="col">received_at · updated_at</text>
+  <text x="345" y="310" class="muted">one row per email · lessons 04, 05</text>
+
+  <!-- slot table -->
+  <rect x="660" y="90" width="270" height="236" rx="8" fill="#ffffff" stroke="#8a8f98" stroke-width="1.5"/>
+  <rect x="660" y="90" width="270" height="30" rx="8" fill="#8a8f98"/>
+  <rect x="660" y="110" width="270" height="10" fill="#8a8f98"/>
+  <text x="675" y="110" class="tname">slot</text>
+  <text x="675" y="142" class="col">id · email_id → email</text>
+  <text x="675" y="162" class="col">type  (registered taxonomy)</text>
+  <text x="675" y="182" class="col">entity · qualifier</text>
+  <text x="675" y="202" class="col">owner  (USER | SENDER)</text>
+  <text x="675" y="222" class="col">status (UNRESOLVED|PROPOSED|FILLED)</text>
+  <text x="675" y="242" class="col">value + source  (always together)</text>
+  <text x="675" y="262" class="col">request_id → input_request</text>
+  <text x="675" y="310" class="muted">one missing piece of information</text>
+
+  <!-- decision_log -->
+  <rect x="330" y="400" width="250" height="168" rx="8" fill="#ffffff" stroke="#8a8f98" stroke-width="1.5"/>
+  <rect x="330" y="400" width="250" height="30" rx="8" fill="#8a8f98"/>
+  <rect x="330" y="420" width="250" height="10" fill="#8a8f98"/>
+  <text x="345" y="420" class="tname">decision_log  🔒 append-only</text>
+  <text x="345" y="452" class="col">email_id · agent</text>
+  <text x="345" y="472" class="col">input_summary (no full email)</text>
+  <text x="345" y="492" class="col">output · confidence · sources</text>
+  <text x="345" y="512" class="col">model_version · created_at</text>
+  <text x="345" y="540" class="muted">DB trigger refuses UPDATE,</text>
+  <text x="345" y="556" class="muted">DELETE and TRUNCATE</text>
+
+  <!-- future tables -->
+  <rect x="660" y="400" width="125" height="80" rx="8" fill="#ffffff" stroke="#8a8f98" stroke-width="1.5" stroke-dasharray="6 4"/>
+  <text x="722" y="430" text-anchor="middle" font-weight="600">input_request</text>
+  <text x="722" y="450" text-anchor="middle" class="muted">the card</text>
+  <text x="722" y="468" text-anchor="middle" class="muted">lesson 08 (Kacem)</text>
+
+  <rect x="805" y="400" width="125" height="80" rx="8" fill="#ffffff" stroke="#8a8f98" stroke-width="1.5" stroke-dasharray="6 4"/>
+  <text x="867" y="430" text-anchor="middle" font-weight="600">fact</text>
+  <text x="867" y="450" text-anchor="middle" class="muted">scoped memory</text>
+  <text x="867" y="468" text-anchor="middle" class="muted">lesson 09 (Kacem)</text>
+
+  <!-- relations -->
+  <line x1="580" y1="200" x2="658" y2="200" stroke="#17191e" stroke-width="1.5" marker-end="url(#arr)"/>
+  <text x="619" y="190" text-anchor="middle" class="lbl">1 → many</text>
+  <text x="619" y="218" text-anchor="middle" class="lbl">requires</text>
+
+  <line x1="455" y1="326" x2="455" y2="398" stroke="#17191e" stroke-width="1.5" marker-end="url(#arr)"/>
+  <text x="465" y="366" class="lbl">records every step</text>
+
+  <line x1="722" y1="326" x2="722" y2="398" stroke="#17191e" stroke-width="1.5" stroke-dasharray="5 4" marker-end="url(#arr)"/>
+  <text x="730" y="366" class="lbl">groups</text>
+  <line x1="785" y1="440" x2="803" y2="440" stroke="#17191e" stroke-width="1.5" stroke-dasharray="5 4" marker-end="url(#arr)"/>
+
+  <!-- writer arrows -->
+  <path d="M214,129 L328,180" fill="none" stroke="#c0531f" stroke-width="1.8" marker-end="url(#arr)"/>
+  <text x="250" y="140" class="lbl" style="fill:#c0531f">stored as data</text>
+
+  <line x1="214" y1="247" x2="238" y2="247" stroke="#6b4fa0" stroke-width="1.8" marker-end="url(#arr)"/>
+  <path d="M302,247 L328,226" fill="none" stroke="#2b5fa8" stroke-width="1.8" marker-end="url(#arr)"/>
+
+  <path d="M214,365 C280,365 290,260 328,244" fill="none" stroke="#2b5fa8" stroke-width="1.8" marker-end="url(#arr)"/>
+  <path d="M214,380 C270,400 290,450 328,470" fill="none" stroke="#2b5fa8" stroke-width="1.8" marker-end="url(#arr)"/>
+  <text x="226" y="420" class="lbl" style="fill:#2b5fa8">writes the log</text>
+
+  <!-- three checks -->
+  <rect x="24" y="470" width="280" height="122" rx="8" fill="#ffffff" stroke="#2b5fa8" stroke-width="1.2"/>
+  <text x="38" y="494" font-weight="600">Every value is checked 3 times</text>
+  <text x="38" y="518" class="small">1. Java enum: no free text possible</text>
+  <text x="38" y="540" class="small">2. Bean Validation: sizes, required</text>
+  <text x="38" y="562" class="small">3. Database CHECK: even raw SQL fails</text>
+  <text x="38" y="582" class="muted">Hibernate validates the schema at start-up</text>
+</svg>
