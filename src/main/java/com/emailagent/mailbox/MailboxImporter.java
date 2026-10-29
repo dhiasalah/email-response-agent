@@ -3,6 +3,7 @@ package com.emailagent.mailbox;
 import com.emailagent.agents.CuratorAgent;
 import com.emailagent.model.EmailStatus;
 import com.emailagent.model.FilterReason;
+import com.emailagent.orchestrator.Retention;
 import com.emailagent.security.PreFilter;
 import com.emailagent.security.Sanitizer;
 import com.emailagent.store.DecisionLogEntry;
@@ -71,7 +72,9 @@ public class MailboxImporter {
     private enum Outcome { IMPORTED, FILTERED, DUPLICATE, MERGED }
 
     private Outcome importOne(IncomingEmail in) {
-        if (EmailEntity.findByMessageId(in.messageId()).isPresent()) {
+        if (EmailEntity.findByMessageId(in.messageId()).isPresent()
+                || EmailEntity.findByMessageId(Retention.erasedMessageId(in.messageId())).isPresent()) {
+            // an erased email still in the mailbox is not imported again
             return Outcome.DUPLICATE; // idempotence: the same message is never processed twice
         }
         long recent = EmailEntity.count("sender = ?1 and receivedAt > ?2 and receivedAt <= ?3",
