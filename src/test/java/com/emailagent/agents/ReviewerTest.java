@@ -83,16 +83,18 @@ class ReviewerTest {
         orchestrator.runStep(reviewer, id);
 
         assertThat(status(id)).isEqualTo(EmailStatus.ESCALATED);
-        assertThat(review(id).ruleFailures).isEqualTo("unsupported_link");
+        // the address and the word "cancelled": two rules, either one enough
+        assertThat(review(id).ruleFailures).isEqualTo("unsupported_link,unsupported_commitment");
         assertThat(model.requests()).isEmpty();
-        assertThat(lastLog(id)).contains("\"rules\":[\"unsupported_link\"]").doesNotContain("evil");
+        assertThat(lastLog(id)).contains("\"rules\":[\"unsupported_link\",\"unsupported_commitment\"]")
+                .doesNotContain("evil");
     }
 
     @Test
     void theModelCanFailAReplyTheRulesLetThrough() {
-        // no number, no link: only a reader of meaning sees the promise
+        // no number, no link, no commitment word: only a reader of meaning sees the promise
         long id = drafted("When is the ML exam?", "The ML exam takes place on 3 June 2027. If you need more time,"
-                + " the professor will gladly grant you an extension.", 1);
+                + " just tell the professor and you can take it another day.", 1);
         model.willAnswer("{\"issues\":[\"NEW_COMMITMENT\"],\"verdict\":\"FAIL\"}");
 
         orchestrator.runStep(reviewer, id);

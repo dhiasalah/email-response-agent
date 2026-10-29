@@ -49,6 +49,9 @@ final class ReviewRules {
         if (TriageRouter.SENSITIVE_TOPICS.matcher(folded).find() || GRADE.matcher(content).find()) {
             failures.add("blocked_topic");
         }
+        if (!unsupportedCommitments(folded, facts).isEmpty()) {
+            failures.add("unsupported_commitment");
+        }
         // a reply that itself reads like instructions to a machine carries the attacker's text to the next reader
         if (detector.assess(null, content, null).suspicious()) {
             failures.add("instructions_in_reply");
@@ -105,6 +108,30 @@ final class ReviewRules {
             String link = m.group().replaceAll("[.,;:!?)\\]]+$", "");
             if (!factText.contains(link.toLowerCase(Locale.ROOT))) {
                 unsupported.add(link);
+            }
+        }
+        return unsupported;
+    }
+
+    /**
+     * Words that promise or change something (design doc §9, commitments: exception, approval, cancellation, an
+     * action taken). Matched without accents; "report" alone is not here, it's an English noun.
+     */
+    static final Pattern COMMITMENT = Pattern.compile("\\b(extension\\w*|extend\\w*|prolong\\w*|derogation\\w*"
+            + "|exception\\w*|exempt\\w*|dispens\\w*|waive\\w*|grant\\w*|approv\\w*|accorde\\w*|autoris\\w*"
+            + "|authoriz\\w*|cancel\\w*|annul\\w*|postpon\\w*|reporte\\w*|forward\\w*|transfer\\w*|transmis\\w*"
+            + "|refund\\w*|rembours\\w*|promis\\w*|promet\\w*|guarantee\\w*|garanti\\w*)\\b");
+
+    /** Commitment words in the reply that no fact contains: only the owner may promise, in a fact. */
+    static List<String> unsupportedCommitments(String foldedContent, List<WriterAgent.Fact> facts) {
+        String factText = InjectionDetector.fold(facts.stream().map(WriterAgent.Fact::display)
+                .reduce("", (a, b) -> a + " " + b));
+        List<String> unsupported = new ArrayList<>();
+        Matcher m = COMMITMENT.matcher(foldedContent);
+        while (m.find()) {
+            String stem = m.group().length() > 6 ? m.group().substring(0, 6) : m.group();
+            if (!factText.contains(stem)) {
+                unsupported.add(m.group());
             }
         }
         return unsupported;
