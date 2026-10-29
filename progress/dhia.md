@@ -3,7 +3,7 @@
 > Claude reads this at session start and updates it after each verified lesson.
 
 ## Current position
-- **Lesson:** 05 — Orchestrator: state machine, idempotence, audit log
+- **Lesson:** 06 — Triage agent + injection detector
 - **Mode:** Claude builds every lesson end to end, in a row; Dhia reads the lesson files (🎓 sections) to defend the project
 - **Level:** experienced in coding and LLMs; deep on multi-agent design, AI security and app security · English
 
@@ -15,7 +15,7 @@
 - [x] 02 `OllamaLlmClient`: JSON schema, strict parse, retry once, timeouts, tier → model (2026-10-29)
 - [x] 03 Prompt injection 101: attacks on a naive agent, untrusted-data envelope (2026-10-29)
 - [x] 04 Mock mailbox, pre-filter (loops, auto-replies), sanitizer (hidden HTML, Unicode) (2026-10-29)
-- [ ] 05 Orchestrator: state machine, idempotence, append-only decision log
+- [x] 05 Orchestrator: state machine, idempotence, append-only decision log (2026-10-29)
 - [ ] 06 Triage agent + injection detector
 - [ ] 07 Resolver: memory, KB, mock calendar, recent answers, scope checks
 - [ ] 08 Grouping: embeddings, clusters, input cards, priority
@@ -40,6 +40,7 @@
 | 2026-10-29 | Lesson 02: `OllamaLlmClient` (2 tiers, schema, strict parse, 1 retry, typed failures); 21 tests + 2 Ollama tests green | Low-level ChatModel vs AI services; retry once; retry note never echoes model text; valid ≠ correct (`REQUEST` vs `QUESTION`) |
 | 2026-10-29 | Lesson 03: `UntrustedEnvelope` (rules + random-id markers, attacker markers neutralized) in every call; experiment naive 5/6 vs protected 4/6 | Direct vs indirect injection; spotlighting; make injection harmless, not impossible |
 | 2026-10-29 | Lesson 04: `MockMailbox` + `MailboxImporter` (per-email transactions), `PreFilter` (6 reasons), `Sanitizer` (jsoup + NFKC + flags), `V0401`; 33 tests | Rules before LLM; hidden-text injection; Unicode tricks; flags as evidence; data minimization; availability |
+| 2026-10-29 | Lesson 05: `EmailLifecycle` + `email_status_guard` trigger (182 pairs agree), `Orchestrator` (snapshot → LLM outside tx → lifecycle check → versioned commit), `OrchestratorJob`, `V0501`; 45 tests | Code not LLM routes; blackboard; idempotence key (id, status, version); optimistic lock; fail closed to ESCALATED; LLM06 excessive agency |
 
 ## Blockers / questions to revisit
 - Claude's shell can inherit a stale `JAVA_HOME=C:\jdk-21.0.2\bin`; the user variable (Adoptium 21.0.12) is right.
