@@ -15,10 +15,12 @@ public class MockMailbox implements Mailbox {
 
     private final ObjectMapper mapper;
     private final String fixture;
+    private final String sentFixture;
 
     public MockMailbox(ObjectMapper mapper, AppConfig config) {
         this.mapper = mapper;
         this.fixture = config.mailboxFixture();
+        this.sentFixture = config.mailboxSentFixture();
     }
 
     @Override
@@ -30,6 +32,18 @@ public class MockMailbox implements Mailbox {
             return mapper.readValue(in, new TypeReference<List<IncomingEmail>>() {});
         } catch (IOException e) {
             throw new UncheckedIOException("cannot read mailbox fixture " + fixture, e);
+        }
+    }
+
+    @Override
+    public List<SentMessage> fetchSent() {
+        try (InputStream in = Thread.currentThread().getContextClassLoader().getResourceAsStream(sentFixture)) {
+            if (in == null) {
+                return List.of(); // no Sent folder in this demo
+            }
+            return mapper.readValue(in, new TypeReference<List<SentMessage>>() {});
+        } catch (IOException e) {
+            throw new UncheckedIOException("cannot read sent fixture " + sentFixture, e);
         }
     }
 }

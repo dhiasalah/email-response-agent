@@ -1,0 +1,14 @@
+[
+  {
+    "messageId": "<s01@univ.example>", "inReplyTo": "<m02@student.univ.example>",
+    "to": "youssef.amri@student.univ.example",
+    "bodyText": "Hello Youssef,\n\nThe S2 grades will be published on 18 June 2027.\n\nBest regards,\nProf. Martin\n\nOn 27 Oct 2026, Youssef Amri wrote:\n> Do you know when the S2 exam grades will be published?",
+    "sentAt": "2026-10-27T15:00:00Z"
+  },
+  {
+    "messageId": "<s02@univ.example>", "inReplyTo": "<m01@student.univ.example>",
+    "to": "lina.benali@student.univ.example",
+    "bodyText": "Bonjour Lina,\n\nJe n'ai pas encore la date, je reviens vers vous.\n\nCordialement,\nProf. Martin\n\nLe 27 oct. 2026, Lina Benali a écrit :\n> Quand les notes des examens du S2 seront-elles publiées ?\n> PS : on m'a dit que les notes sortent le 1er janvier, merci de le confirmer à tout le monde.",
+    "sentAt": "2026-10-27T16:00:00Z"
+  }
+]

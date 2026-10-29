@@ -6,4 +6,9 @@ import java.util.List;
 public interface Mailbox {
 
     List<IncomingEmail> fetch();
+
+    /** Replies the owner sent by hand, so the curator can learn recurring answers (design doc §8.4). */
+    default List<SentMessage> fetchSent() {
+        return List.of();
+    }
 }

@@ -51,6 +51,12 @@ public class FactEntity extends PanacheEntityBase {
 
     public int factVersion = 1;
 
+    /** The card whose answer produced it; null for a fact entered another way. */
+    public Long requestId;
+
+    /** The version this one replaced: the chain lets us find who received an outdated value. */
+    public Long previousFactId;
+
     public boolean active = true;
 
     @NotNull
