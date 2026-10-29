@@ -69,7 +69,7 @@ the lessons). Work on a branch and generate the project from code.quarkus.io str
 
 ```powershell
 cd "C:\Users\USER\Desktop\master 2\multiagent_system\project"
-git switch -c dhia/00-quarkus-skeleton
+git branch --show-current                  # should print dhia/00-quarkus-skeleton (Claude creates it)
 $ext = "rest-jackson","rest-qute","hibernate-orm-panache","jdbc-postgresql","flyway","hibernate-validator","scheduler","io.quarkiverse.langchain4j:quarkus-langchain4j-ollama"
 $q = ($ext | ForEach-Object { "e=$_" }) -join "&"
 curl.exe -sSL "https://code.quarkus.io/d?g=com.emailagent&a=email-response-agent&j=21&nc=true&$q" -o qk.zip
@@ -363,14 +363,10 @@ Put it back to `draft`. (`Ctrl+C` stops dev mode.)
 different emails and compare the intents. Why would that break grouping and memory?
 
 ## 🌿 Branch & PR
-Dhia:
-```powershell
-git add .
-git commit -m "Lesson 00: Quarkus skeleton, typed config, Ollama smoke test"
-git push -u origin dhia/00-quarkus-skeleton
-gh pr create --fill --reviewer KacemAbdelbaki
-```
-Kacem: review the PR on GitHub (check that `.env` is **not** in the files), approve, then Dhia squash-merges.
+Branch: `dhia/00-quarkus-skeleton` (Claude has already created it). When both checks pass, tell Claude "lesson 00 works".
+Claude checks for secrets, commits, pushes, opens the PR with Kacem as reviewer, and switches to the next branch.
+Kacem: review the PR on GitHub (check that `.env` is **not** in the files) and approve; then Dhia squash-merges
+(`gh pr merge <N> --squash --delete-branch`).
 Then **Kacem**:
 ```powershell
 git clone https://github.com/dhiasalah/email-response-agent.git

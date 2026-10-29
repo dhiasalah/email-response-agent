@@ -51,20 +51,45 @@ Same method as Dhia's previous project **Sentinel** (`personal_project/` on Dhia
    - say **where it goes**: file path + "new file / add at the top / under X / replace Y";
    - follow it with **one short paragraph**: what it does and why it is written this way (especially the security reason).
 3. **Setup = exact commands.** Copy-paste commands (**PowerShell**, both are on Windows) with the **expected output**.
-   The students run them. You don't run install, build-changing, commit, push or merge commands.
-   Read-only actions are fine: reading files, `git status/log/diff/fetch`, `gh pr view/diff/checks`, and `.\mvnw verify` to review.
+   The students run install and build commands. Read-only actions are fine: reading files, `git status/log/diff/fetch`,
+   `gh pr view/diff/checks`, and `.\mvnw verify` to review.
+   **Git is Claude's job** (requested by Dhia, 2026-10-29): you create branches, commit, push and open PRs as described in
+   **Git workflow** below. You **never** merge a PR, push to `main`, force-push, or delete someone else's branch.
 4. **One step at a time.** Write the next lesson only when the student says **"go next"** (or that they finished the step).
 5. **Every step with code gets a lesson file** (see below). It is the student's notebook.
 6. **End every answer with a `## Your next action`** section: 1–3 concrete things to do now.
 
-## Git workflow (taught in lesson 00b; repeat it in every lesson)
-- One branch per lesson: `dhia/06-triage`, `kacem/07-resolver`. Never commit to `main`.
-- Every lesson ends with a **🌿 Branch & PR** section: branch, commit message, `git push -u origin HEAD`,
-  `gh pr create --fill --reviewer <the other>`.
-- Squash-merge after green CI + approval, then both `git switch main; git pull`.
-- **Review mode:** "review PR #N" → `gh pr view N` + `gh pr diff N`, give findings ranked by severity (security first
-  for Kacem's PRs: untrusted input, escaping, secrets, new capabilities). The student posts them on GitHub; you don't.
-- Lesson files and progress files are committed with the student's lesson branch.
+## Git workflow: Claude runs it (taught in lesson 00b)
+One branch per lesson: `dhia/06-triage`, `kacem/07-resolver`, `both/01-data-model`. Nothing is ever committed directly to `main`.
+
+**Before writing a lesson** (when the student says "go next"):
+1. `git status`: if there are uncommitted changes, stop and ask what to do with them; never stash or discard them silently.
+2. Make sure you're on that lesson's branch. If not: `git switch main`, `git pull`, `git switch -c <name>/<NN-short-name>`.
+   If the lesson depends on a PR that isn't merged yet, branch from that PR's branch instead, and write
+   "stacked on #N" in the new PR's body.
+3. Write the lesson file and update `lessons/README.md` on that branch.
+
+**After each lesson** (only when the step is verified: you read the code and `.\mvnw verify` is green):
+1. **Secret check before staging:** `git status` + `git diff --stat`. Refuse to commit `.env`, keys, tokens, database files or
+   real emails, and grep the diff for `password=`, `token`, `apikey`, `BEGIN .* PRIVATE KEY`. Stage by explicit path
+   (`git add src/... lessons/... progress/<name>.md`), never a blind `git add -A`.
+2. Update `progress/<name>.md` (and `PROGRESS.md` if the position line or a milestone changed) and include them in the commit.
+3. Commit with a clear message, `Lesson NN: <what was built>`, ending with the attribution line from the system reminder.
+4. `git push -u origin HEAD`.
+5. `gh pr create` with title `Lesson NN — <title> (<Dhia|Kacem|Both>)`, a body that fills `.github/pull_request_template.md`
+   (once it exists) with the lesson link, what changed, how it was tested, and the ticked security checklist, and
+   `--reviewer` = the other student (`KacemAbdelbaki` for Dhia's work, `dhiasalah` for Kacem's).
+   Give the PR link to the student.
+6. **Switch to the next branch right away:** `git switch main`, `git pull`, `git switch -c <name>/<next-lesson>` (or stacked,
+   as above), so the next lesson starts clean. Say which branch you are on now.
+
+**Merging stays human:** the other student reviews and approves, CI must be green, then a student squash-merges
+(`gh pr merge N --squash --delete-branch`). After a merge, on the next session start: `git switch main; git pull`, and
+rebase any open stacked branch with `git rebase main`.
+
+**Review mode:** "review PR #N" → `gh pr view N` + `gh pr diff N` + `gh pr checks N`; give findings ranked by severity
+(security first for Kacem's PRs: untrusted input, escaping, secrets, new capabilities). Post them only if the student
+asks (`gh pr review N --comment -b "..."`); never approve or merge on a student's behalf.
 
 ---
 
@@ -127,7 +152,7 @@ Same method as Dhia's previous project **Sentinel** (`personal_project/` on Dhia
 ---
 
 ## Updating progress
-Only after the step is verified (you read their code or saw their output):
+Only after the step is verified (you read their code or saw their output), and before the lesson's commit and PR:
 - In `progress/<name>.md`: tick the step `[x]` with the date, move "Current position", add a **Session log** row
   (date, what was done, concepts learned, open questions), and add blockers.
 - In `PROGRESS.md`: update only that student's position line, the lesson's status in the owner table, and milestones.

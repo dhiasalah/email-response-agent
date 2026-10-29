@@ -57,7 +57,10 @@ git config --global fetch.prune true
 `user.name` matters: each of you runs Claude Code in this repo, and `CLAUDE.md` uses it to know whose lessons and
 progress to follow. `pull.rebase` keeps your branch history linear when you update it from `main`.
 
-### 3. The loop you'll use for every lesson
+### 3. The loop used for every lesson
+**Claude runs this loop for you** after each verified lesson (see "Git workflow" in `CLAUDE.md`): it checks for secrets,
+commits, pushes, opens the PR with the other student as reviewer, and switches to the next lesson's branch. Merging stays
+human. You should still know the commands, to read what Claude did and to fix things by hand:
 ```powershell
 git switch main; git pull
 git switch -c dhia/03-injection-101        # or kacem/02-llm-client
