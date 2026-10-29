@@ -56,6 +56,9 @@ final class ReviewRules {
         if (detector.assess(null, content, null).suspicious()) {
             failures.add("instructions_in_reply");
         }
+        if (wrongLanguage(folded, email.language() == null ? Language.EN : email.language())) {
+            failures.add("language_mismatch");
+        }
         if (content.isBlank() || content.strip().split("\\s+").length > MAX_WORDS) {
             failures.add("length");
         }
@@ -135,6 +138,32 @@ final class ReviewRules {
             }
         }
         return unsupported;
+    }
+
+    private static final Set<String> FR_WORDS = Set.of("le", "la", "les", "des", "du", "est", "et", "vous", "votre",
+            "vos", "pour", "une", "sur", "dans", "pas", "que", "qui", "avec", "aura", "sera", "sont", "au", "aux");
+    private static final Set<String> EN_WORDS = Set.of("the", "is", "and", "of", "you", "your", "for", "will", "be",
+            "to", "are", "with", "this", "that", "it", "on", "in", "at", "has", "have");
+
+    /**
+     * The text itself is in the other language: its common function words are clearly the other language's. The
+     * draft's language label is set by code, so it always matches; the words are what the model actually wrote.
+     * Measured on qwen2.5: the reviewer model let an English reply to a French email pass.
+     */
+    static boolean wrongLanguage(String foldedContent, Language expected) {
+        int fr = 0;
+        int en = 0;
+        for (String w : foldedContent.split(" ")) {
+            if (FR_WORDS.contains(w)) {
+                fr++;
+            }
+            if (EN_WORDS.contains(w)) {
+                en++;
+            }
+        }
+        int same = expected == Language.FR ? fr : en;
+        int other = expected == Language.FR ? en : fr;
+        return other >= 2 && other > 2 * same;
     }
 
     /** "14/20", "12,5 / 20": an individual grade never goes out in an automatic reply (design doc §9). */

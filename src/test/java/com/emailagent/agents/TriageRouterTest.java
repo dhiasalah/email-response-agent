@@ -56,6 +56,13 @@ class TriageRouterTest {
     }
 
     @Test
+    void aQuestionWithASlotIsAnsweredEvenIfTheModelSaysNoReply() {
+        // measured on qwen2.5: a plain question labelled INFORMATION with replyNeeded=false, but with its slot
+        assertThat(route("S2 grades", "When will the S2 exam grades be published?", Intent.INFORMATION,
+                Sensitivity.LOW, false, SlotType.GRADES_PUBLICATION_DATE).next()).isEqualTo(EmailStatus.RESOLVING);
+    }
+
+    @Test
     void missingLabelsFailClosed() {
         assertThat(route("x", "y", null, Sensitivity.LOW, true).next()).isEqualTo(EmailStatus.ESCALATED);
     }

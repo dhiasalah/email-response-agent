@@ -46,16 +46,20 @@ public class PanelResource {
     @CheckedTemplate
     static class Templates {
         static native TemplateInstance panel(PanelQueries.Dashboard dash, String message);
+
+        static native TemplateInstance metrics(MetricsQueries.Metrics m);
     }
 
     private final PanelQueries queries;
+    private final MetricsQueries metrics;
     private final CardAnswers cardAnswers;
     private final OwnerActions actions;
     private final BroadcastRun broadcasts;
 
-    public PanelResource(PanelQueries queries, CardAnswers cardAnswers, OwnerActions actions,
-            BroadcastRun broadcasts) {
+    public PanelResource(PanelQueries queries, MetricsQueries metrics, CardAnswers cardAnswers,
+            OwnerActions actions, BroadcastRun broadcasts) {
         this.queries = queries;
+        this.metrics = metrics;
         this.cardAnswers = cardAnswers;
         this.actions = actions;
         this.broadcasts = broadcasts;
@@ -65,6 +69,14 @@ public class PanelResource {
     @Produces(MediaType.TEXT_HTML)
     public TemplateInstance panel(@QueryParam("msg") String msg) {
         return Templates.panel(queries.dashboard(), msg == null ? null : MESSAGES.get(msg));
+    }
+
+    /** Design doc §12: the numbers behind any decision to enable auto-send for a slot type. */
+    @GET
+    @Path("metrics")
+    @Produces(MediaType.TEXT_HTML)
+    public TemplateInstance metrics() {
+        return Templates.metrics(metrics.metrics());
     }
 
     @POST

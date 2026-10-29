@@ -31,7 +31,7 @@ class ReviewRulesTest {
                 "When is the ML exam of the S2?")).isEmpty();
         // French time and a course link that the fact itself contains
         assertThat(failures("Le projet est à rendre le vendredi 20 novembre 2026 à 23h59 sur moodle.univ.example.",
-                DEADLINE, "Quand rendre le projet ?")).isEmpty();
+                DEADLINE, "Quand rendre le projet ?", Language.FR)).isEmpty();
     }
 
     @Test
@@ -81,6 +81,18 @@ class ReviewRulesTest {
     }
 
     @Test
+    void aReplyInTheOtherLanguageFails() {
+        // measured on qwen2.5: the reviewer model passed an English reply to a French email
+        assertThat(failures("The machine learning exam takes place on 3 June 2027.", EXAM, "Quand ?", Language.FR))
+                .contains("language_mismatch");
+        assertThat(failures("L'examen de machine learning aura lieu le 3 juin 2027.", EXAM, "Quand ?", Language.FR))
+                .doesNotContain("language_mismatch");
+        // a French course name inside an English reply is not a language change
+        assertThat(failures("The exam of Systèmes multi-agents is on 3 June 2027.", EXAM, "When?"))
+                .doesNotContain("language_mismatch");
+    }
+
+    @Test
     void theFrameIsOwnedByCodeAndChecked() {
         String body = WriterAgent.opening(Language.EN) + "On 3 June 2027."
                 + WriterAgent.closing(Language.EN, "Prof. Martin", true);
@@ -101,8 +113,12 @@ class ReviewRulesTest {
     }
 
     private List<String> failures(String content, List<WriterAgent.Fact> facts, String emailBody) {
+        return failures(content, facts, emailBody, Language.EN);
+    }
+
+    private List<String> failures(String content, List<WriterAgent.Fact> facts, String emailBody, Language lang) {
         EmailSnapshot email = new EmailSnapshot(1, 0, EmailStatus.DRAFTED, "<x@test>", null, "s@univ.example", "S",
-                "Question", emailBody, Instant.now(), SenderScope.UNKNOWN, null, null, Language.EN, true, null,
+                "Question", emailBody, Instant.now(), SenderScope.UNKNOWN, null, null, lang, true, null,
                 List.of());
         return ReviewRules.failures(content, email, facts, detector);
     }

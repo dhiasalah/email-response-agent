@@ -147,6 +147,15 @@ class PanelTest {
     }
 
     @Test
+    void theMetricsPageIsTheOwnersToo() {
+        assertThat(given().redirects().follow(false).get("/panel/metrics").statusCode()).isEqualTo(302);
+        Response r = given().cookie("quarkus-credential", login().credential).get("/panel/metrics");
+        assertThat(r.statusCode()).isEqualTo(200);
+        assertThat(r.asString()).contains("Auto-send readiness per slot type").contains("EXAM_DATE")
+                .contains("Memory reuse");
+    }
+
+    @Test
     void theRepresentativeIsTheMostTypicalReply() {
         PanelQueries.DraftView a = draft(1, "EN", 100, List.of());
         PanelQueries.DraftView b = draft(2, "EN", 140, List.of());
