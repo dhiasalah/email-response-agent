@@ -149,6 +149,16 @@ public interface AppConfig {
     @WithDefault("7")
     int broadcastWindowDays();
 
+    /** The review panel's login name (one owner). */
+    @WithDefault("owner")
+    String ownerUsername();
+
+    /**
+     * The owner's password as a PBKDF2 hash (see PasswordHash), from the OWNER_PASSWORD_HASH environment variable.
+     * Not set: the panel refuses every login.
+     */
+    Optional<String> ownerPasswordHash();
+
     /** How often the orchestrator imports mail and moves emails forward. */
     @WithDefault("30s")
     String orchestratorEvery();

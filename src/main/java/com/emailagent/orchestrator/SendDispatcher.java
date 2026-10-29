@@ -6,6 +6,7 @@ import com.emailagent.model.EmailStatus;
 import com.emailagent.model.OutboxKind;
 import com.emailagent.model.SlotType;
 import com.emailagent.store.DraftEntity;
+import com.emailagent.store.EmailEntity;
 import com.emailagent.store.OutboxEntity;
 import com.emailagent.store.ReviewEntity;
 import io.quarkus.narayana.jta.QuarkusTransaction;
@@ -81,23 +82,28 @@ public class SendDispatcher implements AgentStep {
         String output = "{\"mode\":\"" + decision.kind().name().toLowerCase(Locale.ROOT) + "\",\"reasons\":"
                 + decision.reasons().stream().map(r -> "\"" + r + "\"").collect(Collectors.joining(",", "[", "]"))
                 + "}";
-        String messageId = "<reply-" + email.id() + "-" + loaded.draftId() + "-"
-                + decision.kind().name().toLowerCase(Locale.ROOT) + "@" + domain + ">";
-        return StepResult.to(send ? EmailStatus.SENT : EmailStatus.DRAFT_SAVED, output).withWrites(e -> {
-            DraftEntity draft = DraftEntity.findById(loaded.draftId());
-            OutboxEntity o = new OutboxEntity();
-            o.email = e;
-            o.draft = draft;
-            o.review = ReviewEntity.findById(loaded.reviewId());
-            o.kind = decision.kind();
-            o.recipient = e.sender; // never from the draft or the model: the thread's own sender
-            o.subject = replySubject(e.subject);
-            o.body = draft.body;
-            o.inReplyTo = e.messageId;
-            o.messageId = messageId;
-            o.createdAt = Instant.now();
-            o.persist();
-        });
+        return StepResult.to(send ? EmailStatus.SENT : EmailStatus.DRAFT_SAVED, output)
+                .withWrites(e -> queueReply(e, loaded.draftId(), loaded.reviewId(), decision.kind(), domain));
+    }
+
+    /**
+     * The reviewed reply's outbox row, in the current transaction. Recipient, thread and subject come from the email,
+     * never from the draft or a model; the database checks them, the review and the body again.
+     */
+    static void queueReply(EmailEntity e, long draftId, long reviewId, OutboxKind kind, String domain) {
+        DraftEntity draft = DraftEntity.findById(draftId);
+        OutboxEntity o = new OutboxEntity();
+        o.email = e;
+        o.draft = draft;
+        o.review = ReviewEntity.findById(reviewId);
+        o.kind = kind;
+        o.recipient = e.sender;
+        o.subject = replySubject(e.subject);
+        o.body = draft.body;
+        o.inReplyTo = e.messageId;
+        o.messageId = "<reply-" + e.id + "-" + draftId + "-" + kind.name().toLowerCase(Locale.ROOT) + "@" + domain + ">";
+        o.createdAt = Instant.now();
+        o.persist();
     }
 
     /** Every condition for sending without the owner; each one that fails is a reason, and any reason means draft. */

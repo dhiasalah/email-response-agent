@@ -19,6 +19,7 @@ import com.emailagent.model.SlotOwner;
 import com.emailagent.model.SlotStatus;
 import com.emailagent.model.SlotType;
 import com.emailagent.security.InjectionDetector;
+import com.emailagent.store.DecisionLogEntry;
 import com.emailagent.store.EmailEntity;
 import com.emailagent.store.NoticeEntity;
 import com.emailagent.store.OutboxEntity;
@@ -54,6 +55,7 @@ class FollowUpTest {
     @Inject SenderDirectory directory;
     @Inject MailboxImporter importer;
     @Inject EntityManager em;
+    @Inject FollowUpRun followUps;
 
     FakeLlmClient model;
     SenderReplyStep step;
@@ -190,6 +192,29 @@ class FollowUpTest {
     }
 
     @Test
+    void theHoldingDelayCountsFromTheCardNotFromReception() {
+        // found in the demo: an old mailbox imported today must not get holding replies for its whole backlog
+        long justWaiting = waitingOnCard(sender());
+        long waitingLong = waitingOnCard(sender());
+        QuarkusTransaction.requiringNew().run(() -> {
+            DecisionLogEntry.transition(justWaiting, "resolver", EmailStatus.RESOLVING, EmailStatus.AWAITING_INPUT,
+                    "{}", null, null, null);
+            DecisionLogEntry old = DecisionLogEntry.transition(waitingLong, "resolver", EmailStatus.RESOLVING,
+                    EmailStatus.AWAITING_INPUT, "{}", null, null, null);
+            em.createNativeQuery("ALTER TABLE decision_log DISABLE TRIGGER decision_log_no_change").executeUpdate();
+            em.flush();
+            em.createNativeQuery("UPDATE decision_log SET created_at = now() - interval '3 days' WHERE id = "
+                    + old.id).executeUpdate();
+            em.createNativeQuery("ALTER TABLE decision_log ENABLE TRIGGER decision_log_no_change").executeUpdate();
+        });
+
+        followUps.run();
+
+        assertThat(holdingCount(justWaiting)).isZero();
+        assertThat(holdingCount(waitingLong)).isEqualTo(1);
+    }
+
+    @Test
     void onlyAWaitingStatusMayStayWhereItIs() {
         long id = create(sender(), null, EmailStatus.READY, Instant.now(), SlotType.EXAM_DATE, SlotOwner.USER);
         AgentStep stuck = new AgentStep() {
@@ -255,6 +280,11 @@ class FollowUpTest {
 
     void sql(String statement) {
         QuarkusTransaction.requiringNew().run(() -> em.createNativeQuery(statement).executeUpdate());
+    }
+
+    static long holdingCount(long id) {
+        return QuarkusTransaction.requiringNew().call(() ->
+                NoticeEntity.count("email.id = ?1 and kind = ?2", id, NoticeKind.HOLDING));
     }
 
     static String sender() {

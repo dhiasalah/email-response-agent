@@ -52,11 +52,15 @@ public class FollowUpRun {
         }
         int holding = 0;
         if (config.holdingReplyEnabled()) {
+            // the delay counts from when the email started waiting on a card, not from when it was received:
+            // found in the demo, a first import of an old mailbox sent a holding reply to its whole backlog at once
+            Instant cutoff = Instant.now().minus(config.holdingReplyAfter());
             List<Long> waitingOnCard = ids("""
                     status = ?1 and receivedAt < ?2
                       and not exists (select n.id from NoticeEntity n where n.email.id = e.id and n.kind = ?3)
-                    """, EmailStatus.AWAITING_INPUT, Instant.now().minus(config.holdingReplyAfter()),
-                    NoticeKind.HOLDING);
+                      and not exists (select d.id from DecisionLogEntry d where d.emailId = e.id
+                                      and d.toStatus = ?1 and d.createdAt > ?2)
+                    """, EmailStatus.AWAITING_INPUT, cutoff, NoticeKind.HOLDING);
             for (long id : waitingOnCard) {
                 if (orchestrator.runStep(holdingStep, id)) {
                     holding++;

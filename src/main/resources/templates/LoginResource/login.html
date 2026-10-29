@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Email agent: sign in</title>
+  <link rel="stylesheet" href="/panel.css">
+</head>
+<body>
+<main class="login">
+  <h1>Email agent</h1>
+  <p class="muted">Review panel for the mailbox owner.</p>
+  {#if error}
+  <p class="flash error">Wrong username or password, or too many attempts: wait a few minutes.</p>
+  {/if}
+  <form method="post" action="/j_security_check">
+    <label>Username <input name="j_username" autocomplete="username" required></label>
+    <label>Password <input name="j_password" type="password" autocomplete="current-password" required></label>
+    <button type="submit">Sign in</button>
+  </form>
+</main>
+</body>
+</html>

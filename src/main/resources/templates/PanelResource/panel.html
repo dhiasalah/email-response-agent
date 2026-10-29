@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Email agent: review panel</title>
+  <link rel="stylesheet" href="/panel.css">
+</head>
+<body>
+<header>
+  <h1>Review panel</h1>
+  <p class="muted">{dash.cards.size} cards · {dash.drafts.size} draft groups · {dash.escalations.size} escalations
+    · {dash.broadcasts.size} broadcasts</p>
+</header>
+{#if message}
+<p class="flash">{message}</p>
+{/if}
+
+<section>
+  <h2>Cards to answer</h2>
+  {#for card in dash.cards}
+  <article class="card">
+    <h3>{card.label}</h3>
+    <p class="question">{card.question}</p>
+    <p class="muted">Audience: {card.audience} · {card.members} question(s) · priority {card.priority}</p>
+    {#if card.proposedValue}
+    <p class="proposal">Proposed: <strong>{card.proposedValue}</strong> <span class="muted">({card.proposalSource})</span></p>
+    {/if}
+    <form method="post" action="/panel/cards/{card.id}/answer">
+      <input type="hidden" name="{inject:csrf.parameterName}" value="{inject:csrf.token}">
+      <input type="hidden" name="version" value="{card.version}">
+      <label>Answer <input name="value" required maxlength="2000" value="{card.proposedValue ?: ''}"></label>
+      {#if card.personal}
+      <input type="hidden" name="scope" value="THESE_EMAILS">
+      {#else}
+      <label>Remember for
+        <select name="scope">
+          <option value="THESE_EMAILS">these emails only</option>
+          <option value="CARD_AUDIENCE">everyone in {card.audience}</option>
+        </select>
+      </label>
+      {/if}
+      <button type="submit">Answer</button>
+    </form>
+  </article>
+  {#else}
+  <p class="muted">No card waiting.</p>
+  {/for}
+</section>
+
+<section>
+  <h2>Drafts to approve</h2>
+  {#for group in dash.drafts}
+  <article class="card">
+    <h3>{group.title}</h3>
+    {#if group.representative}
+    <p class="muted">Representative reply to {group.representative.sender} ({group.representative.language})</p>
+    <pre>{group.representative.body}</pre>
+    <p class="muted">Facts used: {group.representative.factsUsed}</p>
+    <div class="actions">
+      <form method="post" action="/panel/drafts/{group.representative.emailId}/send">
+        <input type="hidden" name="{inject:csrf.parameterName}" value="{inject:csrf.token}">
+        <button type="submit">Send this one</button>
+      </form>
+      <form method="post" action="/panel/drafts/{group.representative.emailId}/reject">
+        <input type="hidden" name="{inject:csrf.parameterName}" value="{inject:csrf.token}">
+        <button type="submit" class="secondary">Reject</button>
+      </form>
+      {#if group.cardId}
+      <form method="post" action="/panel/cards/{group.cardId}/approve-all">
+        <input type="hidden" name="{inject:csrf.parameterName}" value="{inject:csrf.token}">
+        <button type="submit">Approve all ({group.sendable}, outliers excluded)</button>
+      </form>
+      {/if}
+    </div>
+    {/if}
+    {#if group.others}
+    <ul class="compact">
+      {#for d in group.others}
+      <li>{d.sender} · {d.language} · {d.subject}
+        <form method="post" action="/panel/drafts/{d.emailId}/send" class="inline">
+          <input type="hidden" name="{inject:csrf.parameterName}" value="{inject:csrf.token}">
+          <button type="submit" class="small">Send</button>
+        </form>
+      </li>
+      {/for}
+    </ul>
+    {/if}
+    {#for d in group.outliers}
+    <div class="outlier">
+      <p><strong>Check on its own</strong> ({d.outliers}): reply to {d.sender}</p>
+      <pre>{d.body}</pre>
+      <form method="post" action="/panel/drafts/{d.emailId}/send" class="inline">
+        <input type="hidden" name="{inject:csrf.parameterName}" value="{inject:csrf.token}">
+        <button type="submit" class="small">Send</button>
+      </form>
+      <form method="post" action="/panel/drafts/{d.emailId}/reject" class="inline">
+        <input type="hidden" name="{inject:csrf.parameterName}" value="{inject:csrf.token}">
+        <button type="submit" class="small secondary">Reject</button>
+      </form>
+    </div>
+    {/for}
+  </article>
+  {#else}
+  <p class="muted">No draft waiting.</p>
+  {/for}
+</section>
+
+<section>
+  <h2>Escalations</h2>
+  {#for esc in dash.escalations}
+  <article class="card">
+    <h3>{esc.subject ?: '(no subject)'}</h3>
+    <p class="muted">From {esc.senderName ?: ''} &lt;{esc.sender}&gt; · reason: {esc.reason}</p>
+    <pre>{esc.excerpt}</pre>
+    <form method="post" action="/panel/escalations/{esc.emailId}/close">
+      <input type="hidden" name="{inject:csrf.parameterName}" value="{inject:csrf.token}">
+      <button type="submit" class="secondary">Handled: close</button>
+    </form>
+  </article>
+  {#else}
+  <p class="muted">No escalation.</p>
+  {/for}
+</section>
+
+<section>
+  <h2>Broadcast suggestions</h2>
+  {#for b in dash.broadcasts}
+  <article class="card">
+    <h3>{b.subject}</h3>
+    <p class="muted">To {b.recipient}</p>
+    <pre>{b.body}</pre>
+    <form method="post" action="/panel/broadcasts/{b.id}/approve">
+      <input type="hidden" name="{inject:csrf.parameterName}" value="{inject:csrf.token}">
+      <button type="submit">Approve and send to the list</button>
+    </form>
+  </article>
+  {#else}
+  <p class="muted">No suggestion.</p>
+  {/for}
+</section>
+
+<footer class="muted">
+  <form method="post" action="/panel/logout" class="inline">
+    <input type="hidden" name="{inject:csrf.parameterName}" value="{inject:csrf.token}">
+    <button type="submit" class="small secondary">Sign out</button>
+  </form>
+</footer>
+</body>
+</html>
