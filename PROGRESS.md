@@ -3,7 +3,7 @@
 > Overview. Details and session log: `progress/dhia.md`.
 
 ## Current position
-- **Dhia:** lesson 02 `OllamaLlmClient` next (01b in PR) · details: `progress/dhia.md`
+- **Dhia:** lesson 03 prompt injection 101 next · details: `progress/dhia.md`
 - **Repo:** https://github.com/dhiasalah/email-response-agent (private)
 - **Stack:** Java 21 · Quarkus 3 · Maven wrapper · PostgreSQL (Dev Services) · LangChain4j + Ollama (local, free)
 
@@ -13,8 +13,8 @@
 | 00 | Roadmap, setup, threat model | `lessons/shared/00-roadmap-setup-threat-model.md` | ✅ merged |
 | 00b | GitHub workflow: CI, CODEOWNERS, PR template, Dependabot | `lessons/shared/00b-github-collaboration.md` | ✅ merged, `build` required |
 | 01 | Data model (enums, schema, entities, append-only log) | `lessons/shared/01-data-model.md` | ✅ merged (#12) |
-| 01b | Contracts: `LlmClient`, strict parser, `FakeLlmClient` | `lessons/shared/01b-llm-contract.md` | 🔄 PR |
-| 02 | LlmClient (LangChain4j + Ollama, validate, retry, timeouts) | — | ⏳ |
+| 01b | Contracts: `LlmClient`, strict parser, `FakeLlmClient` | `lessons/shared/01b-llm-contract.md` | ✅ merged (#13) |
+| 02 | LlmClient (LangChain4j + Ollama, validate, retry, timeouts) | `lessons/dhia/02-ollama-client.md` | ✅ PR |
 | 03 | Prompt injection 101 + untrusted envelope | — | ⏳ |
 | 04 | Mock mailbox, pre-filter, sanitizer | — | ⏳ |
 | 05 | Orchestrator: state machine, idempotence, audit log | — | ⏳ |
@@ -35,7 +35,7 @@
 ## Milestones
 | Milestone | Needs | Result | Status |
 |---|---|---|---|
-| M0 Shared base | 00, 00b, 01, 01b | Repo, CI green, contracts on `main` | 🔄 01b in PR |
+| M0 Shared base | 00, 00b, 01, 01b | Repo, CI green, contracts on `main` | ✅ |
 | M1 Core loop (doc Phase 1) | 02–06, 10, 11 | Demo: email → triage → draft → review (drafts only) | ⏳ |
 | M2 Grouping (Phase 2) | 07, 08 | One card answers many emails | ⏳ |
 | M3 Memory (Phase 3) | 09, 12 | Scoped facts reused safely | ⏳ |
