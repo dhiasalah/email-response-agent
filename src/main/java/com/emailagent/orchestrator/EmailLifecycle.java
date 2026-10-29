@@ -43,6 +43,11 @@ public final class EmailLifecycle {
         return Set.copyOf(NEXT.get(from));
     }
 
+    /** Statuses that wait on someone outside the system (the sender, the owner): timers check them, they may stay. */
+    public static boolean isWaiting(EmailStatus status) {
+        return status == AWAITING_SENDER || status == AWAITING_INPUT;
+    }
+
     public static boolean isTerminal(EmailStatus status) {
         return NEXT.get(status).isEmpty();
     }

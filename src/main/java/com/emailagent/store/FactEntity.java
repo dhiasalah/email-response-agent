@@ -57,6 +57,9 @@ public class FactEntity extends PanacheEntityBase {
     /** The version this one replaced: the chain lets us find who received an outdated value. */
     public Long previousFactId;
 
+    /** When this value was announced to its whole cohort: a broadcast is not suggested twice (design doc §7.7). */
+    public Instant broadcastAt;
+
     public boolean active = true;
 
     @NotNull

@@ -7,5 +7,7 @@ public enum FilterReason {
     NO_REPLY_SENDER,
     OWN_ADDRESS,
     TOO_LARGE,
-    RATE_LIMITED
+    RATE_LIMITED,
+    /** The sender's answer to a clarification: its text was merged into the email it answers (design doc §6). */
+    MERGED_REPLY
 }

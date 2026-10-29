@@ -84,6 +84,9 @@ public class EmailEntity extends PanacheEntityBase {
     @Size(max = 500)
     public String injectionSignals;
 
+    /** The sender answered a clarification and the answer was merged into this email; triage must run again. */
+    public boolean senderReplied;
+
     @Version
     public long version;
 

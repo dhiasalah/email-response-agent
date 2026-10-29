@@ -193,7 +193,7 @@ public class WriterAgent implements AgentStep {
     }
 
     /** Dates in the reader's language ("18 juin 2027"); yes/no in the reader's language; anything else as stored. */
-    static String display(FieldType type, String value, Language lang) {
+    public static String display(FieldType type, String value, Language lang) {
         Locale locale = lang == Language.FR ? Locale.FRENCH : Locale.ENGLISH;
         if (type == FieldType.DATE) {
             LocalDate date = CardPriority.parseDate(value);

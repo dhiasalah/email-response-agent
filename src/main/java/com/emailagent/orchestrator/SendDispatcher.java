@@ -62,18 +62,15 @@ public class SendDispatcher implements AgentStep {
 
     @Override
     public StepResult run(EmailSnapshot email) {
-        Instant since = Instant.now().minus(Duration.ofDays(1));
         Loaded loaded = QuarkusTransaction.requiringNew().call(() -> {
             DraftEntity draft = DraftEntity.currentFor(email.id()).orElse(null);
             ReviewEntity review = ReviewEntity.latestFor(email.id()).orElse(null);
             boolean matches = draft != null && review != null && review.passed && review.draft.id.equals(draft.id);
             List<String> outliers = review == null || review.outlierReasons == null ? List.of()
                     : List.of(review.outlierReasons.split(","));
-            long toSender = OutboxEntity.count("kind = ?1 and lower(recipient) = ?2 and createdAt > ?3",
-                    OutboxKind.SEND, email.sender().toLowerCase(Locale.ROOT), since);
-            long total = OutboxEntity.count("kind = ?1 and createdAt > ?2", OutboxKind.SEND, since);
+            long[] sent = sentInLastDay(email.sender());
             return new Loaded(draft == null ? null : draft.id, review == null ? null : review.id, matches, outliers,
-                    toSender, total);
+                    sent[0], sent[1]);
         });
         if (!loaded.reviewMatches()) {
             // the draft changed after its review (or the review is missing): nothing unreviewed leaves
@@ -128,6 +125,34 @@ public class SendDispatcher implements AgentStep {
             reasons.add("rate_limit_daily");
         }
         return new Decision(reasons.isEmpty() ? OutboxKind.SEND : OutboxKind.DRAFT, List.copyOf(reasons));
+    }
+
+    /**
+     * A clarification or holding reply: template text, so no review, but the same mode and rate limits. Sent only
+     * when notices may be automatic and the global mode is auto.
+     */
+    public static OutboxKind noticeKind(Policy policy, boolean noticeAutoSend, long sentToSender, long sentTotal) {
+        boolean send = noticeAutoSend && policy.mode() == SendMode.AUTO && sentToSender < policy.perSenderPerDay()
+                && sentTotal < policy.perDay();
+        return send ? OutboxKind.SEND : OutboxKind.DRAFT;
+    }
+
+    /** Automatic sends in the last 24 hours: to this recipient, and in total. Call inside a transaction. */
+    static long[] sentInLastDay(String recipient) {
+        Instant since = Instant.now().minus(Duration.ofDays(1));
+        return new long[] {
+            OutboxEntity.count("kind = ?1 and lower(recipient) = ?2 and createdAt > ?3", OutboxKind.SEND,
+                    recipient.toLowerCase(Locale.ROOT), since),
+            OutboxEntity.count("kind = ?1 and createdAt > ?2", OutboxKind.SEND, since)
+        };
+    }
+
+    Policy policy() {
+        return policy;
+    }
+
+    String domain() {
+        return domain;
     }
 
     /** "Re: " + the original subject on one line: the sender wrote it, so no line break may reach the headers. */
