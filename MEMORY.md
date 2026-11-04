@@ -1,6 +1,6 @@
 # MEMORY.md
 
-Quick catch-up for Claude sessions (loaded automatically through `CLAUDE.md`). Read this first; open other files only when the task needs them.
+Quick catch-up for Claude sessions. Read this first; open other files only when the task needs them.
 
 ## What this is
 
