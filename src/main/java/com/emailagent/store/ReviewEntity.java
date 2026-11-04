@@ -1,7 +1,10 @@
 package com.emailagent.store;
 
+import com.emailagent.model.Author;
 import io.quarkus.hibernate.orm.panache.PanacheEntityBase;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -51,6 +54,10 @@ public class ReviewEntity extends PanacheEntityBase {
 
     @Size(max = 100)
     public String modelVersion;
+
+    /** REVIEWER, or OWNER: the owner approved a reply they wrote or edited themselves (V1701 checks it). */
+    @NotNull @Enumerated(EnumType.STRING)
+    public Author reviewedBy = Author.REVIEWER;
 
     @NotNull
     public Instant createdAt;

@@ -88,7 +88,9 @@ public class MetricsQueries {
         Instant since = Instant.now().minus(WINDOW);
         for (DecisionLogEntry d : DecisionLogEntry.<DecisionLogEntry>list(
                 "agent = 'owner' and fromStatus = ?1 and createdAt > ?2", EmailStatus.DRAFT_SAVED, since)) {
-            boolean accepted = d.toStatus == EmailStatus.SENT;
+            // design doc §12 counts "drafts sent without edits": an edited send is not an acceptance
+            boolean accepted = d.toStatus == EmailStatus.SENT
+                    && (d.output == null || !d.output.contains("\"edited\":true"));
             SlotEntity.<SlotEntity>list("email.id", d.emailId).stream().map(s -> s.type).distinct()
                     .forEach(t -> counts.computeIfAbsent(t, k -> new int[2])[accepted ? 0 : 1]++);
         }

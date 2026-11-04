@@ -20,6 +20,7 @@ import jakarta.ws.rs.core.NewCookie;
 import jakarta.ws.rs.core.Response;
 import java.net.URI;
 import java.util.Map;
+import java.util.Set;
 import org.jboss.resteasy.reactive.RestForm;
 
 /**
@@ -40,14 +41,25 @@ public class PanelResource {
             Map.entry("sent_all", "Replies of the card queued for sending (outliers excluded)."),
             Map.entry("rejected", "Draft rejected: the email is in your escalations."),
             Map.entry("closed", "Escalation closed."),
+            Map.entry("sent_edited", "Your reply is queued for sending."),
+            Map.entry("bad_reply", "The reply is empty or too long (6000 characters at most)."),
+            Map.entry("forgot", "Forgotten: the next sender who asks gets a card again."),
+            Map.entry("retried", "The writer will try again; the new draft comes back here for review."),
             Map.entry("broadcast", "Broadcast approved and queued for the cohort list."),
             Map.entry("nothing", "Nothing changed: it was already handled."));
 
+    /** Codes shown as a warning, not a confirmation: the action didn't go through. */
+    static final Set<String> ERRORS = Set.of("card_changed", "bad_value", "bad_reply");
+
     @CheckedTemplate
     static class Templates {
-        static native TemplateInstance panel(PanelQueries.Dashboard dash, String message);
+        static native TemplateInstance panel(PanelQueries.Dashboard dash, String message, boolean error);
 
         static native TemplateInstance metrics(MetricsQueries.Metrics m);
+
+        static native TemplateInstance memory(InsightQueries.Memory mem, String message);
+
+        static native TemplateInstance activity(InsightQueries.Activity act);
     }
 
     private final PanelQueries queries;
@@ -55,9 +67,11 @@ public class PanelResource {
     private final CardAnswers cardAnswers;
     private final OwnerActions actions;
     private final BroadcastRun broadcasts;
+    private final InsightQueries insights;
 
     public PanelResource(PanelQueries queries, MetricsQueries metrics, CardAnswers cardAnswers,
-            OwnerActions actions, BroadcastRun broadcasts) {
+            OwnerActions actions, BroadcastRun broadcasts, InsightQueries insights) {
+        this.insights = insights;
         this.queries = queries;
         this.metrics = metrics;
         this.cardAnswers = cardAnswers;
@@ -68,7 +82,7 @@ public class PanelResource {
     @GET
     @Produces(MediaType.TEXT_HTML)
     public TemplateInstance panel(@QueryParam("msg") String msg) {
-        return Templates.panel(queries.dashboard(), msg == null ? null : MESSAGES.get(msg));
+        return Templates.panel(queries.dashboard(), msg == null ? null : MESSAGES.get(msg), msg != null && ERRORS.contains(msg));
     }
 
     /** Design doc §12: the numbers behind any decision to enable auto-send for a slot type. */
@@ -77,6 +91,30 @@ public class PanelResource {
     @Produces(MediaType.TEXT_HTML)
     public TemplateInstance metrics() {
         return Templates.metrics(metrics.metrics());
+    }
+
+    /** Design doc §8.2 and §10: "What the agent knows", the facts it reuses without asking. */
+    @GET
+    @Path("memory")
+    @Produces(MediaType.TEXT_HTML)
+    public TemplateInstance memory(@QueryParam("msg") String msg) {
+        return Templates.memory(insights.memory(), msg == null ? null : MESSAGES.get(msg));
+    }
+
+    /** What the agents did recently, from the audit log, and what went to the mailbox. */
+    @GET
+    @Path("activity")
+    @Produces(MediaType.TEXT_HTML)
+    public TemplateInstance activity() {
+        return Templates.activity(insights.activity());
+    }
+
+    @POST
+    @Path("memory/facts/{id}/forget")
+    @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
+    public Response forget(@PathParam("id") long id) {
+        String code = actions.forgetFact(id) ? "forgot" : "nothing";
+        return Response.seeOther(URI.create("/panel/memory?msg=" + code)).build();
     }
 
     @POST
@@ -117,6 +155,38 @@ public class PanelResource {
     @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
     public Response reject(@PathParam("emailId") long emailId) {
         return back(actions.rejectDraft(emailId) ? "rejected" : "nothing");
+    }
+
+    /** The owner edits a saved draft and sends their version (design doc §7.6). */
+    @POST
+    @Path("drafts/{emailId}/edit-send")
+    @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
+    public Response editAndSend(@PathParam("emailId") long emailId, @RestForm String body) {
+        return ownerReply(emailId, body);
+    }
+
+    /** The owner answers an escalated email themselves, from scratch or from the stopped draft (design doc §6). */
+    @POST
+    @Path("escalations/{emailId}/reply")
+    @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
+    public Response replyToEscalation(@PathParam("emailId") long emailId, @RestForm String body) {
+        return ownerReply(emailId, body);
+    }
+
+    /** ESCALATED → READY: the writer tries again, only when every answer it needs is there. */
+    @POST
+    @Path("escalations/{emailId}/retry")
+    @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
+    public Response retry(@PathParam("emailId") long emailId) {
+        return back(actions.retryWriter(emailId) ? "retried" : "nothing");
+    }
+
+    private Response ownerReply(long emailId, String body) {
+        try {
+            return back(actions.sendOwnerReply(emailId, body) ? "sent_edited" : "nothing");
+        } catch (IllegalArgumentException e) {
+            return back("bad_reply");
+        }
     }
 
     @POST

@@ -1,8 +1,13 @@
 package com.emailagent.web;
 
+import com.emailagent.agents.CardPriority;
+import com.emailagent.orchestrator.OwnerActions;
+import java.time.LocalDate;
+
 import com.emailagent.agents.GroupingAgent;
 import com.emailagent.model.EmailStatus;
 import com.emailagent.model.NoticeKind;
+import com.emailagent.orchestrator.OwnerActions;
 import com.emailagent.store.DecisionLogEntry;
 import com.emailagent.store.DraftEntity;
 import com.emailagent.store.EmailEntity;
@@ -12,10 +17,12 @@ import com.emailagent.store.ReviewEntity;
 import com.emailagent.store.SlotEntity;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import jakarta.enterprise.context.ApplicationScoped;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.Function;
@@ -30,11 +37,51 @@ public class PanelQueries {
 
     static final int EXCERPT = 600;
 
-    public record CardView(long id, long version, String label, String question, String audience, boolean personal,
-            int members, String priority, String proposedValue, String proposalSource) {}
+    /** An email waiting on a card: who asked, and the question in their words (design doc §7.3). */
+    public record LinkedEmail(String sender, String senderName, String subject, String question) {
 
-    public record DraftView(long emailId, String sender, String subject, String body, String language,
-            String factsUsed, List<String> outliers) {
+        /** One letter for the avatar: the display name's, else the address's. */
+        public String initial() {
+            String from = senderName != null && !senderName.isBlank() ? senderName.strip() : sender;
+            return from == null || from.isEmpty() ? "?" : from.substring(0, from.offsetByCodePoints(0, 1));
+        }
+    }
+
+    public record CardView(long id, long version, String label, String question, String audience, boolean personal,
+            int members, String priority, String proposedValue, String proposalSource, String fieldType,
+            String isoProposal, List<LinkedEmail> emails) {
+
+        public boolean isDate() {
+            return "DATE".equals(fieldType);
+        }
+
+        public boolean isYesNo() {
+            return "YES_NO".equals(fieldType);
+        }
+
+        public boolean isLongText() {
+            return "TEXT".equals(fieldType);
+        }
+
+        /** For the badge next to the meter: the score is 0..1 (design doc §7.4). */
+        public String priorityLevel() {
+            double p = Double.parseDouble(priority);
+            return p >= 0.6 ? "high" : p >= 0.3 ? "medium" : "low";
+        }
+
+        /** The pre-checked yes/no button: the proposal's, if it is one. */
+        public boolean proposesYes() {
+            return proposedValue != null && proposedValue.strip().equalsIgnoreCase("yes");
+        }
+
+        public boolean proposesNo() {
+            return proposedValue != null && proposedValue.strip().equalsIgnoreCase("no");
+        }
+    }
+
+    /** {@code original}: the sender's email, shown beside the reply so the owner reads both at once. */
+    public record DraftView(long emailId, String sender, String senderName, String subject, String original,
+            String body, String language, String factsUsed, List<String> outliers, List<StepText.Step> history) {
 
         public boolean isOutlier() {
             return !outliers.isEmpty();
@@ -45,19 +92,40 @@ public class PanelQueries {
     public record DraftGroup(Long cardId, String title, DraftView representative, List<DraftView> others,
             List<DraftView> outliers) {
 
+        /** Every reply of the group, outliers included. */
+        public int total() {
+            return sendable() + outliers.size();
+        }
+
         /** What "approve all" sends: the representative and the others, never the outliers. */
         public int sendable() {
             return (representative == null ? 0 : 1) + others.size();
         }
     }
 
+    /**
+     * {@code draft}: the rejected or stopped reply, if there is one, for the owner to edit and send. {@code spoofed}:
+     * the display name uses look-alike letters, so the panel warns before the owner trusts the name.
+     */
     public record EscalationView(long emailId, String sender, String senderName, String subject, String excerpt,
-            String reason) {}
+            ReasonText.Reason reason, String draft, boolean canRetry, boolean spoofed, String language,
+            List<StepText.Step> history) {}
 
     public record BroadcastView(long id, String recipient, String subject, String body) {}
 
     public record Dashboard(List<CardView> cards, List<DraftGroup> drafts, List<EscalationView> escalations,
-            List<BroadcastView> broadcasts) {}
+            List<BroadcastView> broadcasts) {
+
+        /** Everything waiting on the owner, for the page's one-line summary. */
+        public int waiting() {
+            return cards.size() + draftCount() + escalations.size() + broadcasts.size();
+        }
+
+        /** Every saved draft, not groups: what the owner has to read. */
+        public int draftCount() {
+            return drafts.stream().mapToInt(g -> g.sendable() + g.outliers().size()).sum();
+        }
+    }
 
     public Dashboard dashboard() {
         return QuarkusTransaction.requiringNew().call(() -> new Dashboard(cards(), draftGroups(), escalations(),
@@ -74,8 +142,24 @@ public class PanelQueries {
         return InputRequestEntity.listQueue().stream().map(c -> new CardView(c.id, c.version,
                 GroupingAgent.label(c.slotType), c.question,
                 c.personal ? "this sender only" : c.scopeProgram + " " + c.scopeTrack + " " + c.scopeYear,
-                c.personal, c.memberCount, String.format("%.2f", c.priority), c.proposedValue, c.proposalSource))
+                c.personal, c.memberCount, String.format(Locale.ROOT, "%.2f", c.priority), c.proposedValue, c.proposalSource,
+                c.fieldType == null ? "TEXT" : c.fieldType.name(), isoDate(c.proposedValue), linkedEmails(c.id)))
                 .toList();
+    }
+
+    /** The emails still waiting on the card, oldest first: the owner sees whom the answer goes to. */
+    private static List<LinkedEmail> linkedEmails(long cardId) {
+        return SlotEntity.<SlotEntity>list("requestId = ?1 and email.status = ?2 order by email.receivedAt, id",
+                cardId, EmailStatus.AWAITING_INPUT).stream()
+                .map(s -> new LinkedEmail(s.email.sender, s.email.senderName, s.email.subject,
+                        s.question == null ? "" : excerpt(s.question)))
+                .toList();
+    }
+
+    /** "18 June 2027" → "2027-06-18" for the date picker; null when it isn't a date. */
+    static String isoDate(String value) {
+        LocalDate d = CardPriority.parseDate(value);
+        return d == null ? null : d.toString();
     }
 
     private static List<DraftGroup> draftGroups() {
@@ -114,8 +198,9 @@ public class PanelQueries {
             return null;
         }
         String outliers = ReviewEntity.latestFor(e.id).map(r -> r.outlierReasons).orElse(null);
-        return new DraftView(e.id, e.sender, e.subject, d.get().body, d.get().language.name(), d.get().factsUsed,
-                outliers == null ? List.of() : List.of(outliers.split(",")));
+        return new DraftView(e.id, e.sender, e.senderName, e.subject, excerpt(e.body), d.get().body,
+                d.get().language.name(), d.get().factsUsed, outliers == null ? List.of() : List.of(outliers.split(",")),
+                history(e.id));
     }
 
     static DraftGroup group(Long cardId, String title, List<DraftView> views) {
@@ -145,15 +230,24 @@ public class PanelQueries {
 
     private static List<EscalationView> escalations() {
         return EmailEntity.<EmailEntity>list("status = ?1 order by receivedAt, id", EmailStatus.ESCALATED).stream()
-                .map(e -> new EscalationView(e.id, e.sender, e.senderName, e.subject, excerpt(e.body), reason(e.id)))
+                .map(e -> new EscalationView(e.id, e.sender, e.senderName, e.subject, excerpt(e.body), reason(e.id),
+                        DraftEntity.currentFor(e.id).map(d -> d.body).orElse(null), OwnerActions.canRetry(e.id),
+                        e.injectionSignals != null && e.injectionSignals.contains("name_mixed_scripts"),
+                        e.language == null ? null : e.language.name(), history(e.id)))
                 .toList();
     }
 
-    /** Our own code from the audit row ("sensitive_keyword", "unsupported_link"): never the model's words. */
-    private static String reason(long emailId) {
+    /** The email's audit trail, oldest first, as sentences (design doc §5 decision log). */
+    static List<StepText.Step> history(long emailId) {
+        return DecisionLogEntry.<DecisionLogEntry>list("emailId = ?1 order by id", emailId).stream()
+                .map(StepText::of).toList();
+    }
+
+    /** Our own codes from the audit row ("sensitive_keyword", "unsupported_link") in words: never the model's. */
+    private static ReasonText.Reason reason(long emailId) {
         List<DecisionLogEntry> rows = DecisionLogEntry.list(
                 "emailId = ?1 and toStatus = ?2 order by id desc", emailId, EmailStatus.ESCALATED);
-        return rows.isEmpty() || rows.get(0).output == null ? "" : rows.get(0).agent + ": " + rows.get(0).output;
+        return rows.isEmpty() ? ReasonText.of(null, null) : ReasonText.of(rows.get(0).agent, rows.get(0).output);
     }
 
     private static List<BroadcastView> broadcasts() {

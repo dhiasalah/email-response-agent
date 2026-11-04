@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Activity · Email agent</title>
+  <link rel="stylesheet" href="/panel.css">
+</head>
+<body>
+<div class="shell">
+{#include sidebar current='activity' /}
+<main class="main">
+<div class="page">
+
+  <header class="page-head">
+    <div>
+      <div class="eyebrow">Insight</div>
+      <h1>Activity</h1>
+      <p>What the agents and you did, newest first, straight from the audit log. Nothing here can be edited, by anyone.</p>
+    </div>
+  </header>
+
+  <div class="tiles">
+    <div class="tile"><span class="tile-top">Sent, last 24 h</span><b>{act.sentToday}</b><small>replies that left the system</small></div>
+    <div class="tile{#if act.escalatedToday > 0} alert{/if}"><span class="tile-top">Escalated, last 24 h</span><b>{act.escalatedToday}</b><small>handed to you</small></div>
+    <div class="tile"><span class="tile-top">Steps shown</span><b>{act.rows.size}</b><small>latest audit rows</small></div>
+    <div class="tile"><span class="tile-top">Mailbox</span><b>{act.outbox.size}</b><small>latest outgoing messages</small></div>
+  </div>
+
+  <div class="split">
+    <section class="queue">
+      <div class="queue-head">
+        <span class="queue-icon"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12h4l3-8 4 16 3-8h4"/></svg></span>
+        <div><h2>Timeline</h2><p>Every step of every email.</p></div>
+      </div>
+      {#if act.rows}
+      <div class="panel-box">
+        <ol class="timeline wide">
+          {#for r in act.rows}
+          <li class="t-{r.step.tone}">
+            <div class="t-line"><strong>{r.step.actor}</strong> {r.step.text}</div>
+            <div class="t-meta">{r.step.when}{#if r.subject} · {r.subject}{/if}{#if r.sender} · {r.sender}{/if}</div>
+          </li>
+          {/for}
+        </ol>
+      </div>
+      {#else}
+      <div class="empty">Nothing has happened yet.</div>
+      {/if}
+    </section>
+
+    <section class="queue">
+      <div class="queue-head">
+        <span class="queue-icon ok"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4 20-7z"/></svg></span>
+        <div><h2>Outgoing</h2><p>Replies and notices handed to the mailbox.</p></div>
+      </div>
+      {#if act.outbox}
+      <div class="panel-box">
+        <ul class="outgoing">
+          {#for o in act.outbox}
+          <li>
+            <div class="row">
+              {#if o.isSend}<span class="pill ok">Sent</span>{#else}<span class="pill">Draft in mailbox</span>{/if}
+              {#if !o.delivered}<span class="pill warn">Pending</span>{/if}
+              <span class="muted grow">{o.when}</span>
+            </div>
+            <div class="o-subject">{o.subject}</div>
+            <div class="muted">To {o.recipient}</div>
+          </li>
+          {/for}
+        </ul>
+      </div>
+      {#else}
+      <div class="empty">Nothing sent yet.</div>
+      {/if}
+    </section>
+  </div>
+
+</div>
+</main>
+</div>
+</body>
+</html>

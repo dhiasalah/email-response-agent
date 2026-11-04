@@ -112,7 +112,7 @@ public final class CardPriority {
         return URGENT_WORDS.stream().anyMatch(folded::contains);
     }
 
-    static LocalDate parseDate(String value) {
+    public static LocalDate parseDate(String value) {
         if (value == null || value.isBlank()) {
             return null;
         }

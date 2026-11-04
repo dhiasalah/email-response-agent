@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Memory · Email agent</title>
+  <link rel="stylesheet" href="/panel.css">
+</head>
+<body>
+<div class="shell">
+{#include sidebar current='memory' /}
+<main class="main">
+<div class="page">
+
+  <header class="page-head">
+    <div>
+      <div class="eyebrow">Insight</div>
+      <h1>What the agent knows</h1>
+      <p>Answers you chose to remember. Each one answers later senders in exactly the same scope without asking you, until it expires or you forget it.</p>
+    </div>
+  </header>
+
+  {#if message}
+  <p class="flash" role="status"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m8.5 12 2.5 2.5 5-5"/></svg>
+    <span>{message}</span></p>
+  {/if}
+
+  <div class="tiles">
+    <div class="tile{#if mem.active.size > 0} hot{/if}"><span class="tile-top">Remembered</span><b>{mem.active.size}</b><small>answers in use</small></div>
+    <div class="tile"><span class="tile-top">Reused</span><b>{mem.totalUses}</b><small>emails answered from memory</small></div>
+    <div class="tile{#if mem.expiredCount > 0} alert{/if}"><span class="tile-top">Expired</span><b>{mem.expiredCount}</b><small>past their date, not used</small></div>
+    <div class="tile"><span class="tile-top">Recent answers</span><b>{mem.recent.size}</b><small>from your replies, last 7 days</small></div>
+  </div>
+
+  <section class="queue">
+    <div class="queue-head">
+      <span class="queue-icon"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5"/><path d="M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/></svg></span>
+      <div><h2>Remembered answers</h2><p>Scope is matched exactly: an answer for M2 IA never reaches an M1 student.</p></div>
+      <span class="count{#if mem.active.size > 0} hot{/if}">{mem.active.size}</span>
+    </div>
+    {#for f in mem.active}
+    <article class="item{#if f.expired} k-owner{/if}">
+      <div class="item-body">
+        <div class="item-meta">
+          <span class="pill accent">{f.label}</span>
+          <span class="pill"><svg class="i sm" viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7"/><path d="M18 14.5a6.5 6.5 0 0 1 3.5 5.5"/></svg> {f.scope}</span>
+          {#if f.expired}<span class="pill warn">Expired</span>{#else}<span class="pill ok">In use</span>{/if}
+          {#if f.version > 1}<span class="pill">Version {f.version}</span>{/if}
+          {#if f.broadcast}<span class="pill policy">Announced to the cohort</span>{/if}
+        </div>
+        <div class="fact">
+          <span class="fact-key">{f.entity}{#if f.qualifier} · {f.qualifier}{/if}</span>
+          <span class="fact-value">{f.value}</span>
+        </div>
+        <dl class="facts-grid">
+          <div><dt>Reused</dt><dd>{f.uses} {#if f.uses == 1}email{#else}emails{/if}</dd></div>
+          <div><dt>Valid until</dt><dd>{f.validUntil ?: 'no end date'}</dd></div>
+          <div><dt>Added</dt><dd>{f.created}</dd></div>
+          <div><dt>Source</dt><dd><code>{f.source}</code></dd></div>
+        </dl>
+      </div>
+      <div class="item-foot">
+        <span class="hint grow">Forgetting stops it at once; the next sender who asks gets a card again.</span>
+        <form method="post" action="/panel/memory/facts/{f.id}/forget">
+          <input type="hidden" name="{inject:csrf.parameterName}" value="{inject:csrf.token}">
+          <button type="submit" class="danger-ghost"><svg class="i sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M6 6l1 14h10l1-14"/></svg> Forget</button>
+        </form>
+      </div>
+    </article>
+    {#else}
+    <div class="empty"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+      Nothing remembered yet. When you answer a card, choose “Everyone in …” to keep the answer for later senders.</div>
+    {/for}
+
+    {#if mem.past}
+    <details>
+      <summary>Forgotten or replaced ({mem.past.size})</summary>
+      <div class="panel-box inside"><div class="table-wrap"><table>
+        <tr><th>Question</th><th>Scope</th><th>Value</th><th class="num">Version</th><th class="num">Reused</th></tr>
+        {#for f in mem.past}
+        <tr><td>{f.label}: {f.entity}</td><td>{f.scope}</td><td>{f.value}</td><td class="num">{f.version}</td><td class="num">{f.uses}</td></tr>
+        {/for}
+      </table></div></div>
+    </details>
+    {/if}
+  </section>
+
+  <section class="queue">
+    <div class="queue-head">
+      <span class="queue-icon policy"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 4v5h-5"/><path d="M12 7v5l3 2"/></svg></span>
+      <div><h2>Learned from your recent replies</h2><p>Answers you wrote by hand in the last 7 days. One answer is proposed to you; the same answer twice can fill the slot.</p></div>
+      <span class="count">{mem.recent.size}</span>
+    </div>
+    {#if mem.recent}
+    <div class="panel-box"><div class="table-wrap"><table>
+      <tr><th>Question</th><th>Scope</th><th>Your answer</th><th>Answered</th></tr>
+      {#for r in mem.recent}
+      <tr><td>{r.label}: {r.entity}</td><td>{r.scope}</td><td><strong>{r.value}</strong></td><td class="muted">{r.answered}</td></tr>
+      {/for}
+    </table></div></div>
+    {#else}
+    <div class="empty"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+      No answer learned from your replies this week.</div>
+    {/if}
+  </section>
+
+</div>
+</main>
+</div>
+</body>
+</html>

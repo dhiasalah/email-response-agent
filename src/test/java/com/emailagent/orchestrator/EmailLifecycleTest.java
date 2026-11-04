@@ -12,10 +12,12 @@ import org.junit.jupiter.api.Test;
 class EmailLifecycleTest {
 
     @Test
-    void nothingReachesSentWithoutTheReviewer() {
+    void nothingReachesSentWithoutAReview() {
+        // REVIEWED and DRAFT_SAVED: after the reviewer; ESCALATED: the owner's own reply, with an owner review
+        // (the outbox guard requires a passed review either way, V1101 and V1701)
         for (EmailStatus from : EmailStatus.values()) {
             if (EmailLifecycle.allowed(from, SENT)) {
-                assertThat(from).isIn(REVIEWED, DRAFT_SAVED);
+                assertThat(from).isIn(REVIEWED, DRAFT_SAVED, ESCALATED);
             }
         }
         assertThat(EmailLifecycle.allowed(NEW, SENT)).isFalse();
