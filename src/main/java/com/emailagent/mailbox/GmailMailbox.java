@@ -107,7 +107,27 @@ public class GmailMailbox implements Mailbox {
         api.createDraft(draftRaw(message, owner), threadId);
     }
 
+    /**
+     * Deletes the agent's draft with this Message-ID, after the owner rejected it. Each draft found is checked first:
+     * same Message-ID and our marker header, so a draft the owner wrote is never touched, whatever the search returns.
+     */
+    @Override
+    public void discardDraft(String messageId) {
+        for (String draftId : api.draftIdsWithMessageId(messageId, 5)) {
+            if (isOurDraft(api.draftHeaders(draftId), messageId)) {
+                api.deleteDraft(draftId);
+            }
+        }
+    }
+
     // --- conversions, pure functions (tested without network) ---
+
+    /** A Gmail draft resource the agent created under this Message-ID. */
+    static boolean isOurDraft(JsonNode draft, String messageId) {
+        Map<String, String> h = headers(draft.path("message"));
+        return messageId != null && messageId.equals(h.get("message-id"))
+                && h.containsKey(MARKER.toLowerCase(Locale.ROOT));
+    }
 
     static IncomingEmail toIncoming(JsonNode msg) {
         Map<String, String> h = headers(msg);

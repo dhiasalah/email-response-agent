@@ -1,6 +1,7 @@
 package com.emailagent.mailbox;
 
 import com.emailagent.config.AppConfig;
+import com.emailagent.model.OutboxKind;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.quarkus.arc.properties.UnlessBuildProperty;
@@ -45,6 +46,12 @@ public class MockMailbox implements Mailbox {
     @Override
     public void deliver(OutgoingMessage message) {
         delivered.putIfAbsent(message.messageId(), message);
+    }
+
+    /** Only a draft goes: a sent reply can't be taken back, here as in a real mailbox. */
+    @Override
+    public void discardDraft(String messageId) {
+        delivered.computeIfPresent(messageId, (id, m) -> m.kind() == OutboxKind.DRAFT ? null : m);
     }
 
     /** What reached the mailbox (tests, demo). Kept apart from the Sent fixture: the curator never learns from it. */

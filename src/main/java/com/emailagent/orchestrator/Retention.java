@@ -88,7 +88,7 @@ public class Retention {
     /** One email, in the caller's transaction: dependents deleted, the email row reduced to a tombstone. */
     private void erase(long id, String reason) {
         em.createNativeQuery("SET LOCAL emailagent.retention = 'on'").executeUpdate();
-        for (String table : List.of("outbox", "notice", "reply_review", "reply_draft", "slot")) {
+        for (String table : List.of("mailbox_discard", "outbox", "notice", "reply_review", "reply_draft", "slot")) {
             em.createNativeQuery("DELETE FROM " + table + " WHERE email_id = ?1").setParameter(1, id).executeUpdate();
         }
         EmailEntity e = EmailEntity.findById(id);

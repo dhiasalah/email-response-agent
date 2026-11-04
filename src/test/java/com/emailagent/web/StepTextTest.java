@@ -40,6 +40,8 @@ class StepTextTest {
                 .isEqualTo("Joined a card waiting on the same answer");
         assertThat(StepText.of("outbox", null, null, "{\"delivered\":\"draft\"}", null).text())
                 .isEqualTo("Saved in your mailbox drafts");
+        assertThat(StepText.of("outbox", null, null, "{\"discarded\":\"draft\"}", null).text())
+                .isEqualTo("Rejected draft removed from your mailbox");
         assertThat(StepText.of("new_agent", null, null, "{}", null).actor()).isEqualTo("new agent");
     }
 }

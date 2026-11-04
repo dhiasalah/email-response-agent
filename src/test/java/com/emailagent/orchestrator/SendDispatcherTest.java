@@ -16,6 +16,7 @@ import com.emailagent.model.SlotType;
 import com.emailagent.store.DecisionLogEntry;
 import com.emailagent.store.DraftEntity;
 import com.emailagent.store.EmailEntity;
+import com.emailagent.store.MailboxDiscardEntity;
 import com.emailagent.store.OutboxEntity;
 import com.emailagent.store.ReviewEntity;
 import com.emailagent.store.SlotEntity;
@@ -44,6 +45,8 @@ class SendDispatcherTest {
     @Inject OutboxRelay relay;
     @Inject MockMailbox mailbox;
     @Inject EntityManager em;
+    @Inject OwnerActions owner;
+    @Inject Retention retention;
 
     @Test
     void theDefaultConfigurationSavesADraftAndTheRelayDeliversItOnce() {
@@ -186,6 +189,84 @@ class SendDispatcherTest {
         assertThatThrownBy(() -> sql("INSERT INTO reply_review (email_id, draft_id, passed, rule_failures,"
                 + " created_at) SELECT email_id, id, true, 'blocked_topic', now() FROM reply_draft WHERE email_id = "
                 + id)).hasStackTraceContaining("reply_review");
+    }
+
+    @Test
+    void theOwnersRejectRemovesTheSavedDraftFromTheMailbox() {
+        String address = sender();
+        long id = reviewed(address, "Exam", true, null, SlotType.EXAM_DATE);
+        orchestrator.runStep(configured, id);
+        relay.deliverPending();
+        String messageId = outbox(id).messageId;
+        assertThat(delivered(messageId)).hasSize(1); // draft mode: the reply waits in the mailbox's drafts
+
+        assertThat(owner.rejectDraft(id)).isTrue();
+        assertThat(owner.rejectDraft(id)).isFalse(); // a second click changes nothing
+        relay.discardRejected();
+        relay.discardRejected(); // a second run (restart, next tick) does nothing again
+
+        assertThat(status(id)).isEqualTo(EmailStatus.ESCALATED);
+        assertThat(delivered(messageId)).isEmpty(); // the rejected text can't be sent from the mailbox any more
+        QuarkusTransaction.requiringNew().run(() -> {
+            assertThat(MailboxDiscardEntity.<MailboxDiscardEntity>list("email.id", id)).singleElement()
+                    .satisfies(d -> assertThat(d.doneAt).isNotNull());
+            assertThat(DecisionLogEntry.count("emailId = ?1 and agent = 'outbox' and output like ?2", id,
+                    "%discarded%")).isEqualTo(1);
+        });
+        // erasure still removes everything about the email, the discard included
+        assertThat(retention.eraseSender(address)).isEqualTo(1);
+        assertThat(QuarkusTransaction.requiringNew().call(() -> MailboxDiscardEntity.count("email.id", id)))
+                .isZero();
+    }
+
+    @Test
+    void aDraftRejectedBeforeItReachedTheMailboxIsRemovedOnceItArrives() {
+        long id = reviewed(sender(), "Exam", true, null, SlotType.EXAM_DATE);
+        orchestrator.runStep(configured, id);
+        String messageId = outbox(id).messageId;
+
+        assertThat(owner.rejectDraft(id)).isTrue(); // before the relay ran: the draft isn't in the mailbox yet
+        relay.discardRejected();
+        assertThat(QuarkusTransaction.requiringNew().call(() -> MailboxDiscardEntity.count(
+                "email.id = ?1 and doneAt is null", id))).isEqualTo(1); // waits for the draft, or it would come back
+
+        relay.deliverPending();
+        relay.discardRejected();
+        assertThat(delivered(messageId)).isEmpty();
+    }
+
+    @Test
+    void aSentReplyIsNeverDiscarded() {
+        OutgoingMessage sent = new OutgoingMessage(OutboxKind.SEND, sender(), "Re: Exam", "Hello", "<in@test>",
+                "<sent-" + UUID.randomUUID() + "@test>");
+        mailbox.deliver(sent);
+
+        mailbox.discardDraft(sent.messageId());
+
+        assertThat(delivered(sent.messageId())).containsExactly(sent);
+    }
+
+    @Test
+    void theDatabaseRefusesAnyOtherDiscard() {
+        long sent = reviewed(sender(), "Exam", true, null, SlotType.EXAM_DATE);
+        orchestrator.runStep(new SendDispatcher(AUTO, "prof.martin@univ.example"), sent);
+        long sentOutbox = outbox(sent).id;
+        long saved = reviewed(sender(), "Exam", true, null, SlotType.EXAM_DATE);
+        orchestrator.runStep(configured, saved);
+        long savedOutbox = outbox(saved).id;
+        owner.rejectDraft(saved);
+        long discardId = QuarkusTransaction.requiringNew().call(() ->
+                MailboxDiscardEntity.<MailboxDiscardEntity>find("email.id", saved).firstResult().id);
+
+        // a sent reply, another email's draft, a change after the fact, a delete
+        assertThatThrownBy(() -> sql("INSERT INTO mailbox_discard (email_id, outbox_id, created_at) VALUES (" + sent
+                + ", " + sentOutbox + ", now())")).hasStackTraceContaining("only a saved reply draft");
+        assertThatThrownBy(() -> sql("INSERT INTO mailbox_discard (email_id, outbox_id, created_at) VALUES (" + sent
+                + ", " + savedOutbox + ", now())")).hasStackTraceContaining("only a saved reply draft");
+        assertThatThrownBy(() -> sql("UPDATE mailbox_discard SET outbox_id = " + sentOutbox + " WHERE id = "
+                + discardId)).hasStackTraceContaining("cannot be changed");
+        assertThatThrownBy(() -> sql("DELETE FROM mailbox_discard WHERE id = " + discardId))
+                .hasStackTraceContaining("cannot be changed");
     }
 
     // --- helpers ---
