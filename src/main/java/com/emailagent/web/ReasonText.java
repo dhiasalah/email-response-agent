@@ -15,7 +15,19 @@ import java.util.Map;
 public final class ReasonText {
 
     /** {@code kind} picks the badge colour: security, policy, review, owner or error. */
-    public record Reason(String title, List<String> details, String kind) {}
+    public record Reason(String title, List<String> details, String kind) {
+
+        /** The short tag on the escalation: what kind of stop this is. */
+        public String label() {
+            return switch (kind) {
+                case "security" -> "Security";
+                case "review" -> "Reviewer";
+                case "policy" -> "Needs you";
+                case "owner" -> "Rejected by you";
+                default -> "System";
+            };
+        }
+    }
 
     private static final ObjectMapper JSON = new ObjectMapper();
 

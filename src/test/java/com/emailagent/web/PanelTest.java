@@ -300,7 +300,7 @@ class PanelTest {
     // --- data helpers ---
 
     static PanelQueries.DraftView draft(long id, String lang, int length, List<String> outliers) {
-        return new PanelQueries.DraftView(id, "s" + id, "subj", "x".repeat(length), lang, "", outliers);
+        return new PanelQueries.DraftView(id, "s" + id, null, "subj", "q", "x".repeat(length), lang, "", outliers);
     }
 
     long escalated(String subject, String body, String name) {

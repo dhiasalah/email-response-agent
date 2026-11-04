@@ -22,6 +22,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.Function;
@@ -37,7 +38,14 @@ public class PanelQueries {
     static final int EXCERPT = 600;
 
     /** An email waiting on a card: who asked, and the question in their words (design doc §7.3). */
-    public record LinkedEmail(String sender, String senderName, String subject, String question) {}
+    public record LinkedEmail(String sender, String senderName, String subject, String question) {
+
+        /** One letter for the avatar: the display name's, else the address's. */
+        public String initial() {
+            String from = senderName != null && !senderName.isBlank() ? senderName.strip() : sender;
+            return from == null || from.isEmpty() ? "?" : from.substring(0, from.offsetByCodePoints(0, 1));
+        }
+    }
 
     public record CardView(long id, long version, String label, String question, String audience, boolean personal,
             int members, String priority, String proposedValue, String proposalSource, String fieldType,
@@ -55,6 +63,12 @@ public class PanelQueries {
             return "TEXT".equals(fieldType);
         }
 
+        /** For the badge next to the meter: the score is 0..1 (design doc §7.4). */
+        public String priorityLevel() {
+            double p = Double.parseDouble(priority);
+            return p >= 0.6 ? "high" : p >= 0.3 ? "medium" : "low";
+        }
+
         /** The pre-checked yes/no button: the proposal's, if it is one. */
         public boolean proposesYes() {
             return proposedValue != null && proposedValue.strip().equalsIgnoreCase("yes");
@@ -65,8 +79,9 @@ public class PanelQueries {
         }
     }
 
-    public record DraftView(long emailId, String sender, String subject, String body, String language,
-            String factsUsed, List<String> outliers) {
+    /** {@code original}: the sender's email, shown beside the reply so the owner reads both at once. */
+    public record DraftView(long emailId, String sender, String senderName, String subject, String original,
+            String body, String language, String factsUsed, List<String> outliers) {
 
         public boolean isOutlier() {
             return !outliers.isEmpty();
@@ -76,6 +91,11 @@ public class PanelQueries {
     /** One card's drafts: the representative in full, the others compactly, outliers apart (design doc §7.6). */
     public record DraftGroup(Long cardId, String title, DraftView representative, List<DraftView> others,
             List<DraftView> outliers) {
+
+        /** Every reply of the group, outliers included. */
+        public int total() {
+            return sendable() + outliers.size();
+        }
 
         /** What "approve all" sends: the representative and the others, never the outliers. */
         public int sendable() {
@@ -94,6 +114,11 @@ public class PanelQueries {
 
     public record Dashboard(List<CardView> cards, List<DraftGroup> drafts, List<EscalationView> escalations,
             List<BroadcastView> broadcasts) {
+
+        /** Everything waiting on the owner, for the page's one-line summary. */
+        public int waiting() {
+            return cards.size() + draftCount() + escalations.size() + broadcasts.size();
+        }
 
         /** Every saved draft, not groups: what the owner has to read. */
         public int draftCount() {
@@ -116,7 +141,7 @@ public class PanelQueries {
         return InputRequestEntity.listQueue().stream().map(c -> new CardView(c.id, c.version,
                 GroupingAgent.label(c.slotType), c.question,
                 c.personal ? "this sender only" : c.scopeProgram + " " + c.scopeTrack + " " + c.scopeYear,
-                c.personal, c.memberCount, String.format("%.2f", c.priority), c.proposedValue, c.proposalSource,
+                c.personal, c.memberCount, String.format(Locale.ROOT, "%.2f", c.priority), c.proposedValue, c.proposalSource,
                 c.fieldType == null ? "TEXT" : c.fieldType.name(), isoDate(c.proposedValue), linkedEmails(c.id)))
                 .toList();
     }
@@ -172,8 +197,8 @@ public class PanelQueries {
             return null;
         }
         String outliers = ReviewEntity.latestFor(e.id).map(r -> r.outlierReasons).orElse(null);
-        return new DraftView(e.id, e.sender, e.subject, d.get().body, d.get().language.name(), d.get().factsUsed,
-                outliers == null ? List.of() : List.of(outliers.split(",")));
+        return new DraftView(e.id, e.sender, e.senderName, e.subject, excerpt(e.body), d.get().body,
+                d.get().language.name(), d.get().factsUsed, outliers == null ? List.of() : List.of(outliers.split(",")));
     }
 
     static DraftGroup group(Long cardId, String title, List<DraftView> views) {
@@ -206,7 +231,7 @@ public class PanelQueries {
                 .map(e -> new EscalationView(e.id, e.sender, e.senderName, e.subject, excerpt(e.body), reason(e.id),
                         DraftEntity.currentFor(e.id).map(d -> d.body).orElse(null), OwnerActions.canRetry(e.id),
                         e.injectionSignals != null && e.injectionSignals.contains("name_mixed_scripts"),
-                        e.language == null ? "EN" : e.language.name()))
+                        e.language == null ? null : e.language.name()))
                 .toList();
     }
 

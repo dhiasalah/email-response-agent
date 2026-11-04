@@ -3,72 +3,119 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Email agent: metrics</title>
+  <title>Metrics · Email agent</title>
   <link rel="stylesheet" href="/panel.css">
 </head>
 <body>
-<header>
-  <h1>Metrics</h1>
-  <p class="muted"><a href="/panel">Back to the review panel</a> · computed from the audit log and the shared state</p>
-</header>
+<div class="shell">
 
-<section>
-  <h2>Auto-send readiness per slot type</h2>
-  <p class="muted">Owner decisions on saved drafts over the last 4 weeks. Target (design doc §12): acceptance above 90%.
-    A ready type is only a suggestion: auto-send stays off until you list it in auto-send-types.</p>
-  <table>
-    <tr><th>Slot type</th><th>Sent as drafted</th><th>Rejected</th><th>Acceptance</th><th>Status</th></tr>
-    {#for r in m.readiness}
-    <tr><td>{r.type}</td><td>{r.accepted}</td><td>{r.rejected}</td><td>{r.rate}</td>
-      <td>{#if r.ready}<strong>ready</strong>{#else}not yet{/if}: {r.why}</td></tr>
-    {/for}
-  </table>
-</section>
+<aside class="sidebar">
+  <a class="brand" href="/panel">
+    <span class="brand-mark"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg></span>
+    <span class="brand-text"><strong>Email agent</strong><span>Owner review</span></span>
+  </a>
+  <nav class="nav" aria-label="Pages">
+    <div class="nav-label">Queue</div>
+    <a href="/panel#cards"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6v.6"/><path d="M12 17h.01"/></svg> <span class="label-text">Cards</span></a>
+    <a href="/panel#drafts"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16v4z"/><path d="m13.5 6.5 4 4"/></svg> <span class="label-text">Drafts</span></a>
+    <a href="/panel#escalations"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M10.3 3.9 2.4 18a2 2 0 0 0 1.7 3h15.8a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg> <span class="label-text">Escalations</span></a>
+    <a href="/panel#broadcasts"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11v3a1 1 0 0 0 1 1h2l5 4V6L6 10H4a1 1 0 0 0-1 1z"/><path d="M15 8a5 5 0 0 1 0 8"/><path d="M18 5a9 9 0 0 1 0 14"/></svg> <span class="label-text">Broadcasts</span></a>
+    <div class="nav-label">Insight</div>
+    <a href="/panel/metrics" class="current" aria-current="page"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V10"/><path d="M10 20V4"/><path d="M16 20v-7"/><path d="M22 20H2"/></svg> <span class="label-text">Metrics</span></a>
+  </nav>
+  <div class="sidebar-foot"><span class="who">Computed from the audit log</span></div>
+</aside>
 
-<section>
-  <h2>Memory reuse</h2>
-  <p>Slots answered without asking you: <strong>{m.memoryReuse}</strong></p>
-  <table>
-    <tr><th>Filled from</th><th>Slots</th></tr>
-    {#for e in m.filledFrom}
-    <tr><td>{e.key}</td><td>{e.value}</td></tr>
-    {/for}
-  </table>
-</section>
+<main class="main">
+<div class="page">
 
-<section>
-  <h2>Reviewer</h2>
-  <p>{m.reviewsPassed} passed · {m.reviewsFailed} failed</p>
-  <table>
-    <tr><th>Code rule that failed</th><th>Count</th></tr>
-    {#for e in m.ruleFailures}
-    <tr><td>{e.key}</td><td>{e.value}</td></tr>
-    {/for}
-    <tr><th>Model issue</th><th>Count</th></tr>
-    {#for e in m.modelIssues}
-    <tr><td>{e.key}</td><td>{e.value}</td></tr>
-    {/for}
-  </table>
-</section>
+  <header class="page-head">
+    <div>
+      <div class="eyebrow">Insight</div>
+      <h1>Metrics</h1>
+      <p>How the agents are doing, from the audit log and the shared state. Read-only: nothing here changes a setting.</p>
+    </div>
+  </header>
 
-<section>
-  <h2>Escalations by reason</h2>
-  <table>
-    <tr><th>Step: reason</th><th>Count</th></tr>
-    {#for e in m.escalations}
-    <tr><td>{e.key}</td><td>{e.value}</td></tr>
-    {/for}
-  </table>
-</section>
+  <div class="tiles">
+    <div class="tile"><span class="tile-top">Memory reuse</span><b>{m.memoryReuse}</b><small>slots answered without asking you</small></div>
+    <div class="tile"><span class="tile-top">Reviews passed</span><b>{m.reviewsPassed}</b><small>drafts the reviewer let through</small></div>
+    <div class="tile{#if m.reviewsFailed > 0} alert{/if}"><span class="tile-top">Reviews failed</span><b>{m.reviewsFailed}</b><small>drafts stopped and escalated</small></div>
+    <div class="tile"><span class="tile-top">Escalation reasons</span><b>{m.escalations.size}</b><small>distinct reasons seen</small></div>
+  </div>
 
-<section>
-  <h2>Emails by status</h2>
-  <table>
-    <tr><th>Status</th><th>Emails</th></tr>
-    {#for e in m.byStatus}
-    <tr><td>{e.key}</td><td>{e.value}</td></tr>
-    {/for}
-  </table>
-</section>
+  <section class="queue">
+    <div class="queue-head">
+      <span class="queue-icon ok"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4 20-7z"/></svg></span>
+      <div><h2>Auto-send readiness per slot type</h2>
+        <p>Owner decisions on saved drafts over the last 4 weeks. Target (design doc §12): acceptance above 90%, edits count as not accepted.</p></div>
+    </div>
+    <div class="panel-box"><div class="table-wrap">
+      <table>
+        <tr><th>Slot type</th><th class="num">Sent as drafted</th><th class="num">Edited or rejected</th><th class="num">Acceptance</th><th>Status</th></tr>
+        {#for r in m.readiness}
+        <tr><td><code>{r.type}</code></td><td class="num">{r.accepted}</td><td class="num">{r.rejected}</td><td class="num">{r.rate}</td>
+          <td>{#if r.ready}<span class="pill ok">Ready</span>{#else}<span class="pill">Not yet</span>{/if} <span class="muted">{r.why}</span></td></tr>
+        {/for}
+      </table>
+    </div></div>
+    <p class="muted">A ready type is only a suggestion: auto-send stays off until you list it in auto-send-types.</p>
+  </section>
+
+  <div class="grid-2">
+    <section class="queue">
+      <div class="queue-head">
+        <span class="queue-icon"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5"/><path d="M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/></svg></span>
+        <div><h2>Memory reuse</h2><p>Where filled slots came from.</p></div>
+      </div>
+      <div class="panel-box"><div class="table-wrap"><table>
+        <tr><th>Filled from</th><th class="num">Slots</th></tr>
+        {#for e in m.filledFrom}<tr><td>{e.key}</td><td class="num">{e.value}</td></tr>{#else}<tr><td colspan="2" class="muted">No filled slot yet.</td></tr>{/for}
+      </table></div></div>
+    </section>
+
+    <section class="queue">
+      <div class="queue-head">
+        <span class="queue-icon policy"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V10"/><path d="M10 20V4"/><path d="M16 20v-7"/><path d="M22 20H2"/></svg></span>
+        <div><h2>Emails by status</h2><p>Where every email is now.</p></div>
+      </div>
+      <div class="panel-box"><div class="table-wrap"><table>
+        <tr><th>Status</th><th class="num">Emails</th></tr>
+        {#for e in m.byStatus}<tr><td><code>{e.key}</code></td><td class="num">{e.value}</td></tr>{#else}<tr><td colspan="2" class="muted">No email yet.</td></tr>{/for}
+      </table></div></div>
+    </section>
+  </div>
+
+  <section class="queue">
+    <div class="queue-head">
+      <span class="queue-icon danger"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 4 6v6c0 5 3.4 8.3 8 9 4.6-.7 8-4 8-9V6l-8-3z"/></svg></span>
+      <div><h2>Reviewer</h2><p>{m.reviewsPassed} passed · {m.reviewsFailed} failed. What stopped the drafts that failed.</p></div>
+    </div>
+    <div class="grid-2">
+      <div class="panel-box"><div class="table-wrap"><table>
+        <tr><th>Code rule that failed</th><th class="num">Count</th></tr>
+        {#for e in m.ruleFailures}<tr><td><code>{e.key}</code></td><td class="num">{e.value}</td></tr>{#else}<tr><td colspan="2" class="muted">None.</td></tr>{/for}
+      </table></div></div>
+      <div class="panel-box"><div class="table-wrap"><table>
+        <tr><th>Model issue</th><th class="num">Count</th></tr>
+        {#for e in m.modelIssues}<tr><td><code>{e.key}</code></td><td class="num">{e.value}</td></tr>{#else}<tr><td colspan="2" class="muted">None.</td></tr>{/for}
+      </table></div></div>
+    </div>
+  </section>
+
+  <section class="queue">
+    <div class="queue-head">
+      <span class="queue-icon danger"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M10.3 3.9 2.4 18a2 2 0 0 0 1.7 3h15.8a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg></span>
+      <div><h2>Escalations by reason</h2><p>Every hand-over to you, by step and reason code.</p></div>
+    </div>
+    <div class="panel-box"><div class="table-wrap"><table>
+      <tr><th>Step: reason</th><th class="num">Count</th></tr>
+      {#for e in m.escalations}<tr><td><code>{e.key}</code></td><td class="num">{e.value}</td></tr>{#else}<tr><td colspan="2" class="muted">No escalation yet.</td></tr>{/for}
+    </table></div></div>
+  </section>
+
+</div>
+</main>
+</div>
 </body>
 </html>

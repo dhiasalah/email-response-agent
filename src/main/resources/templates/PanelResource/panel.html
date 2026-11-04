@@ -3,245 +3,413 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Email agent: review panel</title>
+  <title>Review queue · Email agent</title>
   <link rel="stylesheet" href="/panel.css">
 </head>
 <body>
-<header class="top">
-  <h1>Review panel</h1>
-  <nav class="tabs" aria-label="Queues">
-    <a href="#cards">Cards <span class="count{#if dash.cards.size > 0} hot{/if}">{dash.cards.size}</span></a>
-    <a href="#drafts">Drafts <span class="count{#if dash.draftCount > 0} hot{/if}">{dash.draftCount}</span></a>
-    <a href="#escalations">Escalations <span class="count{#if dash.escalations.size > 0} warn{/if}">{dash.escalations.size}</span></a>
-    <a href="#broadcasts">Broadcasts <span class="count{#if dash.broadcasts.size > 0} hot{/if}">{dash.broadcasts.size}</span></a>
-    <a href="/panel/metrics" class="aside">Metrics</a>
+<div class="shell">
+
+<aside class="sidebar">
+  <a class="brand" href="/panel">
+    <span class="brand-mark"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg></span>
+    <span class="brand-text"><strong>Email agent</strong><span>Owner review</span></span>
+  </a>
+  <nav class="nav" aria-label="Queues">
+    <div class="nav-label">Queue</div>
+    <a href="#cards">
+      <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6v.6"/><path d="M12 17h.01"/></svg>
+      <span class="label-text">Cards</span> <span class="count{#if dash.cards.size > 0} hot{/if}">{dash.cards.size}</span></a>
+    <a href="#drafts">
+      <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16v4z"/><path d="m13.5 6.5 4 4"/></svg>
+      <span class="label-text">Drafts</span> <span class="count{#if dash.draftCount > 0} hot{/if}">{dash.draftCount}</span></a>
+    <a href="#escalations">
+      <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M10.3 3.9 2.4 18a2 2 0 0 0 1.7 3h15.8a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+      <span class="label-text">Escalations</span> <span class="count{#if dash.escalations.size > 0} warn{/if}">{dash.escalations.size}</span></a>
+    <a href="#broadcasts">
+      <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11v3a1 1 0 0 0 1 1h2l5 4V6L6 10H4a1 1 0 0 0-1 1z"/><path d="M15 8a5 5 0 0 1 0 8"/><path d="M18 5a9 9 0 0 1 0 14"/></svg>
+      <span class="label-text">Broadcasts</span> <span class="count{#if dash.broadcasts.size > 0} hot{/if}">{dash.broadcasts.size}</span></a>
+    <div class="nav-label">Insight</div>
+    <a href="/panel/metrics">
+      <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V10"/><path d="M10 20V4"/><path d="M16 20v-7"/><path d="M22 20H2"/></svg>
+      <span class="label-text">Metrics</span></a>
   </nav>
-</header>
-{#if message}
-<p class="flash{#if error} error{/if}" role="status">{message}</p>
-{/if}
-
-<section id="cards">
-  <h2>Cards to answer</h2>
-  {#for card in dash.cards}
-  <article class="card">
-    <div class="head">
-      <h3>{card.label}</h3>
-      <span class="muted">priority {card.priority}</span>
-    </div>
-    <p class="question">{card.question}</p>
-    <p class="muted">Audience: {card.audience} · {card.members} question(s) waiting</p>
-    {#if card.emails}
-    <details class="linked">
-      <summary>Who is waiting ({card.emails.size})</summary>
-      <ul>
-        {#for m in card.emails}
-        <li><strong>{m.senderName ?: m.sender}</strong> <span class="muted">&lt;{m.sender}&gt; · {m.subject ?: '(no subject)'}</span>
-          <br><q>{m.question}</q></li>
-        {/for}
-      </ul>
-    </details>
-    {/if}
-    {#if card.proposedValue}
-    <p class="proposal">Proposed: <strong>{card.proposedValue}</strong> <span class="muted">from {card.proposalSource}</span></p>
-    {/if}
-    <form method="post" action="/panel/cards/{card.id}/answer" class="answer">
+  <div class="sidebar-foot">
+    <span class="who">Signed in as owner</span>
+    <form method="post" action="/panel/logout">
       <input type="hidden" name="{inject:csrf.parameterName}" value="{inject:csrf.token}">
-      <input type="hidden" name="version" value="{card.version}">
-      {#if card.isDate}
-      <label>Answer (date) <input type="date" name="value" required value="{card.isoProposal ?: ''}"></label>
-      {#else if card.isYesNo}
-      <fieldset class="choice">
-        <legend>Answer</legend>
-        <label><input type="radio" name="value" value="yes" required{#if card.proposesYes} checked{/if}> Yes</label>
-        <label><input type="radio" name="value" value="no"{#if card.proposesNo} checked{/if}> No</label>
-      </fieldset>
-      {#else if card.isLongText}
-      <label>Answer <textarea name="value" rows="3" required maxlength="2000">{card.proposedValue ?: ''}</textarea></label>
-      {#else}
-      <label>Answer <input type="text" name="value" required maxlength="2000" value="{card.proposedValue ?: ''}"></label>
-      {/if}
-      {#if card.personal}
-      <input type="hidden" name="scope" value="THESE_EMAILS">
-      <p class="muted">Personal answer: used for these emails only, never remembered.</p>
-      {#else}
-      <label>Remember for
-        <select name="scope">
-          <option value="THESE_EMAILS">these emails only</option>
-          <option value="CARD_AUDIENCE">everyone in {card.audience}</option>
-        </select>
-      </label>
-      {/if}
-      <button type="submit">Answer</button>
+      <button type="submit" class="quiet small" title="Sign out">
+        <svg class="i sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/></svg>
+        <span class="label-text">Sign out</span></button>
     </form>
-  </article>
-  {#else}
-  <p class="empty">No card waiting.</p>
-  {/for}
-</section>
+  </div>
+</aside>
 
-<section id="drafts">
-  <h2>Drafts to approve</h2>
-  {#for group in dash.drafts}
-  <article class="card">
-    <h3>{group.title}</h3>
-    {#if group.representative}
-    <p class="muted">Representative reply to {group.representative.sender} ({group.representative.language})</p>
-    <pre>{group.representative.body}</pre>
-    <p class="muted">Facts used: {group.representative.factsUsed}</p>
-    <div class="actions">
-      <form method="post" action="/panel/drafts/{group.representative.emailId}/send">
-        <input type="hidden" name="{inject:csrf.parameterName}" value="{inject:csrf.token}">
-        <button type="submit">Send this one</button>
-      </form>
-      <form method="post" action="/panel/drafts/{group.representative.emailId}/reject">
-        <input type="hidden" name="{inject:csrf.parameterName}" value="{inject:csrf.token}">
-        <button type="submit" class="secondary">Reject</button>
-      </form>
-      {#if group.cardId}
-      <form method="post" action="/panel/cards/{group.cardId}/approve-all">
-        <input type="hidden" name="{inject:csrf.parameterName}" value="{inject:csrf.token}">
-        <button type="submit">Approve all ({group.sendable}, outliers excluded)</button>
-      </form>
-      {/if}
+<main class="main">
+<div class="page">
+
+  <header class="page-head">
+    <div>
+      <div class="eyebrow">Review queue</div>
+      <h1>{#if dash.waiting > 0}{dash.waiting} {#if dash.waiting == 1}item needs{#else}items need{/if} you{#else}All caught up{/if}</h1>
+      <p>Answer each card once and every email waiting on it moves on. Nothing leaves without a review: the agents' or yours.</p>
     </div>
-    <details class="edit">
-      <summary>Edit before sending</summary>
-      <form method="post" action="/panel/drafts/{group.representative.emailId}/edit-send">
-        <input type="hidden" name="{inject:csrf.parameterName}" value="{inject:csrf.token}">
-        <textarea name="body" rows="9" required maxlength="6000">{group.representative.body}</textarea>
-        <button type="submit">Send my version</button>
-      </form>
-    </details>
+  </header>
+
+  {#if message}
+  <p class="flash{#if error} error{/if}" role="status">
+    {#if error}
+    <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg>
+    {#else}
+    <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m8.5 12 2.5 2.5 5-5"/></svg>
     {/if}
-    {#if group.others}
-    <ul class="compact">
-      {#for d in group.others}
-      <li>{d.sender} · {d.language} · {d.subject}
-        <form method="post" action="/panel/drafts/{d.emailId}/send" class="inline">
-          <input type="hidden" name="{inject:csrf.parameterName}" value="{inject:csrf.token}">
-          <button type="submit" class="small">Send</button>
-        </form>
-        <details class="edit">
-          <summary>Read or edit</summary>
-          <form method="post" action="/panel/drafts/{d.emailId}/edit-send">
+    <span>{message}</span></p>
+  {/if}
+
+  <div class="tiles">
+    <a class="tile{#if dash.cards.size > 0} hot{/if}" href="#cards">
+      <span class="tile-top">Cards to answer <svg class="i sm" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6v.6"/><path d="M12 17h.01"/></svg></span>
+      <b>{dash.cards.size}</b><small>one answer, many replies</small></a>
+    <a class="tile{#if dash.draftCount > 0} hot{/if}" href="#drafts">
+      <span class="tile-top">Drafts to approve <svg class="i sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16v4z"/><path d="m13.5 6.5 4 4"/></svg></span>
+      <b>{dash.draftCount}</b><small>reviewed, waiting for you</small></a>
+    <a class="tile{#if dash.escalations.size > 0} alert{/if}" href="#escalations">
+      <span class="tile-top">Escalations <svg class="i sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M10.3 3.9 2.4 18a2 2 0 0 0 1.7 3h15.8a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg></span>
+      <b>{dash.escalations.size}</b><small>only you can answer</small></a>
+    <a class="tile{#if dash.broadcasts.size > 0} hot{/if}" href="#broadcasts">
+      <span class="tile-top">Broadcasts <svg class="i sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11v3a1 1 0 0 0 1 1h2l5 4V6L6 10H4a1 1 0 0 0-1 1z"/><path d="M15 8a5 5 0 0 1 0 8"/></svg></span>
+      <b>{dash.broadcasts.size}</b><small>one message to a cohort</small></a>
+  </div>
+
+  <!-- ============ cards ============ -->
+  <section id="cards" class="queue">
+    <div class="queue-head">
+      <span class="queue-icon"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6v.6"/><path d="M12 17h.01"/></svg></span>
+      <div><h2>Cards to answer</h2><p>Information only you have, asked once for every email that needs it.</p></div>
+      <span class="count{#if dash.cards.size > 0} hot{/if}">{dash.cards.size}</span>
+    </div>
+    {#for card in dash.cards}
+    <article class="item">
+      <div class="item-body">
+        <div class="item-meta">
+          <span class="pill accent">{card.label}</span>
+          <span class="pill"><svg class="i sm" viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7"/><path d="M18 14.5a6.5 6.5 0 0 1 3.5 5.5"/></svg> {card.audience}</span>
+          {#if card_index < 3}<span class="pill warn">Top priority</span>{/if}
+          <span class="spacer"></span>
+          <span class="priority" title="Priority score {card.priority}">Priority {card.priorityLevel} <meter min="0" max="1" low="0.3" high="0.6" optimum="1" value="{card.priority}">{card.priority}</meter></span>
+        </div>
+        <h3>{card.question}</h3>
+        <p class="sub"><strong>{card.members}</strong> {#if card.members == 1}question is{#else}questions are{/if} waiting on this answer</p>
+
+        {#if card.proposedValue}
+        <div class="proposal">
+          <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+          <span>Proposed: <strong>{card.proposedValue}</strong></span>
+          <span class="src">from {card.proposalSource}</span>
+        </div>
+        {/if}
+
+        {#if card.emails}
+        <details>
+          <summary>Who is waiting ({card.emails.size})</summary>
+          <ul class="waiting">
+            {#for m in card.emails}
+            <li><span class="avatar" aria-hidden="true">{m.initial}</span>
+              <div><div class="who">{m.senderName ?: m.sender} <span>&lt;{m.sender}&gt; · {m.subject ?: '(no subject)'}</span></div>
+                <q>{m.question}</q></div></li>
+            {/for}
+          </ul>
+        </details>
+        {/if}
+      </div>
+
+      <form method="post" action="/panel/cards/{card.id}/answer">
+        <input type="hidden" name="{inject:csrf.parameterName}" value="{inject:csrf.token}">
+        <input type="hidden" name="version" value="{card.version}">
+        <div class="item-body answer">
+          {#if card.isDate}
+          <label class="field"><span>Your answer (date)</span>
+            <input type="date" name="value" required value="{card.isoProposal ?: ''}"></label>
+          {#else if card.isYesNo}
+          <fieldset>
+            <legend>Your answer</legend>
+            <div class="segmented">
+              <label><input type="radio" name="value" value="yes" required{#if card.proposesYes} checked{/if}><span>Yes</span></label>
+              <label><input type="radio" name="value" value="no"{#if card.proposesNo} checked{/if}><span>No</span></label>
+            </div>
+          </fieldset>
+          {#else if card.isLongText}
+          <label class="field"><span>Your answer</span>
+            <textarea name="value" rows="3" required maxlength="2000">{card.proposedValue ?: ''}</textarea></label>
+          {#else}
+          <label class="field"><span>Your answer</span>
+            <input type="text" name="value" required maxlength="2000" value="{card.proposedValue ?: ''}"></label>
+          {/if}
+
+          {#if card.personal}
+          <input type="hidden" name="scope" value="THESE_EMAILS">
+          <p class="hint"><svg class="i sm" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+            Personal answer: used for these emails only, never remembered.</p>
+          {#else}
+          <fieldset>
+            <legend>Remember this answer for</legend>
+            <div class="segmented">
+              <label><input type="radio" name="scope" value="THESE_EMAILS" checked><span>These emails only</span></label>
+              <label><input type="radio" name="scope" value="CARD_AUDIENCE"><span>Everyone in {card.audience}</span></label>
+            </div>
+          </fieldset>
+          {/if}
+        </div>
+        <div class="item-foot">
+          <span class="hint grow">The writer drafts one personal reply per email; you approve them next.</span>
+          <button type="submit">
+            <svg class="i sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5 10 17 19 7"/></svg> Answer</button>
+        </div>
+      </form>
+    </article>
+    {#else}
+    <div class="empty"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m8.5 12 2.5 2.5 5-5"/></svg>
+      No card waiting: every question has an answer.</div>
+    {/for}
+  </section>
+
+  <!-- ============ drafts ============ -->
+  <section id="drafts" class="queue">
+    <div class="queue-head">
+      <span class="queue-icon ok"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16v4z"/><path d="m13.5 6.5 4 4"/></svg></span>
+      <div><h2>Drafts to approve</h2><p>Replies that passed review. Check one per card, edit if needed, then send.</p></div>
+      <span class="count{#if dash.draftCount > 0} hot{/if}">{dash.draftCount}</span>
+    </div>
+    {#for group in dash.drafts}
+    <article class="item k-draft">
+      <div class="item-body">
+        <div class="item-meta">
+          <span class="pill ok">Reviewed</span>
+          <span class="pill">{group.total} {#if group.total == 1}reply{#else}replies{/if}</span>
+          {#if group.outliers}<span class="pill warn">{group.outliers.size} to check on {#if group.outliers.size == 1}its{#else}their{/if} own</span>{/if}
+        </div>
+        <h3>{group.title}</h3>
+
+        {#if group.representative}
+        <p class="sub">Representative reply to <strong>{group.representative.senderName ?: group.representative.sender}</strong> · {group.representative.language}</p>
+        <div class="pair">
+          <div>
+            <div class="label">They wrote</div>
+            <pre class="mail">{group.representative.original}</pre>
+          </div>
+          <div>
+            <div class="label">Reply</div>
+            <pre class="letter">{group.representative.body}</pre>
+          </div>
+        </div>
+        <div class="facts"><svg class="i sm" viewBox="0 0 24 24" aria-hidden="true"><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5"/><path d="M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/></svg>
+          Facts used <code>{group.representative.factsUsed}</code></div>
+        <details>
+          <summary>Edit before sending</summary>
+          <form method="post" action="/panel/drafts/{group.representative.emailId}/edit-send" class="inside">
             <input type="hidden" name="{inject:csrf.parameterName}" value="{inject:csrf.token}">
-            <textarea name="body" rows="8" required maxlength="6000">{d.body}</textarea>
-            <button type="submit" class="small">Send my version</button>
+            <textarea name="body" rows="9" required maxlength="6000" class="letter-edit">{group.representative.body}</textarea>
+            <p class="facts"><button type="submit" class="small">Send my version</button> Your edit is sent as your own reply.</p>
           </form>
         </details>
-      </li>
-      {/for}
-    </ul>
-    {/if}
-    {#for d in group.outliers}
-    <div class="outlier">
-      <p><strong>Check on its own</strong> ({d.outliers}): reply to {d.sender}</p>
-      <pre>{d.body}</pre>
-      <form method="post" action="/panel/drafts/{d.emailId}/send" class="inline">
-        <input type="hidden" name="{inject:csrf.parameterName}" value="{inject:csrf.token}">
-        <button type="submit" class="small">Send</button>
-      </form>
-      <form method="post" action="/panel/drafts/{d.emailId}/reject" class="inline">
-        <input type="hidden" name="{inject:csrf.parameterName}" value="{inject:csrf.token}">
-        <button type="submit" class="small secondary">Reject</button>
-      </form>
-      <details class="edit">
-        <summary>Edit before sending</summary>
-        <form method="post" action="/panel/drafts/{d.emailId}/edit-send">
-          <input type="hidden" name="{inject:csrf.parameterName}" value="{inject:csrf.token}">
-          <textarea name="body" rows="8" required maxlength="6000">{d.body}</textarea>
-          <button type="submit" class="small">Send my version</button>
-        </form>
-      </details>
-    </div>
-    {/for}
-  </article>
-  {#else}
-  <p class="empty">No draft waiting.</p>
-  {/for}
-</section>
+        {/if}
 
-<section id="escalations">
-  <h2>Escalations</h2>
-  {#for esc in dash.escalations}
-  <article class="card esc">
-    <h3>{esc.subject ?: '(no subject)'}</h3>
-    <p class="muted">From {esc.senderName ?: ''} &lt;{esc.sender}&gt;</p>
-    {#if esc.spoofed}
-    <p class="badge security">Look-alike letters in the sender name: it may not be who it claims to be.</p>
-    {/if}
-    <div class="reason {esc.reason.kind}">
-      <strong>{esc.reason.title}</strong>
-      {#if esc.reason.details}
-      <ul>
-        {#for d in esc.reason.details}<li>{d}</li>{/for}
-      </ul>
+        {#if group.others}
+        <div class="label">Same answer, other senders</div>
+        <ul class="others">
+          {#for d in group.others}
+          <li>
+            <div class="row">
+              <span class="who">{d.senderName ?: d.sender}</span>
+              <span class="pill">{d.language}</span>
+              <span class="muted grow">{d.subject}</span>
+              <form method="post" action="/panel/drafts/{d.emailId}/send">
+                <input type="hidden" name="{inject:csrf.parameterName}" value="{inject:csrf.token}">
+                <button type="submit" class="secondary small">Send</button>
+              </form>
+            </div>
+            <details>
+              <summary>Read or edit</summary>
+              <form method="post" action="/panel/drafts/{d.emailId}/edit-send" class="inside">
+                <input type="hidden" name="{inject:csrf.parameterName}" value="{inject:csrf.token}">
+                <textarea name="body" rows="8" required maxlength="6000" class="letter-edit">{d.body}</textarea>
+                <p class="facts"><button type="submit" class="small">Send my version</button></p>
+              </form>
+            </details>
+          </li>
+          {/for}
+        </ul>
+        {/if}
+
+        {#for d in group.outliers}
+        <div class="outlier">
+          <div class="outlier-head"><svg class="i sm" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg>
+            Check on its own ({d.outliers}): reply to {d.senderName ?: d.sender}</div>
+          <pre class="letter">{d.body}</pre>
+          <div class="actions">
+            <form method="post" action="/panel/drafts/{d.emailId}/send">
+              <input type="hidden" name="{inject:csrf.parameterName}" value="{inject:csrf.token}">
+              <button type="submit" class="small">Send</button>
+            </form>
+            <form method="post" action="/panel/drafts/{d.emailId}/reject">
+              <input type="hidden" name="{inject:csrf.parameterName}" value="{inject:csrf.token}">
+              <button type="submit" class="danger-ghost small">Reject</button>
+            </form>
+          </div>
+          <details>
+            <summary>Edit before sending</summary>
+            <form method="post" action="/panel/drafts/{d.emailId}/edit-send" class="inside">
+              <input type="hidden" name="{inject:csrf.parameterName}" value="{inject:csrf.token}">
+              <textarea name="body" rows="8" required maxlength="6000" class="letter-edit">{d.body}</textarea>
+              <p class="facts"><button type="submit" class="small">Send my version</button></p>
+            </form>
+          </details>
+        </div>
+        {/for}
+      </div>
+
+      {#if group.representative}
+      <div class="item-foot">
+        <form method="post" action="/panel/drafts/{group.representative.emailId}/reject">
+          <input type="hidden" name="{inject:csrf.parameterName}" value="{inject:csrf.token}">
+          <button type="submit" class="danger-ghost">Reject</button>
+        </form>
+        <span class="grow"></span>
+        <form method="post" action="/panel/drafts/{group.representative.emailId}/send">
+          <input type="hidden" name="{inject:csrf.parameterName}" value="{inject:csrf.token}">
+          <button type="submit" class="secondary">Send this one</button>
+        </form>
+        {#if group.cardId}
+        <form method="post" action="/panel/cards/{group.cardId}/approve-all">
+          <input type="hidden" name="{inject:csrf.parameterName}" value="{inject:csrf.token}">
+          <button type="submit"><svg class="i sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4 20-7z"/></svg>
+            Approve all ({group.sendable})</button>
+        </form>
+        {/if}
+      </div>
       {/if}
-    </div>
-    <p class="label">The email</p>
-    <pre>{esc.excerpt}</pre>
-    {#if esc.draft}
-    <details class="edit" open>
-      <summary>The stopped draft: edit it and send, or write your own</summary>
-      <form method="post" action="/panel/escalations/{esc.emailId}/reply">
-        <input type="hidden" name="{inject:csrf.parameterName}" value="{inject:csrf.token}">
-        <textarea name="body" rows="9" required maxlength="6000">{esc.draft}</textarea>
-        <button type="submit">Send my reply</button>
-      </form>
-    </details>
+    </article>
     {#else}
-    <details class="edit">
-      <summary>Write the reply yourself</summary>
-      <form method="post" action="/panel/escalations/{esc.emailId}/reply">
-        <input type="hidden" name="{inject:csrf.parameterName}" value="{inject:csrf.token}">
-        <textarea name="body" rows="8" required maxlength="6000">{#if esc.language == 'FR'}Bonjour,{#else}Hello,{/if}
+    <div class="empty"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m8.5 12 2.5 2.5 5-5"/></svg>
+      No draft waiting for approval.</div>
+    {/for}
+  </section>
+
+  <!-- ============ escalations ============ -->
+  <section id="escalations" class="queue">
+    <div class="queue-head">
+      <span class="queue-icon danger"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M10.3 3.9 2.4 18a2 2 0 0 0 1.7 3h15.8a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg></span>
+      <div><h2>Escalations</h2><p>Emails the agents stopped on. Reply yourself, let the agent retry, or close.</p></div>
+      <span class="count{#if dash.escalations.size > 0} warn{/if}">{dash.escalations.size}</span>
+    </div>
+    {#for esc in dash.escalations}
+    <article class="item k-{esc.reason.kind}">
+      <div class="item-body">
+        <div class="item-meta">
+          <span class="pill {#if esc.reason.kind == 'security'}danger{#else if esc.reason.kind == 'review'}warn{#else if esc.reason.kind == 'policy'}policy{/if}">{esc.reason.label}</span>
+          {#if esc.language}<span class="pill">{esc.language}</span>{/if}
+        </div>
+        <h3>{esc.subject ?: '(no subject)'}</h3>
+        <p class="sub">From <strong>{esc.senderName ?: esc.sender}</strong> &lt;{esc.sender}&gt;</p>
+        {#if esc.spoofed}
+        <p class="spoof"><svg class="i sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 4 6v6c0 5 3.4 8.3 8 9 4.6-.7 8-4 8-9V6l-8-3z"/><path d="M12 9v4"/><path d="M12 16h.01"/></svg>
+          Look-alike letters in the sender name: it may not be who it claims to be.</p>
+        {/if}
+
+        <div class="reason {esc.reason.kind}">
+          <div class="reason-title">
+            {#if esc.reason.kind == 'security'}
+            <svg class="i sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 4 6v6c0 5 3.4 8.3 8 9 4.6-.7 8-4 8-9V6l-8-3z"/></svg>
+            {#else}
+            <svg class="i sm" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+            {/if}
+            {esc.reason.title}</div>
+          {#if esc.reason.details}
+          <ul>
+            {#for d in esc.reason.details}<li>{d}</li>{/for}
+          </ul>
+          {/if}
+        </div>
+
+        <div class="label">The email</div>
+        <pre class="mail">{esc.excerpt}</pre>
+
+        {#if esc.draft}
+        <details open>
+          <summary>The stopped draft: edit it and send, or write your own</summary>
+          <form method="post" action="/panel/escalations/{esc.emailId}/reply" class="inside">
+            <input type="hidden" name="{inject:csrf.parameterName}" value="{inject:csrf.token}">
+            <textarea name="body" rows="9" required maxlength="6000" class="letter-edit">{esc.draft}</textarea>
+            <p class="facts"><button type="submit" class="small"><svg class="i sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4 20-7z"/></svg> Send my reply</button>
+              Sent as your own reply, to this sender only.</p>
+          </form>
+        </details>
+        {#else}
+        <details>
+          <summary>Write the reply yourself</summary>
+          <form method="post" action="/panel/escalations/{esc.emailId}/reply" class="inside">
+            <input type="hidden" name="{inject:csrf.parameterName}" value="{inject:csrf.token}">
+            <textarea name="body" rows="8" required maxlength="6000" class="letter-edit">{#if esc.language == 'FR'}Bonjour,{#else}Hello,{/if}
 
 </textarea>
-        <button type="submit">Send my reply</button>
-      </form>
-    </details>
-    {/if}
-    <div class="actions">
-      {#if esc.canRetry}
-      <form method="post" action="/panel/escalations/{esc.emailId}/retry">
-        <input type="hidden" name="{inject:csrf.parameterName}" value="{inject:csrf.token}">
-        <button type="submit" class="secondary">Let the agent rewrite it</button>
-      </form>
-      {/if}
-      <form method="post" action="/panel/escalations/{esc.emailId}/close">
-        <input type="hidden" name="{inject:csrf.parameterName}" value="{inject:csrf.token}">
-        <button type="submit" class="secondary">Handled elsewhere: close</button>
-      </form>
+            <p class="facts"><button type="submit" class="small"><svg class="i sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4 20-7z"/></svg> Send my reply</button>
+              Sent as your own reply, to this sender only.</p>
+          </form>
+        </details>
+        {/if}
+      </div>
+      <div class="item-foot">
+        {#if esc.canRetry}
+        <form method="post" action="/panel/escalations/{esc.emailId}/retry">
+          <input type="hidden" name="{inject:csrf.parameterName}" value="{inject:csrf.token}">
+          <button type="submit" class="secondary"><svg class="i sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 0 1 15.5-6.2L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-15.5 6.2L3 16"/><path d="M3 21v-5h5"/></svg>
+            Let the agent rewrite it</button>
+        </form>
+        {/if}
+        <span class="grow"></span>
+        <form method="post" action="/panel/escalations/{esc.emailId}/close">
+          <input type="hidden" name="{inject:csrf.parameterName}" value="{inject:csrf.token}">
+          <button type="submit" class="quiet"><svg class="i sm" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="5" rx="1"/><path d="M5 9v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V9"/><path d="M10 13h4"/></svg>
+            Handled elsewhere: close</button>
+        </form>
+      </div>
+    </article>
+    {#else}
+    <div class="empty"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m8.5 12 2.5 2.5 5-5"/></svg>
+      No escalation: nothing needs you personally.</div>
+    {/for}
+  </section>
+
+  <!-- ============ broadcasts ============ -->
+  <section id="broadcasts" class="queue">
+    <div class="queue-head">
+      <span class="queue-icon policy"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11v3a1 1 0 0 0 1 1h2l5 4V6L6 10H4a1 1 0 0 0-1 1z"/><path d="M15 8a5 5 0 0 1 0 8"/><path d="M18 5a9 9 0 0 1 0 14"/></svg></span>
+      <div><h2>Broadcast suggestions</h2><p>Many people asked the same thing: one message to the cohort stops the wave.</p></div>
+      <span class="count{#if dash.broadcasts.size > 0} hot{/if}">{dash.broadcasts.size}</span>
     </div>
-  </article>
-  {#else}
-  <p class="empty">No escalation.</p>
-  {/for}
-</section>
+    {#for b in dash.broadcasts}
+    <article class="item k-policy">
+      <div class="item-body">
+        <div class="item-meta"><span class="pill policy">Broadcast</span><span class="pill">To {b.recipient}</span></div>
+        <h3>{b.subject}</h3>
+        <div class="label">Message</div>
+        <pre class="letter">{b.body}</pre>
+      </div>
+      <div class="item-foot">
+        <span class="hint grow">Never sent automatically: you approve the recipients and the text.</span>
+        <form method="post" action="/panel/broadcasts/{b.id}/approve">
+          <input type="hidden" name="{inject:csrf.parameterName}" value="{inject:csrf.token}">
+          <button type="submit"><svg class="i sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4 20-7z"/></svg> Approve and send to the list</button>
+        </form>
+      </div>
+    </article>
+    {#else}
+    <div class="empty"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m8.5 12 2.5 2.5 5-5"/></svg>
+      No suggestion right now.</div>
+    {/for}
+  </section>
 
-<section id="broadcasts">
-  <h2>Broadcast suggestions</h2>
-  {#for b in dash.broadcasts}
-  <article class="card">
-    <h3>{b.subject}</h3>
-    <p class="muted">To {b.recipient}</p>
-    <pre>{b.body}</pre>
-    <form method="post" action="/panel/broadcasts/{b.id}/approve">
-      <input type="hidden" name="{inject:csrf.parameterName}" value="{inject:csrf.token}">
-      <button type="submit">Approve and send to the list</button>
-    </form>
-  </article>
-  {#else}
-  <p class="empty">No suggestion.</p>
-  {/for}
-</section>
-
-<footer class="muted">
-  <form method="post" action="/panel/logout" class="inline">
-    <input type="hidden" name="{inject:csrf.parameterName}" value="{inject:csrf.token}">
-    <button type="submit" class="small secondary">Sign out</button>
-  </form>
-</footer>
+</div>
+</main>
+</div>
 </body>
 </html>
