@@ -9,40 +9,7 @@
 <body>
 <div class="shell">
 
-<aside class="sidebar">
-  <a class="brand" href="/panel">
-    <span class="brand-mark"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg></span>
-    <span class="brand-text"><strong>Email agent</strong><span>Owner review</span></span>
-  </a>
-  <nav class="nav" aria-label="Queues">
-    <div class="nav-label">Queue</div>
-    <a href="#cards">
-      <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6v.6"/><path d="M12 17h.01"/></svg>
-      <span class="label-text">Cards</span> <span class="count{#if dash.cards.size > 0} hot{/if}">{dash.cards.size}</span></a>
-    <a href="#drafts">
-      <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16v4z"/><path d="m13.5 6.5 4 4"/></svg>
-      <span class="label-text">Drafts</span> <span class="count{#if dash.draftCount > 0} hot{/if}">{dash.draftCount}</span></a>
-    <a href="#escalations">
-      <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M10.3 3.9 2.4 18a2 2 0 0 0 1.7 3h15.8a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
-      <span class="label-text">Escalations</span> <span class="count{#if dash.escalations.size > 0} warn{/if}">{dash.escalations.size}</span></a>
-    <a href="#broadcasts">
-      <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11v3a1 1 0 0 0 1 1h2l5 4V6L6 10H4a1 1 0 0 0-1 1z"/><path d="M15 8a5 5 0 0 1 0 8"/><path d="M18 5a9 9 0 0 1 0 14"/></svg>
-      <span class="label-text">Broadcasts</span> <span class="count{#if dash.broadcasts.size > 0} hot{/if}">{dash.broadcasts.size}</span></a>
-    <div class="nav-label">Insight</div>
-    <a href="/panel/metrics">
-      <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V10"/><path d="M10 20V4"/><path d="M16 20v-7"/><path d="M22 20H2"/></svg>
-      <span class="label-text">Metrics</span></a>
-  </nav>
-  <div class="sidebar-foot">
-    <span class="who">Signed in as owner</span>
-    <form method="post" action="/panel/logout">
-      <input type="hidden" name="{inject:csrf.parameterName}" value="{inject:csrf.token}">
-      <button type="submit" class="quiet small" title="Sign out">
-        <svg class="i sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/></svg>
-        <span class="label-text">Sign out</span></button>
-    </form>
-  </div>
-</aside>
+{#include sidebar current='queue' dash=dash /}
 
 <main class="main">
 <div class="page">
@@ -211,6 +178,14 @@
             <p class="facts"><button type="submit" class="small">Send my version</button> Your edit is sent as your own reply.</p>
           </form>
         </details>
+        {#if group.representative.history}
+        <details class="history">
+          <summary>History ({group.representative.history.size} steps)</summary>
+          <ol class="timeline">
+            {#for h in group.representative.history}<li class="t-{h.tone}"><div class="t-line"><strong>{h.actor}</strong> {h.text}</div><div class="t-meta">{h.when}</div></li>{/for}
+          </ol>
+        </details>
+        {/if}
         {/if}
 
         {#if group.others}
@@ -354,6 +329,14 @@
             <p class="facts"><button type="submit" class="small"><svg class="i sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4 20-7z"/></svg> Send my reply</button>
               Sent as your own reply, to this sender only.</p>
           </form>
+        </details>
+        {/if}
+        {#if esc.history}
+        <details class="history">
+          <summary>History ({esc.history.size} steps)</summary>
+          <ol class="timeline">
+            {#for h in esc.history}<li class="t-{h.tone}"><div class="t-line"><strong>{h.actor}</strong> {h.text}</div><div class="t-meta">{h.when}</div></li>{/for}
+          </ol>
         </details>
         {/if}
       </div>

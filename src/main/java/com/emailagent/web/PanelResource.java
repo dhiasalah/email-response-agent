@@ -43,6 +43,7 @@ public class PanelResource {
             Map.entry("closed", "Escalation closed."),
             Map.entry("sent_edited", "Your reply is queued for sending."),
             Map.entry("bad_reply", "The reply is empty or too long (6000 characters at most)."),
+            Map.entry("forgot", "Forgotten: the next sender who asks gets a card again."),
             Map.entry("retried", "The writer will try again; the new draft comes back here for review."),
             Map.entry("broadcast", "Broadcast approved and queued for the cohort list."),
             Map.entry("nothing", "Nothing changed: it was already handled."));
@@ -55,6 +56,10 @@ public class PanelResource {
         static native TemplateInstance panel(PanelQueries.Dashboard dash, String message, boolean error);
 
         static native TemplateInstance metrics(MetricsQueries.Metrics m);
+
+        static native TemplateInstance memory(InsightQueries.Memory mem, String message);
+
+        static native TemplateInstance activity(InsightQueries.Activity act);
     }
 
     private final PanelQueries queries;
@@ -62,9 +67,11 @@ public class PanelResource {
     private final CardAnswers cardAnswers;
     private final OwnerActions actions;
     private final BroadcastRun broadcasts;
+    private final InsightQueries insights;
 
     public PanelResource(PanelQueries queries, MetricsQueries metrics, CardAnswers cardAnswers,
-            OwnerActions actions, BroadcastRun broadcasts) {
+            OwnerActions actions, BroadcastRun broadcasts, InsightQueries insights) {
+        this.insights = insights;
         this.queries = queries;
         this.metrics = metrics;
         this.cardAnswers = cardAnswers;
@@ -84,6 +91,30 @@ public class PanelResource {
     @Produces(MediaType.TEXT_HTML)
     public TemplateInstance metrics() {
         return Templates.metrics(metrics.metrics());
+    }
+
+    /** Design doc §8.2 and §10: "What the agent knows", the facts it reuses without asking. */
+    @GET
+    @Path("memory")
+    @Produces(MediaType.TEXT_HTML)
+    public TemplateInstance memory(@QueryParam("msg") String msg) {
+        return Templates.memory(insights.memory(), msg == null ? null : MESSAGES.get(msg));
+    }
+
+    /** What the agents did recently, from the audit log, and what went to the mailbox. */
+    @GET
+    @Path("activity")
+    @Produces(MediaType.TEXT_HTML)
+    public TemplateInstance activity() {
+        return Templates.activity(insights.activity());
+    }
+
+    @POST
+    @Path("memory/facts/{id}/forget")
+    @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
+    public Response forget(@PathParam("id") long id) {
+        String code = actions.forgetFact(id) ? "forgot" : "nothing";
+        return Response.seeOther(URI.create("/panel/memory?msg=" + code)).build();
     }
 
     @POST

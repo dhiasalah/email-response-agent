@@ -5,8 +5,10 @@ import com.emailagent.model.EmailStatus;
 import com.emailagent.model.Language;
 import com.emailagent.model.OutboxKind;
 import com.emailagent.model.SlotStatus;
+import com.emailagent.store.DecisionLogEntry;
 import com.emailagent.store.DraftEntity;
 import com.emailagent.store.EmailEntity;
+import com.emailagent.store.FactEntity;
 import com.emailagent.store.ReviewEntity;
 import com.emailagent.store.SlotEntity;
 import io.quarkus.narayana.jta.QuarkusTransaction;
@@ -99,6 +101,24 @@ public class OwnerActions {
             throw new IllegalArgumentException("the reply is longer than " + MAX_REPLY + " characters");
         }
         return body;
+    }
+
+    /**
+     * The owner makes the agent forget a fact (design doc §8.2, "edit, re-scope or delete any fact"): it stops being
+     * used at once, and later senders get a card again. The row stays, inactive, so the audit and the correction
+     * chain still know who received it. False if it was already forgotten or doesn't exist.
+     */
+    public boolean forgetFact(long factId) {
+        return QuarkusTransaction.requiringNew().call(() -> {
+            FactEntity f = FactEntity.findById(factId);
+            if (f == null || !f.active) {
+                return false;
+            }
+            f.active = false;
+            DecisionLogEntry.record(null, "owner", "fact:" + factId + ":v" + f.factVersion,
+                    "{\"forgot_fact\":" + factId + "}");
+            return true;
+        });
     }
 
     /**

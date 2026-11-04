@@ -81,7 +81,7 @@ public class PanelQueries {
 
     /** {@code original}: the sender's email, shown beside the reply so the owner reads both at once. */
     public record DraftView(long emailId, String sender, String senderName, String subject, String original,
-            String body, String language, String factsUsed, List<String> outliers) {
+            String body, String language, String factsUsed, List<String> outliers, List<StepText.Step> history) {
 
         public boolean isOutlier() {
             return !outliers.isEmpty();
@@ -108,7 +108,8 @@ public class PanelQueries {
      * the display name uses look-alike letters, so the panel warns before the owner trusts the name.
      */
     public record EscalationView(long emailId, String sender, String senderName, String subject, String excerpt,
-            ReasonText.Reason reason, String draft, boolean canRetry, boolean spoofed, String language) {}
+            ReasonText.Reason reason, String draft, boolean canRetry, boolean spoofed, String language,
+            List<StepText.Step> history) {}
 
     public record BroadcastView(long id, String recipient, String subject, String body) {}
 
@@ -198,7 +199,8 @@ public class PanelQueries {
         }
         String outliers = ReviewEntity.latestFor(e.id).map(r -> r.outlierReasons).orElse(null);
         return new DraftView(e.id, e.sender, e.senderName, e.subject, excerpt(e.body), d.get().body,
-                d.get().language.name(), d.get().factsUsed, outliers == null ? List.of() : List.of(outliers.split(",")));
+                d.get().language.name(), d.get().factsUsed, outliers == null ? List.of() : List.of(outliers.split(",")),
+                history(e.id));
     }
 
     static DraftGroup group(Long cardId, String title, List<DraftView> views) {
@@ -231,8 +233,14 @@ public class PanelQueries {
                 .map(e -> new EscalationView(e.id, e.sender, e.senderName, e.subject, excerpt(e.body), reason(e.id),
                         DraftEntity.currentFor(e.id).map(d -> d.body).orElse(null), OwnerActions.canRetry(e.id),
                         e.injectionSignals != null && e.injectionSignals.contains("name_mixed_scripts"),
-                        e.language == null ? null : e.language.name()))
+                        e.language == null ? null : e.language.name(), history(e.id)))
                 .toList();
+    }
+
+    /** The email's audit trail, oldest first, as sentences (design doc §5 decision log). */
+    static List<StepText.Step> history(long emailId) {
+        return DecisionLogEntry.<DecisionLogEntry>list("emailId = ?1 order by id", emailId).stream()
+                .map(StepText::of).toList();
     }
 
     /** Our own codes from the audit row ("sensitive_keyword", "unsupported_link") in words: never the model's. */

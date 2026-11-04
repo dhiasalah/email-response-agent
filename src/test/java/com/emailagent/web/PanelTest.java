@@ -17,6 +17,7 @@ import com.emailagent.model.SlotType;
 import com.emailagent.store.DecisionLogEntry;
 import com.emailagent.store.DraftEntity;
 import com.emailagent.store.EmailEntity;
+import com.emailagent.store.FactEntity;
 import com.emailagent.store.InputRequestEntity;
 import com.emailagent.store.OutboxEntity;
 import com.emailagent.store.ReviewEntity;
@@ -239,6 +240,37 @@ class PanelTest {
     }
 
     @Test
+    void theOwnerSeesWhatTheAgentKnowsAndCanMakeItForget() {
+        long factId = fact("Room B12");
+        assertThat(given().redirects().follow(false).get("/panel/memory").statusCode()).isEqualTo(302);
+        Session s = login();
+        String page = given().cookie("quarkus-credential", s.credential).get("/panel/memory").asString();
+        assertThat(page).contains("What the agent knows").contains("Room B12");
+
+        assertThat(s.post("/panel/memory/facts/" + factId + "/forget", Map.of()).header("Location"))
+                .endsWith("/panel/memory?msg=forgot");
+        assertThat(s.post("/panel/memory/facts/" + factId + "/forget", Map.of()).header("Location"))
+                .endsWith("/panel/memory?msg=nothing");
+        QuarkusTransaction.requiringNew().run(() -> {
+            assertThat(FactEntity.<FactEntity>findById(factId).active).isFalse();
+            assertThat(DecisionLogEntry.<DecisionLogEntry>list("agent = 'owner' and output like ?1",
+                    "%\"forgot_fact\":" + factId + "}%")).hasSize(1);
+        });
+    }
+
+    @Test
+    void theActivityPageTellsTheStoryInWords() {
+        long id = escalated("<b>Ma note</b>", "Quelle note ?", "Adam");
+        QuarkusTransaction.requiringNew().run(() -> DecisionLogEntry.transition(id, "router", EmailStatus.TRIAGED,
+                EmailStatus.ESCALATED, "{\"route\":\"not_automatable\"}", null, null, null));
+
+        String page = given().cookie("quarkus-credential", login().credential).get("/panel/activity").asString();
+
+        assertThat(page).contains("Router").contains("Handed to you: personal result (such as a grade)")
+                .contains("&lt;b&gt;Ma note&lt;/b&gt;").doesNotContain("<b>Ma note</b>");
+    }
+
+    @Test
     void theMetricsPageIsTheOwnersToo() {
         assertThat(given().redirects().follow(false).get("/panel/metrics").statusCode()).isEqualTo(302);
         Response r = given().cookie("quarkus-credential", login().credential).get("/panel/metrics");
@@ -300,7 +332,7 @@ class PanelTest {
     // --- data helpers ---
 
     static PanelQueries.DraftView draft(long id, String lang, int length, List<String> outliers) {
-        return new PanelQueries.DraftView(id, "s" + id, null, "subj", "q", "x".repeat(length), lang, "", outliers);
+        return new PanelQueries.DraftView(id, "s" + id, null, "subj", "q", "x".repeat(length), lang, "", outliers, List.of());
     }
 
     long escalated(String subject, String body, String name) {
@@ -330,6 +362,24 @@ class PanelTest {
             s.persist();
             e.slots.add(s);
             return e.id;
+        });
+    }
+
+    /** An active, shareable fact with a key no other test uses. */
+    long fact(String value) {
+        return QuarkusTransaction.requiringNew().call(() -> {
+            FactEntity f = new FactEntity();
+            f.slotType = SlotType.EXAM_ROOM;
+            f.entityKey = "exam " + UUID.randomUUID().toString().substring(0, 8);
+            f.scopeProgram = "M2";
+            f.scopeTrack = "IA";
+            f.scopeYear = "2026-2027";
+            f.value = value;
+            f.shareable = true;
+            f.source = "card:0 answered by owner";
+            f.createdAt = Instant.now();
+            f.persist();
+            return f.id;
         });
     }
 
