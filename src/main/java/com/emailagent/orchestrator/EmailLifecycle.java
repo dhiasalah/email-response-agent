@@ -27,7 +27,8 @@ public final class EmailLifecycle {
         NEXT.put(DRAFTED, EnumSet.of(REVIEWED, ESCALATED));
         NEXT.put(REVIEWED, EnumSet.of(SENT, DRAFT_SAVED, ESCALATED));
         NEXT.put(DRAFT_SAVED, EnumSet.of(SENT, ESCALATED));
-        NEXT.put(ESCALATED, EnumSet.of(READY, CLOSED));
+        // the owner retries the writer (READY), replies from the panel (SENT, with an owner review), or closes
+        NEXT.put(ESCALATED, EnumSet.of(READY, SENT, CLOSED));
         for (EmailStatus terminal : EnumSet.of(FILTERED_OUT, IGNORED, SENT, CLOSED)) {
             NEXT.put(terminal, EnumSet.noneOf(EmailStatus.class));
         }

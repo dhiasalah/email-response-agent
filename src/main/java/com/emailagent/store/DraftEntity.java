@@ -1,5 +1,6 @@
 package com.emailagent.store;
 
+import com.emailagent.model.Author;
 import com.emailagent.model.Language;
 import io.quarkus.hibernate.orm.panache.PanacheEntityBase;
 import jakarta.persistence.Entity;
@@ -47,6 +48,10 @@ public class DraftEntity extends PanacheEntityBase {
 
     /** False once a newer draft replaced it (rewrite after an edit); kept for the audit. */
     public boolean current = true;
+
+    /** WRITER, or OWNER when the owner edited or wrote the reply in the panel. */
+    @NotNull @Enumerated(EnumType.STRING)
+    public Author writtenBy = Author.WRITER;
 
     @NotNull
     public Instant createdAt;

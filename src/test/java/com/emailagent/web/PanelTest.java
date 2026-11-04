@@ -2,7 +2,9 @@ package com.emailagent.web;
 
 import static io.restassured.RestAssured.given;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.emailagent.model.Author;
 import com.emailagent.model.ClusterStatus;
 import com.emailagent.model.EmailStatus;
 import com.emailagent.model.FieldType;
@@ -10,7 +12,9 @@ import com.emailagent.model.GroupedBy;
 import com.emailagent.model.Language;
 import com.emailagent.model.OutboxKind;
 import com.emailagent.model.SlotOwner;
+import com.emailagent.model.SlotStatus;
 import com.emailagent.model.SlotType;
+import com.emailagent.store.DecisionLogEntry;
 import com.emailagent.store.DraftEntity;
 import com.emailagent.store.EmailEntity;
 import com.emailagent.store.InputRequestEntity;
@@ -147,6 +151,94 @@ class PanelTest {
     }
 
     @Test
+    void theOwnerEditsASavedDraftAndOnlyTheirVersionLeaves() {
+        long id = savedDraft();
+        Session s = login();
+        String mine = "Hello,\n\nThe exam is on 4 June 2027, room B12.\n\nBest regards,\nProf. Martin";
+
+        assertThat(s.post("/panel/drafts/" + id + "/edit-send", Map.of("body", mine)).header("Location"))
+                .contains("msg=sent_edited");
+        // a second click finds nothing to do: one reply per email
+        assertThat(s.post("/panel/drafts/" + id + "/edit-send", Map.of("body", mine)).header("Location"))
+                .contains("msg=nothing");
+
+        assertThat(status(id)).isEqualTo(EmailStatus.SENT);
+        QuarkusTransaction.requiringNew().run(() -> {
+            List<OutboxEntity> out = OutboxEntity.list("email.id = ?1", id);
+            assertThat(out).singleElement().satisfies(o -> {
+                assertThat(o.kind).isEqualTo(OutboxKind.SEND);
+                assertThat(o.body).isEqualTo(mine);
+            });
+            DraftEntity d = DraftEntity.currentFor(id).orElseThrow();
+            assertThat(d.writtenBy).isEqualTo(Author.OWNER);
+            assertThat(ReviewEntity.latestFor(id).orElseThrow().reviewedBy).isEqualTo(Author.OWNER);
+            // the metrics must not count an edited send as an accepted draft
+            assertThat(DecisionLogEntry.forEmail(id)).anySatisfy(row -> assertThat(row.output)
+                    .contains("\"edited\":true"));
+        });
+    }
+
+    @Test
+    void theOwnerAnswersAnEscalatedEmailFromThePanel() {
+        long id = escalated("Salle", "Dans quelle salle ?", "Inès");
+        Session s = login();
+        assertThat(s.page).contains("Write the reply yourself");
+
+        assertThat(s.post("/panel/escalations/" + id + "/reply", Map.of("body", "  \u202E \n ")).header("Location"))
+                .contains("msg=bad_reply");
+        assertThat(status(id)).isEqualTo(EmailStatus.ESCALATED);
+
+        assertThat(s.post("/panel/escalations/" + id + "/reply",
+                Map.of("body", "Bonjour,\r\n\r\nSalle B12.\u202E")).header("Location")).contains("msg=sent_edited");
+        assertThat(status(id)).isEqualTo(EmailStatus.SENT);
+        assertThat(QuarkusTransaction.requiringNew().call(() -> OutboxEntity.<OutboxEntity>find("email.id", id)
+                .firstResult().body)).isEqualTo("Bonjour,\n\nSalle B12.");
+    }
+
+    @Test
+    void theWriterIsRetriedOnlyWhenEveryAnswerIsThere() {
+        long missing = escalated("Exam", "When?", "Student");
+        long complete = escalatedWithFilledSlot();
+        Session s = login();
+
+        assertThat(s.post("/panel/escalations/" + missing + "/retry", Map.of()).header("Location"))
+                .contains("msg=nothing");
+        assertThat(status(missing)).isEqualTo(EmailStatus.ESCALATED);
+
+        assertThat(s.post("/panel/escalations/" + complete + "/retry", Map.of()).header("Location"))
+                .contains("msg=retried");
+        assertThat(status(complete)).isEqualTo(EmailStatus.READY);
+    }
+
+    @Test
+    void anOwnerReviewCanOnlyApproveTheOwnersOwnText() {
+        long id = savedDraft();
+        // the database refuses an "owner" approval of a model's draft: the owner must have written or edited it
+        assertThatThrownBy(() -> QuarkusTransaction.requiringNew().run(() -> {
+            ReviewEntity r = new ReviewEntity();
+            r.email = EmailEntity.findById(id);
+            r.draft = DraftEntity.currentFor(id).orElseThrow();
+            r.passed = true;
+            r.reviewedBy = Author.OWNER;
+            r.createdAt = Instant.now();
+            r.persist();
+            ReviewEntity.flush();
+        })).hasStackTraceContaining("an owner review approves a draft the owner wrote");
+    }
+
+    @Test
+    void escalationReasonsAreWrittenForPeople() {
+        long id = escalated("Ma note", "Quelle note ?", "Adam");
+        QuarkusTransaction.requiringNew().run(() -> DecisionLogEntry.transition(id, "router", EmailStatus.TRIAGED,
+                EmailStatus.ESCALATED, "{\"route\":\"not_automatable\"}", null, null, null));
+
+        String page = login().page;
+
+        assertThat(page).contains("Personal result (such as a grade): never answered automatically")
+                .doesNotContain("{&quot;route&quot;");
+    }
+
+    @Test
     void theMetricsPageIsTheOwnersToo() {
         assertThat(given().redirects().follow(false).get("/panel/metrics").statusCode()).isEqualTo(302);
         Response r = given().cookie("quarkus-credential", login().credential).get("/panel/metrics");
@@ -175,8 +267,9 @@ class PanelTest {
     record Session(String credential, String csrfCookie, String token, String page) {
 
         Response post(String path, Map<String, String> form) {
+            // UTF-8, like a browser: RestAssured's default for forms is ISO-8859-1
             return given().cookie("quarkus-credential", credential).cookie("csrf-token", csrfCookie)
-                    .redirects().follow(false).contentType("application/x-www-form-urlencoded")
+                    .redirects().follow(false).contentType("application/x-www-form-urlencoded; charset=UTF-8")
                     .formParams(form).formParam("csrf-token", token).post(path);
         }
     }
@@ -217,6 +310,25 @@ class PanelTest {
             e.body = body;
             e.senderName = name;
             e.persist();
+            return e.id;
+        });
+    }
+
+    /** An escalated email whose only slot is filled: the writer could try again. */
+    long escalatedWithFilledSlot() {
+        return QuarkusTransaction.requiringNew().call(() -> {
+            EmailEntity e = email(EmailStatus.ESCALATED);
+            e.persist();
+            SlotEntity s = new SlotEntity();
+            s.email = e;
+            s.type = SlotType.EXAM_DATE;
+            s.entity = "ml exam";
+            s.owner = SlotOwner.USER;
+            s.status = SlotStatus.FILLED;
+            s.value = "2027-06-03";
+            s.source = "card:1";
+            s.persist();
+            e.slots.add(s);
             return e.id;
         });
     }

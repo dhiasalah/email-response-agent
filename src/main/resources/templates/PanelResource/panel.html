@@ -7,31 +7,63 @@
   <link rel="stylesheet" href="/panel.css">
 </head>
 <body>
-<header>
+<header class="top">
   <h1>Review panel</h1>
-  <p class="muted">{dash.cards.size} cards · {dash.drafts.size} draft groups · {dash.escalations.size} escalations
-    · {dash.broadcasts.size} broadcasts · <a href="/panel/metrics">metrics</a></p>
+  <nav class="tabs" aria-label="Queues">
+    <a href="#cards">Cards <span class="count{#if dash.cards.size > 0} hot{/if}">{dash.cards.size}</span></a>
+    <a href="#drafts">Drafts <span class="count{#if dash.draftCount > 0} hot{/if}">{dash.draftCount}</span></a>
+    <a href="#escalations">Escalations <span class="count{#if dash.escalations.size > 0} warn{/if}">{dash.escalations.size}</span></a>
+    <a href="#broadcasts">Broadcasts <span class="count{#if dash.broadcasts.size > 0} hot{/if}">{dash.broadcasts.size}</span></a>
+    <a href="/panel/metrics" class="aside">Metrics</a>
+  </nav>
 </header>
 {#if message}
-<p class="flash">{message}</p>
+<p class="flash{#if error} error{/if}" role="status">{message}</p>
 {/if}
 
-<section>
+<section id="cards">
   <h2>Cards to answer</h2>
   {#for card in dash.cards}
   <article class="card">
-    <h3>{card.label}</h3>
+    <div class="head">
+      <h3>{card.label}</h3>
+      <span class="muted">priority {card.priority}</span>
+    </div>
     <p class="question">{card.question}</p>
-    <p class="muted">Audience: {card.audience} · {card.members} question(s) · priority {card.priority}</p>
-    {#if card.proposedValue}
-    <p class="proposal">Proposed: <strong>{card.proposedValue}</strong> <span class="muted">({card.proposalSource})</span></p>
+    <p class="muted">Audience: {card.audience} · {card.members} question(s) waiting</p>
+    {#if card.emails}
+    <details class="linked">
+      <summary>Who is waiting ({card.emails.size})</summary>
+      <ul>
+        {#for m in card.emails}
+        <li><strong>{m.senderName ?: m.sender}</strong> <span class="muted">&lt;{m.sender}&gt; · {m.subject ?: '(no subject)'}</span>
+          <br><q>{m.question}</q></li>
+        {/for}
+      </ul>
+    </details>
     {/if}
-    <form method="post" action="/panel/cards/{card.id}/answer">
+    {#if card.proposedValue}
+    <p class="proposal">Proposed: <strong>{card.proposedValue}</strong> <span class="muted">from {card.proposalSource}</span></p>
+    {/if}
+    <form method="post" action="/panel/cards/{card.id}/answer" class="answer">
       <input type="hidden" name="{inject:csrf.parameterName}" value="{inject:csrf.token}">
       <input type="hidden" name="version" value="{card.version}">
-      <label>Answer <input name="value" required maxlength="2000" value="{card.proposedValue ?: ''}"></label>
+      {#if card.isDate}
+      <label>Answer (date) <input type="date" name="value" required value="{card.isoProposal ?: ''}"></label>
+      {#else if card.isYesNo}
+      <fieldset class="choice">
+        <legend>Answer</legend>
+        <label><input type="radio" name="value" value="yes" required{#if card.proposesYes} checked{/if}> Yes</label>
+        <label><input type="radio" name="value" value="no"{#if card.proposesNo} checked{/if}> No</label>
+      </fieldset>
+      {#else if card.isLongText}
+      <label>Answer <textarea name="value" rows="3" required maxlength="2000">{card.proposedValue ?: ''}</textarea></label>
+      {#else}
+      <label>Answer <input type="text" name="value" required maxlength="2000" value="{card.proposedValue ?: ''}"></label>
+      {/if}
       {#if card.personal}
       <input type="hidden" name="scope" value="THESE_EMAILS">
+      <p class="muted">Personal answer: used for these emails only, never remembered.</p>
       {#else}
       <label>Remember for
         <select name="scope">
@@ -44,11 +76,11 @@
     </form>
   </article>
   {#else}
-  <p class="muted">No card waiting.</p>
+  <p class="empty">No card waiting.</p>
   {/for}
 </section>
 
-<section>
+<section id="drafts">
   <h2>Drafts to approve</h2>
   {#for group in dash.drafts}
   <article class="card">
@@ -73,6 +105,14 @@
       </form>
       {/if}
     </div>
+    <details class="edit">
+      <summary>Edit before sending</summary>
+      <form method="post" action="/panel/drafts/{group.representative.emailId}/edit-send">
+        <input type="hidden" name="{inject:csrf.parameterName}" value="{inject:csrf.token}">
+        <textarea name="body" rows="9" required maxlength="6000">{group.representative.body}</textarea>
+        <button type="submit">Send my version</button>
+      </form>
+    </details>
     {/if}
     {#if group.others}
     <ul class="compact">
@@ -82,6 +122,14 @@
           <input type="hidden" name="{inject:csrf.parameterName}" value="{inject:csrf.token}">
           <button type="submit" class="small">Send</button>
         </form>
+        <details class="edit">
+          <summary>Read or edit</summary>
+          <form method="post" action="/panel/drafts/{d.emailId}/edit-send">
+            <input type="hidden" name="{inject:csrf.parameterName}" value="{inject:csrf.token}">
+            <textarea name="body" rows="8" required maxlength="6000">{d.body}</textarea>
+            <button type="submit" class="small">Send my version</button>
+          </form>
+        </details>
       </li>
       {/for}
     </ul>
@@ -98,32 +146,81 @@
         <input type="hidden" name="{inject:csrf.parameterName}" value="{inject:csrf.token}">
         <button type="submit" class="small secondary">Reject</button>
       </form>
+      <details class="edit">
+        <summary>Edit before sending</summary>
+        <form method="post" action="/panel/drafts/{d.emailId}/edit-send">
+          <input type="hidden" name="{inject:csrf.parameterName}" value="{inject:csrf.token}">
+          <textarea name="body" rows="8" required maxlength="6000">{d.body}</textarea>
+          <button type="submit" class="small">Send my version</button>
+        </form>
+      </details>
     </div>
     {/for}
   </article>
   {#else}
-  <p class="muted">No draft waiting.</p>
+  <p class="empty">No draft waiting.</p>
   {/for}
 </section>
 
-<section>
+<section id="escalations">
   <h2>Escalations</h2>
   {#for esc in dash.escalations}
-  <article class="card">
+  <article class="card esc">
     <h3>{esc.subject ?: '(no subject)'}</h3>
-    <p class="muted">From {esc.senderName ?: ''} &lt;{esc.sender}&gt; · reason: {esc.reason}</p>
+    <p class="muted">From {esc.senderName ?: ''} &lt;{esc.sender}&gt;</p>
+    {#if esc.spoofed}
+    <p class="badge security">Look-alike letters in the sender name: it may not be who it claims to be.</p>
+    {/if}
+    <div class="reason {esc.reason.kind}">
+      <strong>{esc.reason.title}</strong>
+      {#if esc.reason.details}
+      <ul>
+        {#for d in esc.reason.details}<li>{d}</li>{/for}
+      </ul>
+      {/if}
+    </div>
+    <p class="label">The email</p>
     <pre>{esc.excerpt}</pre>
-    <form method="post" action="/panel/escalations/{esc.emailId}/close">
-      <input type="hidden" name="{inject:csrf.parameterName}" value="{inject:csrf.token}">
-      <button type="submit" class="secondary">Handled: close</button>
-    </form>
+    {#if esc.draft}
+    <details class="edit" open>
+      <summary>The stopped draft: edit it and send, or write your own</summary>
+      <form method="post" action="/panel/escalations/{esc.emailId}/reply">
+        <input type="hidden" name="{inject:csrf.parameterName}" value="{inject:csrf.token}">
+        <textarea name="body" rows="9" required maxlength="6000">{esc.draft}</textarea>
+        <button type="submit">Send my reply</button>
+      </form>
+    </details>
+    {#else}
+    <details class="edit">
+      <summary>Write the reply yourself</summary>
+      <form method="post" action="/panel/escalations/{esc.emailId}/reply">
+        <input type="hidden" name="{inject:csrf.parameterName}" value="{inject:csrf.token}">
+        <textarea name="body" rows="8" required maxlength="6000">{#if esc.language == 'FR'}Bonjour,{#else}Hello,{/if}
+
+</textarea>
+        <button type="submit">Send my reply</button>
+      </form>
+    </details>
+    {/if}
+    <div class="actions">
+      {#if esc.canRetry}
+      <form method="post" action="/panel/escalations/{esc.emailId}/retry">
+        <input type="hidden" name="{inject:csrf.parameterName}" value="{inject:csrf.token}">
+        <button type="submit" class="secondary">Let the agent rewrite it</button>
+      </form>
+      {/if}
+      <form method="post" action="/panel/escalations/{esc.emailId}/close">
+        <input type="hidden" name="{inject:csrf.parameterName}" value="{inject:csrf.token}">
+        <button type="submit" class="secondary">Handled elsewhere: close</button>
+      </form>
+    </div>
   </article>
   {#else}
-  <p class="muted">No escalation.</p>
+  <p class="empty">No escalation.</p>
   {/for}
 </section>
 
-<section>
+<section id="broadcasts">
   <h2>Broadcast suggestions</h2>
   {#for b in dash.broadcasts}
   <article class="card">
@@ -136,7 +233,7 @@
     </form>
   </article>
   {#else}
-  <p class="muted">No suggestion.</p>
+  <p class="empty">No suggestion.</p>
   {/for}
 </section>
 
