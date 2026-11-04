@@ -9,6 +9,7 @@ import com.emailagent.store.DecisionLogEntry;
 import com.emailagent.store.DraftEntity;
 import com.emailagent.store.EmailEntity;
 import com.emailagent.store.FactEntity;
+import com.emailagent.store.MailboxDiscardEntity;
 import com.emailagent.store.ReviewEntity;
 import com.emailagent.store.SlotEntity;
 import io.quarkus.narayana.jta.QuarkusTransaction;
@@ -38,10 +39,12 @@ public class OwnerActions {
         return orchestrator.runStep(new SendSavedDraft(dispatcher.domain()), emailId);
     }
 
-    /** DRAFT_SAVED → ESCALATED: the owner rejects the draft and will answer by hand. */
+    /**
+     * DRAFT_SAVED → ESCALATED: the owner rejects the draft and will answer by hand. In the same transaction, the draft
+     * is queued for removal from the mailbox's Drafts, where draft mode already saved it: the relay deletes it next.
+     */
     public boolean rejectDraft(long emailId) {
-        return orchestrator.runStep(new Decide("owner", EmailStatus.DRAFT_SAVED, EmailStatus.ESCALATED,
-                "{\"rejected_by\":\"owner\"}"), emailId);
+        return orchestrator.runStep(new RejectDraft(), emailId);
     }
 
     /** ESCALATED → CLOSED: handled outside the system (the owner answered by hand, or nothing to do). */
@@ -230,6 +233,26 @@ public class OwnerActions {
                 ReviewEntity.flush();
                 SendDispatcher.queueReply(e, d.id, r.id, OutboxKind.SEND, domain);
             });
+        }
+    }
+
+    /** The owner's reject: the email goes to the escalations, and its saved draft leaves the mailbox. */
+    static final class RejectDraft implements AgentStep {
+
+        @Override
+        public String name() {
+            return "owner";
+        }
+
+        @Override
+        public EmailStatus trigger() {
+            return EmailStatus.DRAFT_SAVED;
+        }
+
+        @Override
+        public StepResult run(EmailSnapshot email) {
+            return StepResult.to(EmailStatus.ESCALATED, "{\"rejected_by\":\"owner\"}")
+                    .withWrites(MailboxDiscardEntity::queueFor);
         }
     }
 

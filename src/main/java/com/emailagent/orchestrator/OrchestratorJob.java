@@ -44,13 +44,18 @@ public class OrchestratorJob {
         int suggested = broadcasts.suggest();
         // replies committed to the outbox this tick (or left by a crash) reach the mailbox
         int delivered = relay.deliverPending();
+        // drafts the owner rejected leave the mailbox, once they are there
+        int discarded = relay.discardRejected();
         if (imported.imported() + imported.filtered() + learned.pairs() + moved + grouped.assigned()
-                + grouped.closed() + followed.clarifications() + followed.holdingReplies() + suggested + delivered > 0) {
+                + grouped.closed() + followed.clarifications() + followed.holdingReplies() + suggested + delivered
+                + discarded > 0) {
             Log.infof("tick: %d imported, %d filtered, %d answers learned, %d transitions, %d questions grouped"
                             + " (%d new cards), %d cards closed, %d sender follow-ups, %d holding replies,"
-                            + " %d broadcasts suggested, %d messages delivered", imported.imported(),
+                            + " %d broadcasts suggested, %d messages delivered, %d rejected drafts removed",
+                    imported.imported(),
                     imported.filtered(), learned.pairs(), moved, grouped.assigned(), grouped.newCards(),
-                    grouped.closed(), followed.clarifications(), followed.holdingReplies(), suggested, delivered);
+                    grouped.closed(), followed.clarifications(), followed.holdingReplies(), suggested, delivered,
+                    discarded);
         }
     }
 }

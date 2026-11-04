@@ -95,7 +95,8 @@ public final class StepText {
                     : "Joined a card waiting on the same answer";
             case "curator" -> out.contains("\"learned\":0") ? "Checked your sent replies: nothing new to learn"
                     : out.contains("\"learned\"") ? "Learned an answer from your reply" : "Your answer was remembered";
-            case "outbox" -> out.contains("\"delivered\":\"draft\"") ? "Saved in your mailbox drafts"
+            case "outbox" -> out.contains("\"discarded\":\"draft\"") ? "Rejected draft removed from your mailbox"
+                    : out.contains("\"delivered\":\"draft\"") ? "Saved in your mailbox drafts"
                     : "Delivered to the mailbox";
             case "clarification" -> out.contains("\"mode\":\"draft\"") ? "Question to the sender saved as a draft"
                     : "Question sent to the sender";

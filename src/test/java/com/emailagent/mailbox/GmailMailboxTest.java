@@ -76,9 +76,27 @@ class GmailMailboxTest {
             files.filter(p -> p.toString().endsWith(".java")).forEach(p -> {
                 String code = read(p);
                 assertThat(code).as(p.toString()).doesNotContain("messages/send").doesNotContain("drafts/send")
-                        .doesNotContain("/send\"").doesNotContainIgnoringCase("smtp");
+                        .doesNotContain("/send\"").doesNotContainIgnoringCase("smtp")
+                        // removing a rejected draft deletes drafts only: never a message, never to the trash
+                        .doesNotContain("/trash").doesNotContain("batchDelete").doesNotContain("messages/delete");
             });
         }
+    }
+
+    @Test
+    void onlyTheAgentsOwnDraftIsDiscarded() throws Exception {
+        JsonNode ours = mapper.readTree("""
+                {"id":"r-1","message":{"id":"m1","payload":{"headers":[
+                  {"name":"Message-ID","value":"<reply-7-3-draft@gmail.com>"},
+                  {"name":"X-Email-Agent","value":"draft"}]}}}""");
+        JsonNode ownersOwn = mapper.readTree("""
+                {"id":"r-2","message":{"id":"m2","payload":{"headers":[
+                  {"name":"Message-ID","value":"<reply-7-3-draft@gmail.com>"}]}}}""");
+
+        assertThat(GmailMailbox.isOurDraft(ours, "<reply-7-3-draft@gmail.com>")).isTrue();
+        assertThat(GmailMailbox.isOurDraft(ours, "<reply-8-4-draft@gmail.com>")).isFalse(); // another reply
+        assertThat(GmailMailbox.isOurDraft(ownersOwn, "<reply-7-3-draft@gmail.com>")).isFalse(); // no marker
+        assertThat(GmailMailbox.isOurDraft(ours, null)).isFalse();
     }
 
     @Test

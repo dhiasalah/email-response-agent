@@ -4,6 +4,7 @@ import com.emailagent.config.AppConfig;
 import com.emailagent.mailbox.Mailbox;
 import com.emailagent.mailbox.OutgoingMessage;
 import com.emailagent.store.DecisionLogEntry;
+import com.emailagent.store.MailboxDiscardEntity;
 import com.emailagent.store.OutboxEntity;
 import io.quarkus.logging.Log;
 import io.quarkus.narayana.jta.QuarkusTransaction;
@@ -20,6 +21,8 @@ import java.util.List;
 public class OutboxRelay {
 
     private record Pending(long id, Long emailId, OutgoingMessage message) {}
+
+    private record Discard(long id, long emailId, long outboxId, String messageId) {}
 
     private final Mailbox mailbox;
     private final int batchSize;
@@ -58,5 +61,41 @@ public class OutboxRelay {
             }
         }
         return delivered;
+    }
+
+    /**
+     * Removes the drafts the owner rejected from the mailbox, oldest first. Run after {@link #deliverPending()}: a
+     * draft rejected before it reached the mailbox waits until it is there, so it can't come back after its removal.
+     * At least once, like delivery: a failure is retried next run. Returns how many drafts were removed.
+     */
+    public int discardRejected() {
+        List<Discard> pending = QuarkusTransaction.requiringNew().call(() ->
+                MailboxDiscardEntity.<MailboxDiscardEntity>find("doneAt is null and outbox.deliveredAt is not null"
+                                + " order by id").page(0, batchSize).list().stream()
+                        .map(d -> new Discard(d.id, d.email.id, d.outbox.id, d.outbox.messageId))
+                        .toList());
+        int discarded = 0;
+        for (Discard d : pending) {
+            try {
+                mailbox.discardDraft(d.messageId()); // outside any transaction, like delivery
+            } catch (RuntimeException e) {
+                Log.warnf("rejected draft of outbox row %d not removed (%s), retried next run", d.outboxId(),
+                        e.getClass().getSimpleName());
+                continue;
+            }
+            boolean marked = QuarkusTransaction.requiringNew().call(() -> {
+                int rows = MailboxDiscardEntity.update("doneAt = ?1 where id = ?2 and doneAt is null", Instant.now(),
+                        d.id());
+                if (rows == 1) {
+                    DecisionLogEntry.record(d.emailId(), "outbox", "outbox " + d.outboxId(),
+                            "{\"discarded\":\"draft\"}");
+                }
+                return rows == 1;
+            });
+            if (marked) {
+                discarded++;
+            }
+        }
+        return discarded;
     }
 }
