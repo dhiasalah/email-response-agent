@@ -75,8 +75,8 @@
   <img class="logo" src="assets/universite-cote-dazur-logo.png" alt="Université Côte d'Azur">
   <div class="kind">Technical report</div>
   <h1>Email Response Agent: System Design and Security Analysis</h1>
-  <div class="authors">Email Response Agent project</div>
-  <div class="meta">November 2026 · Repository <code>dhiasalah/email-response-agent</code> · Code state <code>b7d5ece</code></div>
+  <div class="authors">Marouane BENABDELKADER · Kacem ABDELBAKI<br>Daniel ABOU ORM · Mohamed Dhia BEN SALAH</div>
+  <div class="meta">Université Côte d'Azur · November 2026</div>
 </header>
 
 <section class="abstract">
@@ -88,7 +88,7 @@
 
 <h2>1&nbsp;&nbsp;Introduction</h2>
 <p>A professor receives many emails that differ in wording but wait on the same piece of information: the publication date of a grade, the room of an exam, a project deadline. Answering them one by one wastes time. Delegating them to a general-purpose language model exposes students to invented facts and the owner's mailbox to prompt injection <span class="cite">[6]</span>. The Email Response Agent answers recurring questions once, and never states a fact that was not provided by the owner or a trusted source.</p>
-<p>This report has two aims. Sections 2 and 3 document the architecture as built. Sections 4 to 6 analyse its security and privacy properties and the evidence for them. Section 7 lists known limitations. Every figure and table was checked against the code at commit <code>b7d5ece</code>; the source of each is named in its caption.</p>
+<p>This report has two aims. Sections 2 and 3 document the architecture as built. Sections 4 to 6 analyse its security and privacy properties and the evidence for them. Section 7 lists known limitations. Every figure and table was checked against the code; the source of each is named in its caption.</p>
 
 <h2>2&nbsp;&nbsp;System overview</h2>
 <p>The unit of work is the input slot, a triple of <em>type</em>, <em>entity</em> and <em>qualifier</em> drawn from a fixed taxonomy of nine slot types: grades publication date, exam date, exam room, deadline, procedure, document availability, meeting availability, individual decision and individual result. Triage splits each email into questions and extracts their slots. The resolver tries to fill each slot from trusted sources in a fixed order: scoped knowledge memory, the knowledge base, the calendar, and finally the owner's replies from the last seven days. Slots that remain unresolved are clustered into <em>input cards</em>. The owner answers each card once, and every linked email receives its own reply in the sender's language (Figure&nbsp;1).</p>
@@ -218,7 +218,7 @@
 </div>
 
 <h2>6&nbsp;&nbsp;Evaluation</h2>
-<p>The build runs 234 automated tests, with no failures at the reported commit (Figure&nbsp;7b). Agent behaviour is tested through scripted models that pass through the real output parser. The attack corpus (Table&nbsp;4) runs end to end without a model on every build, and its 17 attacks span six OWASP categories (Figure&nbsp;7a). Two harmless control emails must still receive their replies, which guards against controls that are too strict. A separate evaluation set of 35 labelled emails measures triage and review against the local models.</p>
+<p>The build runs 234 automated tests, with no failures (Figure&nbsp;7b). Agent behaviour is tested through scripted models that pass through the real output parser. The attack corpus (Table&nbsp;4) runs end to end without a model on every build, and its 17 attacks span six OWASP categories (Figure&nbsp;7a). Two harmless control emails must still receive their replies, which guards against controls that are too strict. A separate evaluation set of 35 labelled emails measures triage and review against the local models.</p>
 
 <div class="pair">
   <figure>
