@@ -58,7 +58,7 @@ class WriterOllamaTest {
 
     private static EmailSnapshot email(Language lang, String subject, String body, EmailSnapshot.Slot... slots) {
         return new EmailSnapshot(1, 0, EmailStatus.READY, "<x@test>", null, "s@univ.example", "S", subject, body,
-                Instant.now(), SenderScope.UNKNOWN, null, null, lang, true, null, List.of(slots));
+                Instant.now(), SenderScope.UNKNOWN, "student", null, null, lang, true, null, List.of(slots));
     }
 
     private static EmailSnapshot.Slot slot(long id, SlotType type, String value, String source) {

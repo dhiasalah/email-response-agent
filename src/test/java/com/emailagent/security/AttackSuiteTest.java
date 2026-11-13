@@ -23,6 +23,7 @@ import com.emailagent.model.SlotType;
 import com.emailagent.step.AgentStep;
 import com.emailagent.orchestrator.Orchestrator;
 import com.emailagent.orchestrator.SendDispatcher;
+import com.emailagent.store.AgentRegistry;
 import com.emailagent.store.DecisionLogEntry;
 import com.emailagent.store.EmailEntity;
 import com.emailagent.store.OutboxEntity;
@@ -72,6 +73,7 @@ class AttackSuiteTest {
     @Inject Orchestrator orchestrator;
     @Inject LlmOutputParser parser;
     @Inject InjectionDetector detector;
+    @Inject AgentRegistry agents;
     @Inject SenderDirectory directory;
     @Inject ClassificationRouter router;
     @Inject ResolverAgent resolver;
@@ -134,7 +136,7 @@ class AttackSuiteTest {
         steps.put(EmailStatus.NEW, new ClassifierAgent(model, detector, directory, "obedient"));
         steps.put(EmailStatus.CLASSIFIED, router);
         steps.put(EmailStatus.RESOLVING, resolver);
-        steps.put(EmailStatus.READY, new WriterAgent(model, mailbox, config, "obedient"));
+        steps.put(EmailStatus.READY, new WriterAgent(model, mailbox, agents, config, "obedient"));
         steps.put(EmailStatus.DRAFTED, new ReviewerAgent(model, detector, config, "obedient"));
         steps.put(EmailStatus.REVIEWED, dispatcher);
 

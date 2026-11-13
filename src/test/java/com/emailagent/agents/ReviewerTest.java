@@ -166,6 +166,7 @@ class ReviewerTest {
     long drafted(String emailBody, String content, int attempts) {
         return QuarkusTransaction.requiringNew().call(() -> {
             EmailEntity e = new EmailEntity();
+            e.agentId = "student";
             e.messageId = "<rv-" + UUID.randomUUID() + "@test>";
             e.sender = "student@univ.example";
             e.subject = "ML exam";

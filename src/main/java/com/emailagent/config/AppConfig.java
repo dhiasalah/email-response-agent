@@ -77,13 +77,20 @@ public interface AppConfig {
     @WithDefault("directory/senders.json")
     String senderDirectoryFixture();
 
-    /** Classpath JSON knowledge base (syllabus, regulations): a match fills a slot. */
-    @WithDefault("knowledge/kb.json")
-    String knowledgeBaseFixture();
+    /**
+     * Folder of specialized agent definitions, one {@code <id>.json} per agent, with the prompt and context files
+     * each one names (brief §5). Read from disk, not the classpath: the owner edits agents without touching code.
+     */
+    @WithDefault("agents")
+    String agentsDir();
 
-    /** Classpath JSON calendar: a tagged event proposes a value for the owner to confirm. */
-    @WithDefault("knowledge/calendar.json")
-    String calendarFixture();
+    /** Below this routing score no specialized agent is suitable and the fallback agent takes the email. */
+    @WithDefault("0.3")
+    double routingMinScore();
+
+    /** Two agents closer than this are both suitable: the one listed first (its {@code order}) wins, flagged. */
+    @WithDefault("0.1")
+    double routingTieMargin();
 
     /** A fact older than this is proposed for review instead of used directly (design doc §8.1). */
     @WithDefault("90")

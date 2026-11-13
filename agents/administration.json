@@ -1,0 +1,13 @@
+{
+  "id": "administration",
+  "name": "Administration agent",
+  "description": "Administrative exchanges with the faculty's offices: forms, certificates, internship agreements, deadlines.",
+  "order": 40,
+  "routing": {
+    "senderRoles": ["ADMINISTRATION", "MANAGEMENT"],
+    "keywords": ["attestation", "certificate", "convention", "inscription", "registration", "scolarité",
+                 "formulaire", "form", "signature", "administratif", "administrative", "procès-verbal"]
+  },
+  "promptFile": "administration/prompt.txt",
+  "knowledge": ["administration/kb.json"]
+}

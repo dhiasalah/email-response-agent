@@ -44,6 +44,41 @@ public final class StepText {
     }
 
     static Step of(String agent, EmailStatus from, EmailStatus to, String output, Instant at) {
+        Step step = base(agent, from, to, output, at);
+        if ("router".equals(agent) && output != null && output.contains("\"agent\":\"")) {
+            return new Step(step.when(), step.actor(), step.text() + " · " + routing(output), step.tone());
+        }
+        return step;
+    }
+
+    /**
+     * The routing decision in words: which agent, how sure, the runner-up when it was close, and the reasons. All of
+     * it is ours: agent ids and reasons written by the router's code (keywords come from the owner's agent files).
+     */
+    static String routing(String out) {
+        String agent = raw(out, "agent");
+        String runnerUp = raw(out, "runner_up");
+        StringBuilder text = new StringBuilder("handled by the ").append(agent).append(" agent");
+        if (out.contains("\"fallback\":true")) {
+            text.append(" (no specialized agent fitted)");
+        } else {
+            text.append(" (confidence ").append(number(out, "confidence")).append(")");
+            if (out.contains("\"ambiguous\":true") && !runnerUp.isEmpty()) {
+                text.append(", close call with ").append(runnerUp);
+            }
+        }
+        int i = out.indexOf("\"why\":[");
+        int end = i < 0 ? -1 : out.indexOf(']', i);
+        if (end > i) {
+            String why = out.substring(i + 7, end).replace("\",\"", "; ").replace("\"", "").strip();
+            if (!why.isEmpty()) {
+                text.append(": ").append(why);
+            }
+        }
+        return text.toString();
+    }
+
+    private static Step base(String agent, EmailStatus from, EmailStatus to, String output, Instant at) {
         String actor = ACTORS.getOrDefault(agent, agent == null ? "System" : ReasonText.words(agent));
         String when = at == null ? "" : WHEN.format(at);
         String out = output == null ? "" : output;
@@ -115,6 +150,33 @@ public final class StepText {
         int start = i + key.length();
         int end = json.indexOf('"', start);
         return end < 0 ? "" : ReasonText.words(json.substring(start, end));
+    }
+
+    /** A top-level string field of our JSON, as written ("supermas-project"); empty if absent. */
+    static String raw(String json, String field) {
+        String key = "\"" + field + "\":\"";
+        int i = json.indexOf(key);
+        if (i < 0) {
+            return "";
+        }
+        int start = i + key.length();
+        int end = json.indexOf('"', start);
+        return end < 0 ? "" : json.substring(start, end);
+    }
+
+    /** A top-level number field of our JSON, as written; empty if absent. */
+    static String number(String json, String field) {
+        String key = "\"" + field + "\":";
+        int i = json.indexOf(key);
+        if (i < 0) {
+            return "";
+        }
+        int start = i + key.length();
+        int end = start;
+        while (end < json.length() && (Character.isDigit(json.charAt(end)) || json.charAt(end) == '.')) {
+            end++;
+        }
+        return json.substring(start, end);
     }
 
     /** "Possible prompt injection: …" reads better mid-sentence in lower case. */

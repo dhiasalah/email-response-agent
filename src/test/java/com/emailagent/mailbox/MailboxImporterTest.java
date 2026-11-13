@@ -22,7 +22,7 @@ class MailboxImporterTest {
         MailboxImporter.ImportResult second = importer.importNew();
 
         assertThat(second.imported()).isZero();
-        assertThat(second.duplicates()).isEqualTo(12);
+        assertThat(second.duplicates()).isEqualTo(17);
 
         QuarkusTransaction.requiringNew().run(() -> {
             assertThat(EmailEntity.listByStatus(EmailStatus.FILTERED_OUT))

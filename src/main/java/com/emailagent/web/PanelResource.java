@@ -60,6 +60,8 @@ public class PanelResource {
         static native TemplateInstance memory(InsightQueries.Memory mem, String message);
 
         static native TemplateInstance activity(InsightQueries.Activity act);
+
+        static native TemplateInstance agents(AgentQueries.Page page);
     }
 
     private final PanelQueries queries;
@@ -68,10 +70,12 @@ public class PanelResource {
     private final OwnerActions actions;
     private final BroadcastRun broadcasts;
     private final InsightQueries insights;
+    private final AgentQueries agents;
 
     public PanelResource(PanelQueries queries, MetricsQueries metrics, CardAnswers cardAnswers,
-            OwnerActions actions, BroadcastRun broadcasts, InsightQueries insights) {
+            OwnerActions actions, BroadcastRun broadcasts, InsightQueries insights, AgentQueries agents) {
         this.insights = insights;
+        this.agents = agents;
         this.queries = queries;
         this.metrics = metrics;
         this.cardAnswers = cardAnswers;
@@ -99,6 +103,14 @@ public class PanelResource {
     @Produces(MediaType.TEXT_HTML)
     public TemplateInstance memory(@QueryParam("msg") String msg) {
         return Templates.memory(insights.memory(), msg == null ? null : MESSAGES.get(msg));
+    }
+
+    /** Brief §10: the specialized agents, what routes an email to each, their prompt and their own context. */
+    @GET
+    @Path("agents")
+    @Produces(MediaType.TEXT_HTML)
+    public TemplateInstance agents() {
+        return Templates.agents(agents.page());
     }
 
     /** What the agents did recently, from the audit log, and what went to the mailbox. */

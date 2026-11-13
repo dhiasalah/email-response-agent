@@ -85,13 +85,15 @@ public class GroupingRun {
     private List<PendingSlot> pendingSlots() {
         List<SlotEntity> slots = SlotEntity.<SlotEntity>find(
                 "select s from SlotEntity s join fetch s.email e where e.status = ?1 and s.requestId is null"
+                        + " and e.agentId is not null"
                         + " and s.status in ?2 order by e.receivedAt desc, s.id desc",
                 EmailStatus.AWAITING_INPUT, List.of(SlotStatus.UNRESOLVED, SlotStatus.PROPOSED))
                 .page(0, batchSize).list();
         List<PendingSlot> out = new ArrayList<>();
         for (int i = slots.size() - 1; i >= 0; i--) {
             SlotEntity s = slots.get(i);
-            out.add(new PendingSlot(s.id, s.email.id, s.email.sender, s.email.receivedAt, s.email.scope(), s.type,
+            out.add(new PendingSlot(s.id, s.email.id, s.email.sender, s.email.receivedAt, s.email.scope(),
+                    s.email.agentId, s.type,
                     s.entity, s.qualifier, s.question, s.status, s.value, s.source));
         }
         return out;
@@ -99,7 +101,7 @@ public class GroupingRun {
 
     private static List<OpenCluster> joinableCards() {
         return InputRequestEntity.listJoinable().stream()
-                .map(c -> new OpenCluster(c.id, c.version, c.key(), c.scope(), c.centroid, c.memberCount,
+                .map(c -> new OpenCluster(c.id, c.version, c.agentId, c.key(), c.scope(), c.centroid, c.memberCount,
                         c.sampleQuestion, c.proposedValue, c.proposalSource, c.embeddingModel))
                 .toList();
     }
@@ -162,6 +164,7 @@ public class GroupingRun {
 
     private static InputRequestEntity create(Draft d, Instant now) {
         InputRequestEntity c = new InputRequestEntity();
+        c.agentId = d.agent();
         c.slotType = d.key().type();
         c.entityKey = d.key().entity();
         c.qualifierKey = d.key().qualifier();

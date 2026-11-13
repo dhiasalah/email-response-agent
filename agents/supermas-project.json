@@ -1,0 +1,14 @@
+{
+  "id": "supermas-project",
+  "name": "SuperMASProject agent",
+  "description": "The SuperMASProject research project: deliverables, meetings and documents, for project members only.",
+  "order": 10,
+  "routing": {
+    "keywords": ["supermas", "supermasproject", "deliverable", "livrable", "work package", "wp1", "wp2", "wp3",
+                 "consortium", "plenary"],
+    "members": ["lea.garnier@univ.example", "m.rossi@unimi.example", "j.berg@kth.example"]
+  },
+  "promptFile": "supermas-project/prompt.txt",
+  "knowledge": ["supermas-project/kb.json"],
+  "calendar": ["supermas-project/calendar.json"]
+}

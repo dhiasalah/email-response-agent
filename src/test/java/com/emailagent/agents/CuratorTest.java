@@ -267,6 +267,7 @@ class CuratorTest {
     static long email(SenderScope scope, EmailStatus status, SlotSpec... slots) {
         return QuarkusTransaction.requiringNew().call(() -> {
             EmailEntity e = new EmailEntity();
+            e.agentId = "student";
             e.messageId = "<cur-" + UUID.randomUUID() + "@test>";
             e.sender = "s" + UUID.randomUUID().toString().substring(0, 6) + "@s.example";
             e.subject = "Question";
@@ -301,7 +302,7 @@ class CuratorTest {
 
     List<RecentAnswerEntity> recent(SlotType type, String entity) {
         return QuarkusTransaction.requiringNew().call(() ->
-                RecentAnswerEntity.find(new SlotKey(type, entity, null), scope, Instant.now().minus(Duration.ofDays(7))));
+                RecentAnswerEntity.find("student", new SlotKey(type, entity, null), scope, Instant.now().minus(Duration.ofDays(7))));
     }
 
     static EmailStatus status(long id) {

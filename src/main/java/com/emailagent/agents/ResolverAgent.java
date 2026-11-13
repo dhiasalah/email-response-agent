@@ -10,10 +10,9 @@ import com.emailagent.model.SlotType;
 import com.emailagent.step.AgentStep;
 import com.emailagent.step.EmailSnapshot;
 import com.emailagent.step.StepResult;
+import com.emailagent.store.AgentRegistry;
 import com.emailagent.store.FactEntity;
-import com.emailagent.store.KnowledgeBase;
 import com.emailagent.store.KnowledgeSource;
-import com.emailagent.store.MockCalendar;
 import com.emailagent.store.RecentAnswerEntity;
 import com.emailagent.store.SlotEntity;
 import io.quarkus.narayana.jta.QuarkusTransaction;
@@ -32,6 +31,9 @@ import java.util.stream.Collectors;
  * RESOLVING → READY, AWAITING_INPUT or AWAITING_SENDER (design doc §4.2, §8, §16.4). Plain code, no model:
  * deciding which stored answer a sender may receive is an access decision, and an access decision must not be
  * something an email can argue with. The model only chose the slot key (classification); the scope comes from the roster.
+ *
+ * <p>Every source is the email's own agent's (brief §5.2): its knowledge base and calendar files, and the facts and
+ * recent answers learned from that agent's emails. Another agent's context is never read.
  */
 @ApplicationScoped
 public class ResolverAgent implements AgentStep {
@@ -39,15 +41,13 @@ public class ResolverAgent implements AgentStep {
     /** How one slot was resolved; {@code status} UNRESOLVED means nobody had the answer. */
     public record Resolution(long slotId, SlotStatus status, String value, String source) {}
 
-    private final KnowledgeBase knowledgeBase;
-    private final MockCalendar calendar;
+    private final AgentRegistry agents;
     private final Duration freshness;
     private final Duration window;
     private final Set<SlotType> trustedRecentTypes;
 
-    public ResolverAgent(KnowledgeBase knowledgeBase, MockCalendar calendar, AppConfig config) {
-        this.knowledgeBase = knowledgeBase;
-        this.calendar = calendar;
+    public ResolverAgent(AgentRegistry agents, AppConfig config) {
+        this.agents = agents;
         this.freshness = Duration.ofDays(config.factFreshnessDays());
         this.window = Duration.ofDays(config.recentAnswerWindowDays());
         this.trustedRecentTypes = config.recentAnswerTrustedTypes().orElse(Set.of());
@@ -68,11 +68,15 @@ public class ResolverAgent implements AgentStep {
         if (email.slots().isEmpty()) {
             return StepResult.to(EmailStatus.ESCALATED, "{\"resolved\":\"no_slots\"}"); // fail closed
         }
+        if (email.agent() == null) {
+            return StepResult.to(EmailStatus.ESCALATED, "{\"resolved\":\"not_routed\"}"); // no context to read
+        }
+        AgentRegistry.Agent agent = agents.forEmail(email.agent());
         Instant now = Instant.now();
         // read-only lookups in a short transaction of their own; all writes come back in the StepResult
         List<Resolution> resolutions = QuarkusTransaction.requiringNew().call(() -> email.slots().stream()
                 .map(slot -> slot.status() == SlotStatus.UNRESOLVED
-                        ? resolve(slot, email.scope(), now)
+                        ? resolve(agent, slot, email.scope(), now)
                         : new Resolution(slot.id(), slot.status(), slot.value(), slot.source()))
                 .toList());
 
@@ -89,8 +93,11 @@ public class ResolverAgent implements AgentStep {
         });
     }
 
-    /** Fixed order: confirmed memory, knowledge base, calendar, recent answers. First trusted match wins. */
-    Resolution resolve(EmailSnapshot.Slot slot, SenderScope scope, Instant now) {
+    /**
+     * Fixed order, all within the agent's own context: confirmed memory, knowledge base, calendar, recent answers.
+     * First trusted match wins.
+     */
+    Resolution resolve(AgentRegistry.Agent agent, EmailSnapshot.Slot slot, SenderScope scope, Instant now) {
         long id = slot.id();
         if (!slot.type().shareable()) {
             // meetings, individual decisions: only the owner decides, for this sender only
@@ -99,7 +106,7 @@ public class ResolverAgent implements AgentStep {
         SlotKey key = new SlotKey(slot.type(), slot.entity(), slot.qualifier());
 
         if (scope.isKnown()) {
-            Optional<FactEntity> fact = FactEntity.findActive(key, scope)
+            Optional<FactEntity> fact = FactEntity.findActive(agent.id(), key, scope)
                     .filter(f -> f.shareable)
                     .filter(f -> f.validUntil == null || f.validUntil.isAfter(now));
             if (fact.isPresent()) {
@@ -110,12 +117,12 @@ public class ResolverAgent implements AgentStep {
             }
         }
 
-        Optional<KnowledgeSource.Entry> kb = knowledgeBase.find(key, scope);
+        Optional<KnowledgeSource.Entry> kb = agent.knowledge().find(key, scope);
         if (kb.isPresent()) {
             return new Resolution(id, SlotStatus.FILLED, kb.get().value(), "kb:" + kb.get().id() + " " + kb.get().source());
         }
 
-        Optional<KnowledgeSource.Entry> event = calendar.find(key, scope);
+        Optional<KnowledgeSource.Entry> event = agent.calendar().find(key, scope);
         if (event.isPresent()) {
             KnowledgeSource.Entry ev = event.get();
             return new Resolution(id, SlotStatus.PROPOSED, ev.value(),
@@ -123,7 +130,7 @@ public class ResolverAgent implements AgentStep {
         }
 
         if (scope.isKnown()) {
-            List<RecentAnswerEntity> recent = RecentAnswerEntity.find(key, scope, now.minus(window));
+            List<RecentAnswerEntity> recent = RecentAnswerEntity.find(agent.id(), key, scope, now.minus(window));
             if (!recent.isEmpty()) {
                 return fromRecent(id, slot.type(), recent);
             }

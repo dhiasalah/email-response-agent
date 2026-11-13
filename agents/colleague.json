@@ -1,0 +1,13 @@
+{
+  "id": "colleague",
+  "name": "Colleague agent",
+  "description": "Exchanges with fellow lecturers: teaching organisation, juries, exam logistics, grade submission.",
+  "order": 30,
+  "routing": {
+    "senderRoles": ["COLLEAGUE"],
+    "keywords": ["jury", "jurys", "copies", "correction", "co-encadrement", "séminaire", "seminar",
+                 "réunion pédagogique", "maquette", "enseignement", "teaching", "collègue", "colleague"]
+  },
+  "promptFile": "colleague/prompt.txt",
+  "knowledge": ["colleague/kb.json"]
+}

@@ -19,6 +19,7 @@ class DataModelSmokeTest {
     @TestTransaction
     void emailWithSlotAndLogRoundTrips() {
         EmailEntity email = new EmailEntity();
+        email.agentId = "student";
         email.messageId = "<smoke-1@univ.example>";
         email.sender = "lina@univ.example";
         email.subject = "Notes S2";

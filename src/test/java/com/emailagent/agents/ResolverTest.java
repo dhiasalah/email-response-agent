@@ -153,6 +153,56 @@ class ResolverTest {
         assertThat(status(meeting)).isEqualTo(EmailStatus.AWAITING_INPUT); // never from memory
     }
 
+    // --- specialized agents (brief §5.2): each agent reads its own context only ---
+
+    @Test
+    void anAgentNeverReadsAnotherAgentsMemory() {
+        String grades = unique("s2 exams");
+        fact(SlotType.GRADES_PUBLICATION_DATE, grades, M2_IA, "12 May", true, null, Duration.ZERO); // student's
+        String room = unique("room");
+        recent(SlotType.EXAM_ROOM, room, "A101", Duration.ofDays(1)); // learned from a student email
+
+        long student = email(M2_IA, slot(SlotType.GRADES_PUBLICATION_DATE, grades, SlotOwner.USER));
+        long colleague = emailFor("colleague", M2_IA, slot(SlotType.GRADES_PUBLICATION_DATE, grades, SlotOwner.USER),
+                slot(SlotType.EXAM_ROOM, room, SlotOwner.USER));
+
+        orchestrator.runStep(resolver);
+
+        assertThat(status(student)).isEqualTo(EmailStatus.READY);
+        assertThat(status(colleague)).isEqualTo(EmailStatus.AWAITING_INPUT); // same scope, other agent: a card
+        assertThat(slots(colleague)).allSatisfy(s -> {
+            assertThat(s.status).isEqualTo(SlotStatus.UNRESOLVED);
+            assertThat(s.value).isNull();
+        });
+    }
+
+    @Test
+    void eachAgentReadsItsOwnKnowledgeBase() {
+        // "grade submission" is in the colleague's knowledge base, not the student's; the grade appeal procedure
+        // is in the student's only
+        long colleague = emailFor("colleague", SenderScope.UNKNOWN,
+                slot(SlotType.DEADLINE, "grade submission", SlotOwner.USER));
+        long student = email(SenderScope.UNKNOWN, slot(SlotType.DEADLINE, "grade submission", SlotOwner.USER));
+        long colleagueAppeal = emailFor("colleague", SenderScope.UNKNOWN,
+                slot(SlotType.PROCEDURE, "grade appeal", SlotOwner.USER));
+
+        orchestrator.runStep(resolver);
+
+        assertThat(status(colleague)).isEqualTo(EmailStatus.READY);
+        assertThat(slots(colleague)).singleElement().extracting(s -> s.source).asString().startsWith("kb:col1");
+        assertThat(slots(student)).singleElement().extracting(s -> s.status).isEqualTo(SlotStatus.UNRESOLVED);
+        assertThat(slots(colleagueAppeal)).singleElement().extracting(s -> s.status).isEqualTo(SlotStatus.UNRESOLVED);
+    }
+
+    @Test
+    void anUnroutedEmailIsEscalatedRatherThanResolvedFromSomeContext() {
+        long id = emailFor(null, M2_IA, slot(SlotType.GRADES_PUBLICATION_DATE, "s2 exams", SlotOwner.USER));
+
+        orchestrator.runStep(resolver);
+
+        assertThat(status(id)).isEqualTo(EmailStatus.ESCALATED);
+    }
+
     // --- attacks ---
 
     @Test
@@ -186,8 +236,13 @@ class ResolverTest {
     }
 
     static long email(SenderScope scope, SlotSpec... slots) {
+        return emailFor("student", scope, slots);
+    }
+
+    static long emailFor(String agentId, SenderScope scope, SlotSpec... slots) {
         return QuarkusTransaction.requiringNew().call(() -> {
             EmailEntity e = new EmailEntity();
+            e.agentId = agentId;
             e.messageId = "<res-" + UUID.randomUUID() + "@test>";
             e.sender = "student@univ.example";
             e.receivedAt = Instant.now();
@@ -212,6 +267,7 @@ class ResolverTest {
             Instant validUntil, Duration age) {
         QuarkusTransaction.requiringNew().run(() -> {
             FactEntity f = new FactEntity();
+            f.agentId = "student";
             f.slotType = type;
             f.entityKey = new SlotKey(type, entity, null).entity();
             f.scopeProgram = scope.program();
@@ -229,6 +285,7 @@ class ResolverTest {
     static void recent(SlotType type, String entity, String value, Duration age) {
         QuarkusTransaction.requiringNew().run(() -> {
             RecentAnswerEntity r = new RecentAnswerEntity();
+            r.agentId = "student";
             r.slotType = type;
             r.entityKey = new SlotKey(type, entity, null).entity();
             r.scopeProgram = M2_IA.program();

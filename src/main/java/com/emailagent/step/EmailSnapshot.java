@@ -14,7 +14,8 @@ import java.time.Instant;
 import java.util.List;
 
 /**
- * A read-only copy of an email handed to an agent. Agents can't save it or change its status;
+ * A read-only copy of an email handed to an agent. {@code agent} is the specialized agent the router chose
+ * (null before routing). Agents can't save it or change its status;
  * {@code status} + {@code version} are the idempotence key the orchestrator checks before committing a result.
  */
 public record EmailSnapshot(
@@ -29,6 +30,7 @@ public record EmailSnapshot(
         String body,
         Instant receivedAt,
         SenderScope scope,
+        String agent,
         Intent intent,
         Sensitivity sensitivity,
         Language language,
@@ -47,7 +49,7 @@ public record EmailSnapshot(
     /** Call inside a transaction: the slots are loaded lazily. */
     public static EmailSnapshot of(EmailEntity e) {
         return new EmailSnapshot(e.id, e.version, e.status, e.messageId, e.threadId, e.sender, e.senderName,
-                e.subject, e.body, e.receivedAt, e.scope(), e.intent, e.sensitivity, e.language, e.replyNeeded,
+                e.subject, e.body, e.receivedAt, e.scope(), e.agentId, e.intent, e.sensitivity, e.language, e.replyNeeded,
                 e.sanitizerFlags, e.slots.stream().map(Slot::of).toList());
     }
 }

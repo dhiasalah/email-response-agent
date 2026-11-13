@@ -29,7 +29,7 @@ public class ReplyLearning {
 
     public record Result(int replies, int pairs) {}
 
-    private record Context(long emailId, SenderScope scope, List<CuratorAgent.Question> questions) {}
+    private record Context(long emailId, String agent, SenderScope scope, List<CuratorAgent.Question> questions) {}
 
     private final Mailbox mailbox;
     private final CuratorAgent curator;
@@ -88,13 +88,20 @@ public class ReplyLearning {
             ProcessedReplyEntity.mark(m.messageId(), email.id, 0, now);
             return null;
         }
+        if (email.agentId == null) {
+            if (email.status == EmailStatus.CLASSIFIED) {
+                return null; // the router has not run yet: come back once the agent is known
+            }
+            ProcessedReplyEntity.mark(m.messageId(), email.id, 0, now); // never routed: no agent memory to feed
+            return null;
+        }
         if (!email.scope().isKnown()) {
             ProcessedReplyEntity.mark(m.messageId(), email.id, 0, now); // no audience: nothing reusable
             return null;
         }
         List<CuratorAgent.Question> questions = email.slots.stream()
                 .map(s -> new CuratorAgent.Question(s.id, s.type, s.entity, s.qualifier, s.question)).toList();
-        return new Context(email.id, email.scope(), questions);
+        return new Context(email.id, email.agentId, email.scope(), questions);
     }
 
     private static Integer commit(SentMessage m, Context ctx, List<CuratorAgent.Learned> learned,
@@ -106,16 +113,17 @@ public class ReplyLearning {
         for (CuratorAgent.Learned l : learned) {
             SlotKey key = l.key();
             // the owner's newest word wins: older entries with another value stop being used (design doc §8.4)
-            RecentAnswerEntity.<RecentAnswerEntity>list("slotType = ?1 and entityKey = ?2"
-                            + " and coalesce(qualifierKey, '') = ?3 and scopeProgram = ?4 and scopeTrack = ?5"
-                            + " and scopeYear = ?6 and supersededAt is null",
-                    key.type(), key.entity(), key.qualifier() == null ? "" : key.qualifier(),
+            RecentAnswerEntity.<RecentAnswerEntity>list("agentId = ?1 and slotType = ?2 and entityKey = ?3"
+                            + " and coalesce(qualifierKey, '') = ?4 and scopeProgram = ?5 and scopeTrack = ?6"
+                            + " and scopeYear = ?7 and supersededAt is null",
+                    ctx.agent(), key.type(), key.entity(), key.qualifier() == null ? "" : key.qualifier(),
                     ctx.scope().program(), ctx.scope().track(), ctx.scope().year()).stream()
                     .filter(r -> !SlotKey.normalize(r.value).equals(SlotKey.normalize(l.value())))
                     .filter(r -> !r.answeredAt.isAfter(at))
                     .forEach(r -> r.supersededAt = now);
 
             RecentAnswerEntity r = new RecentAnswerEntity();
+            r.agentId = ctx.agent();
             r.slotType = key.type();
             r.entityKey = key.entity();
             r.qualifierKey = key.qualifier();

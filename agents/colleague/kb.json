@@ -1,0 +1,8 @@
+[
+  { "id": "col1", "slotType": "DEADLINE", "entity": "grade submission",
+    "value": "Friday 11 June 2027, 18:00, in Apogée",
+    "source": "Calendrier des jurys 2026-2027, Faculté des sciences" },
+  { "id": "col2", "slotType": "PROCEDURE", "entity": "exam room booking",
+    "value": "Book it in ADE through the faculty's planning office, at least three weeks before the exam.",
+    "source": "Guide de l'enseignant 2026-2027, §4" }
+]

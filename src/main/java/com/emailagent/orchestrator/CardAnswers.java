@@ -118,7 +118,7 @@ public class CardAnswers {
     private record Remembered(Long id, Integer version, String reason, List<Long> toCorrect) {}
 
     private Remembered remember(InputRequestEntity card, String value, ScopeChoice choice, Instant now) {
-        FactDecision decision = curator.decide(new CuratorAgent.Card(card.id, card.key(), card.scope(),
+        FactDecision decision = curator.decide(new CuratorAgent.Card(card.id, card.agentId, card.key(), card.scope(),
                 card.personal, card.fieldType), value, choice, now);
         if (!decision.store()) {
             return new Remembered(null, null, decision.reason(), List.of());
