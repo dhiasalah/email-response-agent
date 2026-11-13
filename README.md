@@ -15,7 +15,8 @@ Everything runs on the owner's machine: local models through Ollama, PostgreSQL,
 flowchart LR
     IN[New email] --> PF[Pre-filter<br/>+ sanitizer<br/>+ sender auth]
     PF --> TR[Triage]
-    TR --> RS[Resolver<br/>memory · KB · calendar]
+    TR --> RT[Router<br/>picks one specialized agent]
+    RT --> RS[Resolver<br/>that agent's memory · KB · calendar]
     RS -->|all slots filled| WR[Writer]
     RS -->|missing| GR[Grouping<br/>input cards]
     GR --> OWN[Owner answers once]
@@ -31,11 +32,23 @@ A deterministic **orchestrator** (plain code, not an LLM) moves each email throu
 | Agent | Job | Model |
 | --- | --- | --- |
 | Triage | Intent, sensitivity, language, questions → typed slots | fast |
+| Router | Picks the specialized agent (student, colleague, administration, project, generic) and says why | none (code) |
 | Resolver | Fills slots from facts, knowledge base, calendar, recent replies | none (code) |
 | Grouping | Clusters unresolved slots into input cards (embeddings + verification) | fast |
 | Writer | One reply per email, listing every fact it used | strong |
 | Reviewer | Deterministic rules first, then a model check | strong |
 | Curator | Turns answers into scoped, expiring facts; learns from sent replies | fast |
+
+### Specialized agents
+
+The same person may write in different contexts: a colleague about a jury, then about a research project. The router weighs evidence and hands each email to one **specialized agent**:
+- who sent it: the address, domain and role;
+- what it is about: the keywords;
+- the thread: earlier emails went to this agent.
+
+Each specialized agent has its own instructions for the writer, and its own context. That context is a knowledge base and a calendar, plus the facts, learned answers and cards from its own emails. An agent never reads another agent's context, and the database refuses a card that mixes agents. A members-only agent (the project) never takes email from outside its members. When nothing fits, a fallback agent answers.
+
+Agents are files in [`agents/`](agents/README.md); add or edit one and restart. The panel's **Agents** page shows each agent's routing, prompt and context, and the activity log shows every routing decision with its reasons and confidence.
 
 ## Security model
 
@@ -89,6 +102,7 @@ The full threat model is in sections 9, 13 and 15 of the design document. In sho
 | --- | --- |
 | `/panel` | Input cards to answer, drafts to approve (grouped per card), escalations, broadcast suggestions |
 | `/panel/memory` | What the agent knows: facts, with scope and expiry; forget any of them |
+| `/panel/agents` | The specialized agents: what routes email to each, its prompt, its own knowledge base and calendar |
 | `/panel/activity` | The audit trail of every step |
 | `/panel/metrics` | Status counts, memory reuse, reviewer pass rate, rule failures |
 
@@ -118,6 +132,7 @@ All settings live in `.env` (see [`.env.example`](.env.example)). `EnvExampleTes
 | `FAST_MODEL` / `STRONG_MODEL` / `EMBED_MODEL` | `qwen2.5:7b` / `qwen2.5:7b` / `nomic-embed-text` | Model tiers |
 | `MAILBOX` | `mock` | `mock` (fixtures) or `gmail`; chosen at build or dev start |
 | `GMAIL_ALLOWED_SENDERS` | empty | The only senders Gmail mode reads |
+| `AGENTS_DIR` | `agents` | The folder of agent definitions, prompts and context (see [`agents/README.md`](agents/README.md)) |
 | `RETENTION_DAYS` | `365` | Finished emails are erased after this |
 | `DB_URL` / `DB_USER` / `DB_PASSWORD` | – | Production database (dev and test use Dev Services) |
 
@@ -141,15 +156,16 @@ Policy settings (auto-send types, rate limits, card priority weights, timeouts) 
 src/main/java/com/emailagent/
 ├── web/           owner panel: login, queries, metrics, readable reasons
 ├── orchestrator/  lifecycle, outbox relay, send policy, follow-ups, broadcasts, retention
-├── agents/        the six agents, review rules, triage routing, card priority
+├── agents/        the agents, review rules, triage routing, the router and its strategies, card priority
 ├── step/          the contract between orchestrator and agents: AgentStep, EmailSnapshot, StepResult
 ├── mailbox/       Mailbox interface, mock and Gmail mailboxes, importer, sender directory, owner-only secret files
 ├── llm/           LLM and embedding clients (Ollama), strict output parser, model tiers
 ├── security/      pre-filter, sanitizer, injection detector, sender authentication
-├── store/         JPA entities, knowledge memory, knowledge base, calendar
+├── store/         JPA entities, knowledge memory, agent registry, knowledge sources (per agent)
 ├── config/        typed configuration, start-up checks, PII log filter
 └── model/         enums and value types: statuses, slot types, scopes, IncomingEmail
 src/main/resources/db/migration/   Flyway migrations, including the lifecycle and outbox guards
+agents/                            specialized agents: definitions, prompts, knowledge bases, calendars
 ```
 
 Packages are layered from top to bottom: a package may depend on those listed below it, never on those above. `ArchitectureTest` fails the build if a dependency cycle between packages appears.
@@ -162,3 +178,5 @@ Packages are layered from top to bottom: a package may depend on those listed be
 ```
 
 `MAILBOX` is a build-time choice: build with `MAILBOX=gmail` for a Gmail deployment.
+
+The `agents/` folder is read at run time, not packaged: copy it next to the application, or point `AGENTS_DIR` at it.

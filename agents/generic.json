@@ -1,0 +1,8 @@
+{
+  "id": "generic",
+  "name": "Generic agent",
+  "description": "Anything no specialized agent fits: unknown senders, unusual topics.",
+  "order": 999,
+  "fallback": true,
+  "promptFile": "generic/prompt.txt"
+}

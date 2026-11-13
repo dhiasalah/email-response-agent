@@ -170,6 +170,7 @@ class RetentionTest {
 
     static EmailEntity email(String messageId, String sender, EmailStatus status) {
         EmailEntity e = new EmailEntity();
+        e.agentId = "student";
         e.messageId = messageId;
         e.sender = sender;
         e.senderName = "Lina Benali";

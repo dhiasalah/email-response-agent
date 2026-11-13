@@ -34,6 +34,10 @@ public class InputRequestEntity extends PanacheEntityBase {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     public Long id;
 
+    /** The agent whose emails wait on this card; only that agent's emails may join, and its memory gets the answer. */
+    @NotBlank @Size(max = 50)
+    public String agentId;
+
     @NotNull @Enumerated(EnumType.STRING)
     public SlotType slotType;
 

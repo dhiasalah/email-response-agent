@@ -269,10 +269,39 @@ class GroupingTest {
         assertThatThrownBy(() -> setRequest(slot(room).id, shared)).hasStackTraceContaining("another slot type");
         assertThatThrownBy(() -> setRequest(slot(otherPersonal).id, own)).hasStackTraceContaining("already has a member");
         assertThatThrownBy(() -> QuarkusTransaction.requiringNew().run(() -> em.createNativeQuery(
-                "INSERT INTO input_request (slot_type, entity_key, personal, question, field_type, created_at,"
-                        + " last_activity, scope_program, scope_track, scope_year) VALUES ('INDIVIDUAL_DECISION',"
-                        + " 'extension', false, 'q', 'YES_NO', now(), now(), 'M2', 'IA', 'x')").executeUpdate()))
+                "INSERT INTO input_request (agent_id, slot_type, entity_key, personal, question, field_type,"
+                        + " created_at, last_activity, scope_program, scope_track, scope_year) VALUES ('student',"
+                        + " 'INDIVIDUAL_DECISION', 'extension', false, 'q', 'YES_NO', now(), now(), 'M2', 'IA', 'x')")
+                .executeUpdate()))
                 .hasStackTraceContaining("input_request_shared_chk");
+    }
+
+    // --- specialized agents (brief §5.2): one agent's emails never share a card with another's ---
+
+    @Test
+    void emailsOfDifferentAgentsNeverShareACard() {
+        long student = email("a@s.example", scope, q(SlotType.DEADLINE, "grade submission", "When are grades due?"));
+        long colleague = emailFor("colleague", "b@s.example", scope,
+                q(SlotType.DEADLINE, "grade submission", "When are grades due?"));
+        long student2 = email("c@s.example", scope, q(SlotType.DEADLINE, "grade submission", "Grades due when?"));
+
+        grouping.run(agent);
+
+        assertThat(cardOf(student2).id).isEqualTo(cardOf(student).id); // same agent, same key: one card
+        assertThat(cardOf(colleague).id).isNotEqualTo(cardOf(student).id);
+        assertThat(cardOf(student).agentId).isEqualTo("student");
+        assertThat(cardOf(colleague).agentId).isEqualTo("colleague");
+        assertThat(myRequests()).isEmpty(); // the agent gate runs before any model call
+    }
+
+    @Test
+    void databaseRefusesASlotJoiningAnotherAgentsCard() {
+        long student = email("a@s.example", scope, q(SlotType.EXAM_DATE, "s2 exams", "When?"));
+        long colleague = emailFor("colleague", "b@s.example", scope, q(SlotType.EXAM_DATE, "s2 exams", "When?"));
+        grouping.run(agent);
+
+        assertThatThrownBy(() -> setRequest(slot(colleague).id, cardOf(student).id))
+                .hasStackTraceContaining("another agent");
     }
 
     // --- helpers ---
@@ -295,8 +324,13 @@ class GroupingTest {
     }
 
     static long email(String sender, SenderScope scope, SlotSpec... slots) {
+        return emailFor("student", sender, scope, slots);
+    }
+
+    static long emailFor(String agentId, String sender, SenderScope scope, SlotSpec... slots) {
         return QuarkusTransaction.requiringNew().call(() -> {
             EmailEntity e = new EmailEntity();
+            e.agentId = agentId;
             e.messageId = "<grp-" + UUID.randomUUID() + "@test>";
             e.sender = sender;
             e.subject = "Question";

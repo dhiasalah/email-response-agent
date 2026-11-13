@@ -41,6 +41,7 @@ class LifecycleDatabaseGuardTest {
         QuarkusTransaction.begin();
         try {
             EmailEntity email = new EmailEntity();
+            email.agentId = "student";
             email.messageId = "<guard-" + from + "-" + to + "@test>";
             email.sender = "guard@univ.example";
             email.receivedAt = Instant.now();

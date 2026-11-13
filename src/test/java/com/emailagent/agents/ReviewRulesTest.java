@@ -118,7 +118,7 @@ class ReviewRulesTest {
 
     private List<String> failures(String content, List<WriterAgent.Fact> facts, String emailBody, Language lang) {
         EmailSnapshot email = new EmailSnapshot(1, 0, EmailStatus.DRAFTED, "<x@test>", null, "s@univ.example", "S",
-                "Question", emailBody, Instant.now(), SenderScope.UNKNOWN, null, null, lang, true, null,
+                "Question", emailBody, Instant.now(), SenderScope.UNKNOWN, "student", null, null, lang, true, null,
                 List.of());
         return ReviewRules.failures(content, email, facts, detector);
     }

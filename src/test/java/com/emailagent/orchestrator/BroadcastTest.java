@@ -91,6 +91,7 @@ class BroadcastTest {
         String key = "exam " + UUID.randomUUID().toString().substring(0, 8);
         return QuarkusTransaction.requiringNew().call(() -> {
             InputRequestEntity c = new InputRequestEntity();
+            c.agentId = "student";
             c.slotType = SlotType.EXAM_DATE;
             c.entityKey = key;
             c.scopeProgram = "M2";
@@ -105,6 +106,7 @@ class BroadcastTest {
             c.persist();
             for (int i = 0; i < questions; i++) {
                 EmailEntity e = new EmailEntity();
+                e.agentId = "student";
                 e.messageId = "<bc-" + UUID.randomUUID() + "@test>";
                 e.sender = "bc" + i + "@student.univ.example";
                 e.subject = "Exam";
@@ -127,6 +129,7 @@ class BroadcastTest {
                 s.persist();
             }
             FactEntity f = new FactEntity();
+            f.agentId = "student";
             f.slotType = SlotType.EXAM_DATE;
             f.entityKey = key;
             f.scopeProgram = "M2";

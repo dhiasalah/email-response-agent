@@ -47,7 +47,7 @@ public class GroupingAgent {
 
     /** A question waiting for the owner, as grouping sees it (read-only copy). */
     public record PendingSlot(long slotId, long emailId, String sender, Instant receivedAt, SenderScope scope,
-            SlotType type, String entity, String qualifier, String question, SlotStatus status, String value,
+            String agent, SlotType type, String entity, String qualifier, String question, SlotStatus status, String value,
             String source) {
 
         SlotKey key() {
@@ -62,7 +62,7 @@ public class GroupingAgent {
     }
 
     /** An existing card new questions may join (read-only copy, with the version the commit checks). */
-    public record OpenCluster(long id, long version, SlotKey key, SenderScope scope, float[] centroid,
+    public record OpenCluster(long id, long version, String agent, SlotKey key, SenderScope scope, float[] centroid,
             int memberCount, String sampleQuestion, String proposedValue, String proposalSource,
             String embeddingModel) {}
 
@@ -70,6 +70,7 @@ public class GroupingAgent {
     public static final class Draft {
         final Long id;
         final long version;
+        final String agent;
         final SlotKey key;
         final SenderScope scope;
         final boolean personal;
@@ -80,10 +81,12 @@ public class GroupingAgent {
         String proposedValue;
         String proposalSource;
 
-        Draft(Long id, long version, SlotKey key, SenderScope scope, boolean personal, String sampleQuestion,
-                float[] centroid, int members, String proposedValue, String proposalSource, String embeddingModel) {
+        Draft(Long id, long version, String agent, SlotKey key, SenderScope scope, boolean personal,
+                String sampleQuestion, float[] centroid, int members, String proposedValue, String proposalSource,
+                String embeddingModel) {
             this.id = id;
             this.version = version;
+            this.agent = agent;
             this.key = key;
             this.scope = scope;
             this.personal = personal;
@@ -97,6 +100,7 @@ public class GroupingAgent {
 
         public Long id() { return id; }
         public long version() { return version; }
+        public String agent() { return agent; }
         public SlotKey key() { return key; }
         public SenderScope scope() { return scope; }
         public boolean personal() { return personal; }
@@ -136,7 +140,7 @@ public class GroupingAgent {
     public Plan plan(List<PendingSlot> pending, List<OpenCluster> open) {
         List<Draft> cards = new ArrayList<>();
         for (OpenCluster c : open) {
-            cards.add(new Draft(c.id(), c.version(), c.key(), c.scope(), false, c.sampleQuestion(), c.centroid(),
+            cards.add(new Draft(c.id(), c.version(), c.agent(), c.key(), c.scope(), false, c.sampleQuestion(), c.centroid(),
                     c.memberCount(), c.proposedValue(), c.proposalSource(), c.embeddingModel()));
         }
         List<Assignment> assignments = new ArrayList<>();
@@ -208,11 +212,13 @@ public class GroupingAgent {
     }
 
     /**
-     * Hard rules no similarity score and no model can override: same slot type, exact same scope, same qualifier
-     * (first session vs retake), and a compatible proposal. Only the entity's wording may differ.
+     * Hard rules no similarity score and no model can override: same agent (one owner answer never crosses from one
+     * agent's context into another's), same slot type, exact same scope, same qualifier (first session vs retake),
+     * and a compatible proposal. Only the entity's wording may differ.
      */
     static boolean gatesAllow(Draft card, PendingSlot slot) {
-        if (card.personal || card.key.type() != slot.type() || !card.scope.equals(slot.scope())) {
+        if (card.personal || !Objects.equals(card.agent, slot.agent()) || card.key.type() != slot.type()
+                || !card.scope.equals(slot.scope())) {
             return false;
         }
         if (!Objects.equals(card.key.qualifier(), slot.key().qualifier())) {
@@ -235,7 +241,7 @@ public class GroupingAgent {
     }
 
     private Draft newCard(PendingSlot slot, boolean personal, float[] vector) {
-        Draft d = new Draft(null, 0, slot.key(), slot.scope(), personal, slot.text(), null, 0, null, null,
+        Draft d = new Draft(null, 0, slot.agent(), slot.key(), slot.scope(), personal, slot.text(), null, 0, null, null,
                 personal || vector == null ? null : embedder.modelName());
         join(d, slot, personal ? null : vector);
         return d;

@@ -148,7 +148,7 @@ class EvaluationOllamaTest {
             // the draft is written in English for F4 (wrong language): the reviewer sees the email's language
             Language draftLang = l.id().equals("F4") ? Language.FR : lang;
             EmailSnapshot email = new EmailSnapshot(1, 0, EmailStatus.DRAFTED, "<x@test>", null, "s@univ.example",
-                    "S", "Exam", l.email(), Instant.now(), SenderScope.UNKNOWN, null, null, lang, true, null,
+                    "S", "Exam", l.email(), Instant.now(), SenderScope.UNKNOWN, "student", null, null, lang, true, null,
                     List.of(new EmailSnapshot.Slot(1, SlotType.EXAM_DATE, "ml exam", null, null, SlotOwner.USER,
                             SlotStatus.FILLED, "2027-06-03", "fact:2:v1")));
             String body = WriterAgent.opening(draftLang) + l.content()
@@ -182,7 +182,7 @@ class EvaluationOllamaTest {
                     TriageAgent.owner(entity, q.owner()), SlotStatus.UNRESOLVED, null, null));
         }
         return new EmailSnapshot(1, 0, EmailStatus.TRIAGED, "<x>", null, "s@univ.example", null, "", "",
-                Instant.now(), SenderScope.UNKNOWN, out.intent(), out.sensitivity(), out.language(), out.replyNeeded(),
+                Instant.now(), SenderScope.UNKNOWN, "student", out.intent(), out.sensitivity(), out.language(), out.replyNeeded(),
                 null, slots);
     }
 

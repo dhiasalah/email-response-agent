@@ -149,6 +149,7 @@ class OrchestratorTest {
     private static long newEmail(EmailStatus status) {
         return QuarkusTransaction.requiringNew().call(() -> {
             EmailEntity email = new EmailEntity();
+            email.agentId = "student";
             email.messageId = "<orch-" + UUID.randomUUID() + "@test>";
             email.sender = "lina@univ.example";
             email.subject = "Notes S2";

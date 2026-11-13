@@ -1,18 +1,25 @@
 package com.emailagent.agents;
 
+import com.emailagent.mailbox.SenderDirectory;
 import com.emailagent.model.EmailStatus;
 import com.emailagent.model.Intent;
 import com.emailagent.model.Sensitivity;
+import com.emailagent.security.SenderAuthentication;
 import com.emailagent.step.AgentStep;
 import com.emailagent.step.EmailSnapshot;
 import com.emailagent.step.StepResult;
 import com.emailagent.security.InjectionDetector;
+import com.emailagent.store.EmailEntity;
+import io.quarkus.narayana.jta.QuarkusTransaction;
 import jakarta.enterprise.context.ApplicationScoped;
 import java.util.regex.Pattern;
 
 /**
- * TRIAGED → ESCALATED, IGNORED or RESOLVING. Plain code, no model: policy decisions are made here, from triage's
- * labels and the taxonomy's own flags, so no email text can argue its way past them (design doc §6, §16.3).
+ * TRIAGED → ESCALATED, IGNORED or RESOLVING: the routing agent (brief §4.1). Plain code, no model. It makes two
+ * decisions: which specialized agent the email belongs to ({@link AgentRouter}: whose prompt and whose context will
+ * be used), and the policy route, from triage's labels and the taxonomy's own flags, so no email text can argue its
+ * way past them (design doc §6, §16.3). Every email that reaches this step gets an agent, escalated ones included:
+ * the owner sees who would have handled it, and a retry after escalation goes to that agent.
  */
 @ApplicationScoped
 public class TriageRouter implements AgentStep {
@@ -35,10 +42,39 @@ public class TriageRouter implements AgentStep {
         return EmailStatus.TRIAGED;
     }
 
+    private final AgentRouter agents;
+    private final SenderDirectory directory;
+
+    public TriageRouter(AgentRouter agents, SenderDirectory directory) {
+        this.agents = agents;
+        this.directory = directory;
+    }
+
     @Override
     public StepResult run(EmailSnapshot email) {
+        AgentRouter.Decision agent = agents.route(input(email));
         Route route = route(email);
-        return StepResult.to(route.next(), "{\"route\":\"" + route.reason() + "\"}");
+        return new StepResult(route.next(), "{\"route\":\"" + route.reason() + "\"," + agent.json() + "}",
+                agent.confidence(), null, null, e -> e.agentId = agent.agentId());
+    }
+
+    /** What the agent router may use: the roster's role, authentication, the text, and the thread's earlier agent. */
+    RoutingStrategy.Input input(EmailSnapshot email) {
+        boolean authenticated = !SenderAuthentication.flagged(email.sanitizerFlags());
+        return new RoutingStrategy.Input(email.sender(), authenticated,
+                directory.roleOf(email.sender(), email.sanitizerFlags()), email.subject(), email.body(),
+                threadAgent(email));
+    }
+
+    /** The agent of the latest earlier email in the same thread, if any (a short read-only lookup). */
+    static String threadAgent(EmailSnapshot email) {
+        if (email.threadId() == null || email.threadId().isBlank()) {
+            return null;
+        }
+        return QuarkusTransaction.requiringNew().call(() -> EmailEntity.<EmailEntity>find(
+                        "threadId = ?1 and id <> ?2 and agentId is not null order by receivedAt desc, id desc",
+                        email.threadId(), email.id())
+                .firstResultOptional().map(e -> e.agentId).orElse(null));
     }
 
     /** Order matters: anything sensitive goes to the owner, even when "no reply is needed". */

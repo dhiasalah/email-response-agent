@@ -26,6 +26,10 @@ public class FactEntity extends PanacheEntityBase {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     public Long id;
 
+    /** The agent whose context this fact belongs to: it is never used for another agent's emails. */
+    @NotBlank @Size(max = 50)
+    public String agentId;
+
     @NotNull @Enumerated(EnumType.STRING)
     public SlotType slotType;
 
@@ -69,11 +73,12 @@ public class FactEntity extends PanacheEntityBase {
         return new SlotKey(slotType, entityKey, qualifierKey);
     }
 
-    /** The active fact for exactly this key and exactly this scope, if any. */
-    public static Optional<FactEntity> findActive(SlotKey key, SenderScope scope) {
-        return find("active = true and slotType = ?1 and entityKey = ?2 and coalesce(qualifierKey, '') = ?3"
-                        + " and scopeProgram = ?4 and scopeTrack = ?5 and scopeYear = ?6",
-                key.type(), key.entity(), key.qualifier() == null ? "" : key.qualifier(),
+    /** The active fact of this agent for exactly this key and exactly this scope, if any. */
+    public static Optional<FactEntity> findActive(String agentId, SlotKey key, SenderScope scope) {
+        return find("active = true and agentId = ?1 and slotType = ?2 and entityKey = ?3"
+                        + " and coalesce(qualifierKey, '') = ?4 and scopeProgram = ?5 and scopeTrack = ?6"
+                        + " and scopeYear = ?7",
+                agentId, key.type(), key.entity(), key.qualifier() == null ? "" : key.qualifier(),
                 scope.program(), scope.track(), scope.year())
                 .firstResultOptional();
     }

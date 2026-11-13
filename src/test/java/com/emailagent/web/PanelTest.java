@@ -332,7 +332,8 @@ class PanelTest {
     // --- data helpers ---
 
     static PanelQueries.DraftView draft(long id, String lang, int length, List<String> outliers) {
-        return new PanelQueries.DraftView(id, "s" + id, null, "subj", "q", "x".repeat(length), lang, "", outliers, List.of());
+        return new PanelQueries.DraftView(id, "s" + id, null, "subj", "q", "x".repeat(length), lang, "", outliers, List.of(),
+                "Student agent");
     }
 
     long escalated(String subject, String body, String name) {
@@ -369,6 +370,7 @@ class PanelTest {
     long fact(String value) {
         return QuarkusTransaction.requiringNew().call(() -> {
             FactEntity f = new FactEntity();
+            f.agentId = "student";
             f.slotType = SlotType.EXAM_ROOM;
             f.entityKey = "exam " + UUID.randomUUID().toString().substring(0, 8);
             f.scopeProgram = "M2";
@@ -387,6 +389,7 @@ class PanelTest {
     long[] cardWithWaitingEmail() {
         return QuarkusTransaction.requiringNew().call(() -> {
             InputRequestEntity c = new InputRequestEntity();
+            c.agentId = "student";
             c.slotType = SlotType.EXAM_DATE;
             c.entityKey = "exam " + UUID.randomUUID().toString().substring(0, 8);
             c.personal = true;
@@ -436,6 +439,7 @@ class PanelTest {
 
     static EmailEntity email(EmailStatus status) {
         EmailEntity e = new EmailEntity();
+        e.agentId = "student";
         e.messageId = "<pn-" + UUID.randomUUID() + "@test>";
         e.sender = "pn-" + UUID.randomUUID().toString().substring(0, 8) + "@student.univ.example";
         e.subject = "Exam";

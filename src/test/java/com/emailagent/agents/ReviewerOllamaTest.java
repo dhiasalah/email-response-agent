@@ -62,7 +62,7 @@ class ReviewerOllamaTest {
 
     private ReviewerAgent.Review review(Language lang, String body, String content) throws LlmException {
         EmailSnapshot email = new EmailSnapshot(1, 0, EmailStatus.DRAFTED, "<x@test>", null, "s@univ.example", "S",
-                "Exam", body, Instant.now(), SenderScope.UNKNOWN, null, null, lang, true, null,
+                "Exam", body, Instant.now(), SenderScope.UNKNOWN, "student", null, null, lang, true, null,
                 List.of(new EmailSnapshot.Slot(1, SlotType.EXAM_DATE, "ml exam", null, null, SlotOwner.USER,
                         SlotStatus.FILLED, "2027-06-03", "fact:2:v1")));
         String draft = WriterAgent.opening(lang) + content

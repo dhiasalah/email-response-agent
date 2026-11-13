@@ -65,6 +65,10 @@ public class EmailEntity extends PanacheEntityBase {
     @Size(max = 100) public String scopeTrack;
     @Size(max = 20) public String scopeYear;
 
+    /** The specialized agent the router chose (its definition's id). Null until routed. */
+    @Size(max = 50)
+    public String agentId;
+
     @Enumerated(EnumType.STRING) public Intent intent;
     @Enumerated(EnumType.STRING) public Sensitivity sensitivity;
     @Enumerated(EnumType.STRING) public Language language;

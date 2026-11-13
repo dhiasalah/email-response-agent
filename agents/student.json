@@ -1,0 +1,15 @@
+{
+  "id": "student",
+  "name": "Student agent",
+  "description": "Students' questions about courses, exams, grades, deadlines and study procedures.",
+  "order": 20,
+  "routing": {
+    "senderRoles": ["STUDENT"],
+    "senderDomains": ["student.univ.example"],
+    "keywords": ["exam", "exams", "examen", "examens", "grades", "notes", "résultats", "rattrapage", "retake",
+                 "deadline", "date limite", "cours", "course", "slides", "moodle", "stage", "internship"]
+  },
+  "promptFile": "student/prompt.txt",
+  "knowledge": ["student/kb.json"],
+  "calendar": ["student/calendar.json"]
+}

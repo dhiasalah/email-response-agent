@@ -45,7 +45,7 @@ class RetriageOllamaTest {
 
     private TriageOutput triage(String body) throws LlmException {
         EmailSnapshot email = new EmailSnapshot(1, 0, EmailStatus.NEW, "<x@test>", null, "s@univ.example", "S",
-                "Exam", body, Instant.now(), SenderScope.UNKNOWN, null, null, null, null, null, List.of());
+                "Exam", body, Instant.now(), SenderScope.UNKNOWN, "student", null, null, null, null, null, List.of());
         return llm.call(new LlmRequest("triage", ModelTier.FAST, TriageAgent.INSTRUCTIONS, TriageAgent.render(email)),
                 TriageOutput.class);
     }

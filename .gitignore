@@ -30,3 +30,7 @@ Thumbs.db
 *.log
 ruleset.json
 
+multi_agent_project_en.pdf
+email-response-agent-report.pdf
+
+gmail-client.json

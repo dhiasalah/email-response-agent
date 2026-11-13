@@ -246,6 +246,7 @@ class FollowUpTest {
     long create(String sender, String thread, EmailStatus status, Instant received, SlotType type, SlotOwner owner) {
         return QuarkusTransaction.requiringNew().call(() -> {
             EmailEntity e = new EmailEntity();
+            e.agentId = "student";
             e.messageId = "<fu-" + UUID.randomUUID() + "@test>";
             e.threadId = thread;
             e.sender = sender;

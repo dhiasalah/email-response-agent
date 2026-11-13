@@ -18,6 +18,9 @@
       <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11v3a1 1 0 0 0 1 1h2l5 4V6L6 10H4a1 1 0 0 0-1 1z"/><path d="M15 8a5 5 0 0 1 0 8"/><path d="M18 5a9 9 0 0 1 0 14"/></svg>
       <span class="label-text">Broadcasts</span>{#if dash??} <span class="count{#if dash.broadcasts.size > 0} hot{/if}">{dash.broadcasts.size}</span>{/if}</a>
     <div class="nav-label">Insight</div>
+    <a href="/panel/agents"{#if current == 'agents'} class="current" aria-current="page"{/if}>
+      <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7"/><path d="M18 14.5a6.5 6.5 0 0 1 3.5 5.5"/></svg>
+      <span class="label-text">Agents</span></a>
     <a href="/panel/memory"{#if current == 'memory'} class="current" aria-current="page"{/if}>
       <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5"/><path d="M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/></svg>
       <span class="label-text">Memory</span></a>

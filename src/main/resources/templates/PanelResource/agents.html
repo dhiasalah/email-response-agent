@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Agents · Email agent</title>
+  <link rel="stylesheet" href="/panel.css">
+</head>
+<body>
+<div class="shell">
+{#include sidebar current='agents' /}
+<main class="main">
+<div class="page">
+
+  <header class="page-head">
+    <div>
+      <div class="eyebrow">Organisation</div>
+      <h1>Specialized agents</h1>
+      <p>The router gives every email to one agent. Each agent writes with its own instructions and reads only its own context: its knowledge base, its calendar, and the answers learned from its own emails.</p>
+    </div>
+  </header>
+
+  <div class="tiles">
+    <div class="tile hot"><span class="tile-top">Agents</span><b>{page.agents.size}</b><small>defined in <code>{page.folder}/</code></small></div>
+    {#for a in page.agents}
+    <a class="tile" href="#agent-{a.id}"><span class="tile-top">{a.name}</span><b>{a.emails}</b><small>emails routed</small></a>
+    {/for}
+    <div class="tile{#if page.unrouted > 0} alert{/if}"><span class="tile-top">Not routed</span><b>{page.unrouted}</b><small>new, or stopped before routing</small></div>
+  </div>
+
+  <section class="queue">
+    <div class="queue-head">
+      <span class="queue-icon"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7"/><path d="M18 14.5a6.5 6.5 0 0 1 3.5 5.5"/></svg></span>
+      <div><h2>How an email finds its agent</h2><p>Evidence adds up: listed sender 1.0, sender domain 0.5, sender role 0.4, each keyword 0.3 (at most 0.6), same thread as an earlier email 0.8. Below 0.3 no agent fits and the fallback agent answers. When two agents are within 0.1, the one listed first wins and the decision is marked as a close call. A members-only agent never takes an email from someone outside its members, whatever the email says.</p></div>
+    </div>
+
+    {#for a in page.agents}
+    <article class="item" id="agent-{a.id}">
+      <div class="item-body">
+        <div class="item-meta">
+          <span class="pill accent">{a.name}</span>
+          <span class="pill"><code>{a.id}</code></span>
+          {#if a.fallback}<span class="pill policy">Fallback: takes what no other agent fits</span>{/if}
+          {#if a.membersOnly}<span class="pill warn">Members only ({a.members.size})</span>{/if}
+          <span class="pill">Order {a.order}</span>
+        </div>
+        {#if a.description}<h3>{a.description}</h3>{/if}
+        <dl class="facts-grid">
+          <div><dt>Emails routed</dt><dd>{a.emails}</dd></div>
+          <div><dt>Remembered answers</dt><dd>{a.facts}</dd></div>
+          <div><dt>Open cards</dt><dd>{a.openCards}</dd></div>
+          <div><dt>Files</dt><dd>{#for f in a.files}<code>{f}</code>{#if f_hasNext} {/if}{/for}</dd></div>
+        </dl>
+        <dl class="facts-grid">
+          <div><dt>Sender roles</dt><dd>{#if a.roles}{#for r in a.roles}{r}{#if r_hasNext}, {/if}{/for}{#else}—{/if}</dd></div>
+          <div><dt>Sender domains</dt><dd>{#if a.domains}{#for d in a.domains}{d}{#if d_hasNext}, {/if}{/for}{#else}—{/if}</dd></div>
+          <div><dt>Listed senders</dt><dd>{#if a.addresses}{a.addresses.size}{#else}—{/if}</dd></div>
+          <div><dt>Keywords</dt><dd>{#if a.keywords}{#for k in a.keywords}{k}{#if k_hasNext}, {/if}{/for}{#else}—{/if}</dd></div>
+        </dl>
+
+        <p class="label">System prompt{#if a.promptFile} · <code>{a.promptFile}</code>{/if}</p>
+        {#if a.prompt}<pre class="mail">{a.prompt}</pre>{#else}<p class="hint">No prompt: the shared writing rules only.</p>{/if}
+
+        {#if a.knowledge || a.calendar}
+        <details>
+          <summary>Context: {a.knowledge.size} knowledge {#if a.knowledge.size == 1}entry{#else}entries{/if}, {a.calendar.size} calendar {#if a.calendar.size == 1}event{#else}events{/if}</summary>
+          <div class="panel-box inside"><div class="table-wrap"><table>
+            <tr><th>Kind</th><th>Question</th><th>Answer</th><th>For</th><th>Source</th></tr>
+            {#for e in a.knowledge}
+            <tr><td>Knowledge</td><td>{e.label}: {e.entity}</td><td><strong>{e.value}</strong></td><td>{e.scope}</td><td class="muted">{e.source ?: ''}</td></tr>
+            {/for}
+            {#for e in a.calendar}
+            <tr><td>Calendar <span class="muted">(you confirm)</span></td><td>{e.label}: {e.entity}</td><td><strong>{e.value}</strong></td><td>{e.scope}</td><td class="muted">{e.source ?: ''}</td></tr>
+            {/for}
+          </table></div></div>
+        </details>
+        {#else}
+        <p class="hint">No knowledge base or calendar: every question becomes a card for you.</p>
+        {/if}
+      </div>
+    </article>
+    {/for}
+  </section>
+
+  <div class="empty"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+    To add an agent or change one, edit the files in <code>{page.folder}/</code> (see its README) and restart: no code to change.</div>
+
+</div>
+</main>
+</div>
+</body>
+</html>

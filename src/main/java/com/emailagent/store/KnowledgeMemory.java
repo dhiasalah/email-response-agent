@@ -7,7 +7,7 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * Writes facts (design doc §8.2): one active version per slot key and scope, older versions kept, and the list of
+ * Writes facts (design doc §8.2): one active version per agent, slot key and scope, older versions kept, and the list of
  * emails that received a value that has just changed. Call inside a transaction.
  */
 @ApplicationScoped
@@ -17,7 +17,7 @@ public class KnowledgeMemory {
     public record Written(FactEntity fact, FactEntity previous, List<Long> toCorrect) {}
 
     public Written write(FactDecision d, Instant now) {
-        Optional<FactEntity> current = FactEntity.findActive(d.key(), d.scope());
+        Optional<FactEntity> current = FactEntity.findActive(d.agentId(), d.key(), d.scope());
         if (current.isPresent() && SlotKey.normalize(current.get().value).equals(SlotKey.normalize(d.value()))) {
             FactEntity same = current.get();
             if (d.validUntil() != null && (same.validUntil == null || d.validUntil().isAfter(same.validUntil))) {
@@ -27,6 +27,7 @@ public class KnowledgeMemory {
         }
 
         FactEntity f = new FactEntity();
+        f.agentId = d.agentId();
         f.slotType = d.key().type();
         f.entityKey = d.key().entity();
         f.qualifierKey = d.key().qualifier();

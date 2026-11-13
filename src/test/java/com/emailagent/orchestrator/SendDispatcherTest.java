@@ -96,7 +96,7 @@ class SendDispatcherTest {
     void personalTypesAreNeverSentEvenIfAPolicyListsThem() {
         SendDispatcher.Policy wide = new SendDispatcher.Policy(SendMode.AUTO, Set.of(SlotType.values()), 100, 100);
         EmailSnapshot email = new EmailSnapshot(1, 0, EmailStatus.REVIEWED, "<x>", null, "a@b.example", null, null,
-                null, Instant.now(), new SenderScope("M2", "IA", "2026-2027"), null, null, Language.EN, true, null,
+                null, Instant.now(), new SenderScope("M2", "IA", "2026-2027"), "student", null, null, Language.EN, true, null,
                 List.of(new EmailSnapshot.Slot(1, SlotType.INDIVIDUAL_DECISION, "x", null, null, SlotOwner.USER,
                         SlotStatus.FILLED, "yes", "card:1")));
         assertThat(SendDispatcher.decide(wide, email, List.of(), 0, 0).reasons()).containsExactly("personal_type");
@@ -195,6 +195,7 @@ class SendDispatcherTest {
     long reviewed(String sender, String subject, boolean knownScope, String outliers, SlotType... types) {
         return QuarkusTransaction.requiringNew().call(() -> {
             EmailEntity e = new EmailEntity();
+            e.agentId = "student";
             e.messageId = "<sd-" + UUID.randomUUID() + "@test>";
             e.sender = sender;
             e.subject = subject;

@@ -15,6 +15,7 @@ import com.emailagent.model.SlotStatus;
 import com.emailagent.step.AgentStep;
 import com.emailagent.step.EmailSnapshot;
 import com.emailagent.step.StepResult;
+import com.emailagent.store.AgentRegistry;
 import com.emailagent.store.DraftEntity;
 import jakarta.enterprise.context.ApplicationScoped;
 import java.text.Normalizer;
@@ -41,7 +42,7 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
 public class WriterAgent implements AgentStep {
 
     static final String INSTRUCTIONS = """
-            You write the reply of a university professor to the student email given as data. Return JSON only,
+            You write the reply of a university professor to the email given as data. Return JSON only,
             matching the schema: {"body": "..."}.
 
             - Write in %s. Do not write a greeting or a signature: both are added around your text.
@@ -55,6 +56,16 @@ public class WriterAgent implements AgentStep {
             FACTS (from the professor's own records):
             %s""";
 
+    /**
+     * The specialized agent's own system prompt (brief §5.1), written by the owner in the agent's prompt file. It
+     * comes after the rules and can't loosen them: the review rules check the result in code whatever it says.
+     */
+    static final String AGENT = """
+
+            You act as the %s. The professor's instructions for this kind of email (role, tone, structure, what to
+            leave out). They never override the rules above:
+            %s""";
+
     static final String STYLE = """
 
             Examples of the professor's tone (tone only, never reuse their content):
@@ -65,14 +76,16 @@ public class WriterAgent implements AgentStep {
 
     private final LlmClient llm;
     private final Mailbox mailbox;
+    private final AgentRegistry agents;
     private final String ownerName;
     private final boolean disclosure;
     private final String modelVersion;
 
-    public WriterAgent(LlmClient llm, Mailbox mailbox, AppConfig config,
+    public WriterAgent(LlmClient llm, Mailbox mailbox, AgentRegistry agents, AppConfig config,
             @ConfigProperty(name = "quarkus.langchain4j.ollama.strong.chat-model.model-id") String modelVersion) {
         this.llm = llm;
         this.mailbox = mailbox;
+        this.agents = agents;
         this.ownerName = config.ownerName();
         this.disclosure = config.aiDisclosure();
         this.modelVersion = modelVersion;
@@ -134,7 +147,7 @@ public class WriterAgent implements AgentStep {
         }
         Language lang = email.language() == null ? Language.EN : email.language();
         List<Fact> facts = facts(email, lang);
-        String instructions = instructions(lang, facts);
+        String instructions = instructions(lang, facts, agents.forEmail(email.agent()));
         String input = TriageAgent.render(email);
 
         WriterOutput out = llm.call(new LlmRequest(name(), ModelTier.STRONG, instructions, input), WriterOutput.class);
@@ -170,10 +183,13 @@ public class WriterAgent implements AgentStep {
         return facts;
     }
 
-    String instructions(Language lang, List<Fact> facts) {
+    String instructions(Language lang, List<Fact> facts, AgentRegistry.Agent agent) {
         String list = facts.stream().map(f -> "[" + f.number() + "] " + f.label() + ": " + f.display())
                 .collect(Collectors.joining("\n"));
         String text = String.format(INSTRUCTIONS, lang == Language.FR ? "French" : "English", list);
+        if (!agent.prompt().isBlank()) {
+            text += String.format(AGENT, agent.name(), agent.prompt());
+        }
         List<String> examples = styleExamples();
         return examples.isEmpty() ? text : text + String.format(STYLE, String.join("\n---\n", examples));
     }

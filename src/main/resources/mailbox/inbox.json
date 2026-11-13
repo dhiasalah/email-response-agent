@@ -83,5 +83,40 @@
     "subject": "Rendez-vous pour mon stage",
     "bodyText": "Bonjour Monsieur,\nSerait-il possible de vous rencontrer la semaine prochaine pour parler de mon sujet de stage ?\nCordialement,\nLucas",
     "receivedAt": "2026-10-27T16:00:00Z", "headers": {}
+  },
+  {
+    "messageId": "<m13@univ.example>", "threadId": "t13",
+    "from": "lea.garnier@univ.example", "fromName": "Léa Garnier",
+    "subject": "Jury du M2 IA",
+    "bodyText": "Salut,\n\nJ'ai presque fini mes copies. Pour préparer le jury de juin : c'est quoi la date limite pour la saisie des notes dans Apogée ?\n\nMerci,\nLéa",
+    "receivedAt": "2026-10-27T16:20:00Z", "headers": {}
+  },
+  {
+    "messageId": "<m14@univ.example>", "threadId": "t14",
+    "from": "lea.garnier@univ.example", "fromName": "Léa Garnier",
+    "subject": "SuperMASProject: deliverable D2.1",
+    "bodyText": "Hi,\n\nQuick one for the consortium: when is the SuperMASProject deliverable D2.1 due?\n\nThanks,\nLéa",
+    "receivedAt": "2026-10-27T16:40:00Z", "headers": {}
+  },
+  {
+    "messageId": "<m15@univ.example>", "threadId": "t15",
+    "from": "scolarite.sciences@univ.example", "fromName": "Scolarité Sciences",
+    "subject": "Conventions de stage M2 IA",
+    "bodyText": "Monsieur,\n\nDans quel délai signez-vous les conventions de stage dans PStage ? Nous devons l'indiquer aux étudiants.\n\nCordialement,\nLe service de scolarité",
+    "receivedAt": "2026-10-27T17:00:00Z", "headers": {}
+  },
+  {
+    "messageId": "<m16@gmail.example>", "threadId": "t16",
+    "from": "j.dupont@gmail.example", "fromName": "Jeanne Dupont",
+    "subject": "Attestation pour l'examen",
+    "bodyText": "Bonjour,\n\nPourriez-vous me fournir une attestation de présence pour l'examen du 12 octobre ?\n\nCordialement,\nJeanne Dupont",
+    "receivedAt": "2026-10-27T17:20:00Z", "headers": {}
+  },
+  {
+    "messageId": "<m17@student.univ.example>", "threadId": "t17",
+    "from": "youssef.amri@student.univ.example", "fromName": "Youssef Amri",
+    "subject": "SuperMASProject deliverable",
+    "bodyText": "Hello Professor,\n\nWhen is the SuperMASProject deliverable D2.1 due? I would like to read it for my internship.\n\nBest regards,\nYoussef",
+    "receivedAt": "2026-10-27T17:40:00Z", "headers": {}
   }
 ]

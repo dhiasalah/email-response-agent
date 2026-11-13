@@ -54,6 +54,7 @@ class SenderAuthImportTest {
         String thread = "t-" + UUID.randomUUID();
         long waiting = QuarkusTransaction.requiringNew().call(() -> {
             EmailEntity e = new EmailEntity();
+            e.agentId = "student";
             e.messageId = "<wait-" + UUID.randomUUID() + "@test>";
             e.threadId = thread;
             e.sender = LINA;

@@ -6,6 +6,7 @@ import com.emailagent.model.EmailStatus;
 import com.emailagent.model.NoticeKind;
 import com.emailagent.orchestrator.OwnerActions;
 import com.emailagent.security.SenderAuthentication;
+import com.emailagent.store.AgentRegistry;
 import com.emailagent.store.DecisionLogEntry;
 import com.emailagent.store.DraftEntity;
 import com.emailagent.store.EmailEntity;
@@ -33,6 +34,17 @@ import java.util.stream.Collectors;
 @ApplicationScoped
 public class PanelQueries {
 
+    private final AgentRegistry agents;
+
+    public PanelQueries(AgentRegistry agents) {
+        this.agents = agents;
+    }
+
+    /** The name the owner gave the agent, or null for an email the router hasn't seen (blocked before routing). */
+    String agentName(String agentId) {
+        return agentId == null ? null : agents.find(agentId).map(AgentRegistry.Agent::name).orElse(agentId);
+    }
+
     static final int EXCERPT = 600;
 
     /** An email waiting on a card: who asked, and the question in their words (design doc §7.3). */
@@ -47,7 +59,7 @@ public class PanelQueries {
 
     public record CardView(long id, long version, String label, String question, String audience, boolean personal,
             int members, String priority, String proposedValue, String proposalSource, String fieldType,
-            String isoProposal, List<LinkedEmail> emails) {
+            String isoProposal, List<LinkedEmail> emails, String agent) {
 
         public boolean isDate() {
             return "DATE".equals(fieldType);
@@ -79,7 +91,8 @@ public class PanelQueries {
 
     /** {@code original}: the sender's email, shown beside the reply so the owner reads both at once. */
     public record DraftView(long emailId, String sender, String senderName, String subject, String original,
-            String body, String language, String factsUsed, List<String> outliers, List<StepText.Step> history) {
+            String body, String language, String factsUsed, List<String> outliers, List<StepText.Step> history,
+            String agent) {
 
         public boolean isOutlier() {
             return !outliers.isEmpty();
@@ -108,7 +121,7 @@ public class PanelQueries {
      */
     public record EscalationView(long emailId, String sender, String senderName, String subject, String excerpt,
             ReasonText.Reason reason, String draft, boolean canRetry, String spoofed, String language,
-            List<StepText.Step> history) {}
+            List<StepText.Step> history, String agent) {}
 
     public record BroadcastView(long id, String recipient, String subject, String body) {}
 
@@ -137,12 +150,13 @@ public class PanelQueries {
                 .filter(DraftView::isOutlier).map(DraftView::emailId).toList());
     }
 
-    private static List<CardView> cards() {
+    private List<CardView> cards() {
         return InputRequestEntity.listQueue().stream().map(c -> new CardView(c.id, c.version,
                 GroupingAgent.label(c.slotType), c.question,
                 c.personal ? "this sender only" : c.scopeProgram + " " + c.scopeTrack + " " + c.scopeYear,
                 c.personal, c.memberCount, String.format(Locale.ROOT, "%.2f", c.priority), c.proposedValue, c.proposalSource,
-                c.fieldType == null ? "TEXT" : c.fieldType.name(), isoDate(c.proposedValue), linkedEmails(c.id)))
+                c.fieldType == null ? "TEXT" : c.fieldType.name(), isoDate(c.proposedValue), linkedEmails(c.id),
+                agentName(c.agentId)))
                 .toList();
     }
 
@@ -161,7 +175,7 @@ public class PanelQueries {
         return d == null ? null : d.toString();
     }
 
-    private static List<DraftGroup> draftGroups() {
+    private List<DraftGroup> draftGroups() {
         Map<Long, List<DraftView>> byCard = new LinkedHashMap<>();
         List<DraftGroup> groups = new ArrayList<>();
         for (EmailEntity e : EmailEntity.<EmailEntity>list("status = ?1 order by receivedAt, id",
@@ -186,19 +200,20 @@ public class PanelQueries {
         return groups;
     }
 
-    private static List<DraftView> draftsOfCard(long cardId) {
+    private List<DraftView> draftsOfCard(long cardId) {
         return SlotEntity.<SlotEntity>list("requestId = ?1 and email.status = ?2", cardId, EmailStatus.DRAFT_SAVED)
-                .stream().map(s -> s.email).distinct().map(PanelQueries::draftView).filter(v -> v != null).toList();
+                .stream().map(s -> s.email).distinct().map(this::draftView).filter(v -> v != null).toList();
     }
 
-    private static DraftView draftView(EmailEntity e) {
+    private DraftView draftView(EmailEntity e) {
         Optional<DraftEntity> d = DraftEntity.currentFor(e.id);
         if (d.isEmpty()) {
             return null;
         }
         String outliers = ReviewEntity.latestFor(e.id).map(r -> r.outlierReasons).orElse(null);
         return new DraftView(e.id, e.sender, e.senderName, e.subject, excerpt(e.body), d.get().body,
-                d.get().language.name(), d.get().factsUsed, outlierCodes(outliers, e.sanitizerFlags), history(e.id));
+                d.get().language.name(), d.get().factsUsed, outlierCodes(outliers, e.sanitizerFlags), history(e.id),
+                agentName(e.agentId));
     }
 
     /**
@@ -250,12 +265,12 @@ public class PanelQueries {
         return same.stream().min(Comparator.comparing(distance).thenComparing(DraftView::emailId));
     }
 
-    private static List<EscalationView> escalations() {
+    private List<EscalationView> escalations() {
         return EmailEntity.<EmailEntity>list("status = ?1 order by receivedAt, id", EmailStatus.ESCALATED).stream()
                 .map(e -> new EscalationView(e.id, e.sender, e.senderName, e.subject, excerpt(e.body), reason(e.id),
                         DraftEntity.currentFor(e.id).map(d -> d.body).orElse(null), OwnerActions.canRetry(e.id),
                         spoofWarning(e.injectionSignals, e.sanitizerFlags),
-                        e.language == null ? null : e.language.name(), history(e.id)))
+                        e.language == null ? null : e.language.name(), history(e.id), agentName(e.agentId)))
                 .toList();
     }
 

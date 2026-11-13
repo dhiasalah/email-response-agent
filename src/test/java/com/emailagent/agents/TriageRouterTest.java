@@ -81,7 +81,7 @@ class TriageRouterTest {
                         null, null))
                 .toList();
         return TriageRouter.route(new EmailSnapshot(1, 0, EmailStatus.TRIAGED, "<m@x>", "t", "a@univ.example", "A",
-                subject, body, Instant.now(), SenderScope.UNKNOWN, intent, sensitivity, Language.FR, replyNeeded, null,
+                subject, body, Instant.now(), SenderScope.UNKNOWN, "student", intent, sensitivity, Language.FR, replyNeeded, null,
                 slotViews));
     }
 }

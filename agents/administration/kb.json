@@ -1,0 +1,8 @@
+[
+  { "id": "adm1", "slotType": "DEADLINE", "entity": "grade submission",
+    "value": "Friday 11 June 2027, 18:00, in Apogée",
+    "source": "Calendrier des jurys 2026-2027, Faculté des sciences" },
+  { "id": "adm2", "slotType": "PROCEDURE", "entity": "internship agreement signature",
+    "value": "The professor signs internship agreements in PStage within 5 working days of the request.",
+    "source": "Procédure stages M2 IA 2026-2027" }
+]

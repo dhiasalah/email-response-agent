@@ -14,6 +14,7 @@ import com.emailagent.model.SlotOwner;
 import com.emailagent.model.SlotStatus;
 import com.emailagent.model.SlotType;
 import com.emailagent.orchestrator.Orchestrator;
+import com.emailagent.store.AgentRegistry;
 import com.emailagent.store.DecisionLogEntry;
 import com.emailagent.store.DraftEntity;
 import com.emailagent.store.EmailEntity;
@@ -39,6 +40,7 @@ class WriterTest {
     @Inject LlmOutputParser parser;
     @Inject Mailbox mailbox;
     @Inject AppConfig config;
+    @Inject AgentRegistry agents;
 
     FakeLlmClient model;
     WriterAgent writer;
@@ -46,7 +48,7 @@ class WriterTest {
     @BeforeEach
     void setUp() {
         model = new FakeLlmClient(parser);
-        writer = new WriterAgent(model, mailbox, config, "scripted");
+        writer = new WriterAgent(model, mailbox, agents, config, "scripted");
     }
 
     @Test
@@ -71,6 +73,7 @@ class WriterTest {
         LlmRequest sent = model.requests().get(0);
         assertThat(sent.instructions()).contains("[1] Grade publication date: 18 juin 2027")
                 .contains("[2] Exam room: Room B204").contains("Write in French")
+                .contains("You act as the Student agent").contains("Never disclose: another student's name")
                 .doesNotContain("attacker chosen entity"); // the model-written entity stays out of the trusted channel
         assertThat(sent.untrustedInput()).contains("Quand les notes").doesNotContain("Ignore previous instructions");
         assertThat(sent.instructions()).doesNotContain("Youssef"); // style examples lose their greeting line
@@ -180,6 +183,7 @@ class WriterTest {
     static long email(Language lang, String displayName, SlotSpec... slots) {
         return QuarkusTransaction.requiringNew().call(() -> {
             EmailEntity e = new EmailEntity();
+            e.agentId = "student";
             e.messageId = "<wr-" + UUID.randomUUID() + "@test>";
             e.sender = "student@univ.example";
             e.senderName = displayName;

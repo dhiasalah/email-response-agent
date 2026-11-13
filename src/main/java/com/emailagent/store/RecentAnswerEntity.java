@@ -26,6 +26,10 @@ public class RecentAnswerEntity extends PanacheEntityBase {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     public Long id;
 
+    /** The agent whose emails the reply answered: only that agent's emails may reuse it. */
+    @NotBlank @Size(max = 50)
+    public String agentId;
+
     @NotNull @Enumerated(EnumType.STRING)
     public SlotType slotType;
 
@@ -51,12 +55,12 @@ public class RecentAnswerEntity extends PanacheEntityBase {
     /** Set when a later owner reply gave another value: the entry is no longer used. */
     public Instant supersededAt;
 
-    /** Answers to exactly this key and scope since {@code since}, newest first. */
-    public static List<RecentAnswerEntity> find(SlotKey key, SenderScope scope, Instant since) {
-        return list("slotType = ?1 and entityKey = ?2 and coalesce(qualifierKey, '') = ?3 and scopeProgram = ?4"
-                        + " and scopeTrack = ?5 and scopeYear = ?6 and answeredAt >= ?7 and supersededAt is null"
-                        + " order by answeredAt desc",
-                key.type(), key.entity(), key.qualifier() == null ? "" : key.qualifier(),
+    /** This agent's answers to exactly this key and scope since {@code since}, newest first. */
+    public static List<RecentAnswerEntity> find(String agentId, SlotKey key, SenderScope scope, Instant since) {
+        return list("agentId = ?1 and slotType = ?2 and entityKey = ?3 and coalesce(qualifierKey, '') = ?4"
+                        + " and scopeProgram = ?5 and scopeTrack = ?6 and scopeYear = ?7 and answeredAt >= ?8"
+                        + " and supersededAt is null order by answeredAt desc",
+                agentId, key.type(), key.entity(), key.qualifier() == null ? "" : key.qualifier(),
                 scope.program(), scope.track(), scope.year(), since);
     }
 }

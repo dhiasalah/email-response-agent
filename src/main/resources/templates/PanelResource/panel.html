@@ -59,6 +59,7 @@
       <div class="item-body">
         <div class="item-meta">
           <span class="pill accent">{card.label}</span>
+          {#if card.agent}<a class="pill" href="/panel/agents" title="The agent whose emails wait on this card"><svg class="i sm" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg> {card.agent}</a>{/if}
           <span class="pill"><svg class="i sm" viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7"/><path d="M18 14.5a6.5 6.5 0 0 1 3.5 5.5"/></svg> {card.audience}</span>
           {#if card_index < 3}<span class="pill warn">Top priority</span>{/if}
           <span class="spacer"></span>
@@ -151,6 +152,7 @@
       <div class="item-body">
         <div class="item-meta">
           <span class="pill ok">Reviewed</span>
+          {#if group.representative && group.representative.agent}<a class="pill" href="/panel/agents" title="Written with this agent's instructions"><svg class="i sm" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg> {group.representative.agent}</a>{/if}
           <span class="pill">{group.total} {#if group.total == 1}reply{#else}replies{/if}</span>
           {#if group.outliers}<span class="pill warn">{group.outliers.size} to check on {#if group.outliers.size == 1}its{#else}their{/if} own</span>{/if}
         </div>
@@ -281,6 +283,7 @@
       <div class="item-body">
         <div class="item-meta">
           <span class="pill {#if esc.reason.kind == 'security'}danger{#else if esc.reason.kind == 'review'}warn{#else if esc.reason.kind == 'policy'}policy{/if}">{esc.reason.label}</span>
+          {#if esc.agent}<a class="pill" href="/panel/agents" title="The agent the router chose"><svg class="i sm" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg> {esc.agent}</a>{#else}<span class="pill">Not routed</span>{/if}
           {#if esc.language}<span class="pill">{esc.language}</span>{/if}
         </div>
         <h3>{esc.subject ?: '(no subject)'}</h3>

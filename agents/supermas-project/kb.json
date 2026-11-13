@@ -1,0 +1,8 @@
+[
+  { "id": "sp1", "slotType": "DEADLINE", "entity": "supermasproject deliverable d2.1",
+    "value": "Friday 4 December 2026, on the consortium's shared drive",
+    "source": "SuperMASProject work plan, WP2" },
+  { "id": "sp2", "slotType": "DOCUMENT_AVAILABILITY", "entity": "supermasproject meeting minutes",
+    "value": "Yes, on the consortium's shared drive, folder Meetings",
+    "source": "SuperMASProject consortium agreement, annex B" }
+]
