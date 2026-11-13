@@ -30,7 +30,7 @@ import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 /**
- * The evaluation set (design doc §12): labelled emails through the real triage model and the router, labelled drafts
+ * The evaluation set (design doc §12): labelled emails through the real classifier model and the router, labelled drafts
  * through the real reviewer. Prints and writes target/evaluation-report.md. The only hard assertion is the
  * safety one: nothing that must reach the owner is routed to an automatic answer.
  */
@@ -49,7 +49,7 @@ class EvaluationOllamaTest {
     @Inject ObjectMapper mapper;
 
     @Test
-    void triageAndRoutingOnTheEvaluationSet() throws Exception {
+    void classificationAndRoutingOnTheEvaluationSet() throws Exception {
         List<Labelled> set = read("/eval/emails.json", new TypeReference<>() {});
         int intentOk = 0;
         Map<SlotType, int[]> perType = new EnumMap<>(SlotType.class); // tp, fp, fn
@@ -68,20 +68,20 @@ class EvaluationOllamaTest {
                 intent = "(detector)";
             } else {
                 long start = System.nanoTime();
-                TriageOutput out = llm.call(new LlmRequest("triage", ModelTier.FAST, TriageAgent.INSTRUCTIONS,
-                        "Subject: " + l.subject() + "\n\n" + l.body()), TriageOutput.class);
+                ClassifierOutput out = llm.call(new LlmRequest("classifier", ModelTier.FAST, ClassifierAgent.INSTRUCTIONS,
+                        "Subject: " + l.subject() + "\n\n" + l.body()), ClassifierOutput.class);
                 latencies.add((System.nanoTime() - start) / 1_000_000);
                 if (a.withModelFlag(out.suspicious()).suspicious()) {
                     route = "ESCALATE";
                 } else {
-                    route = switch (TriageRouter.route(snapshot(out)).next()) {
+                    route = switch (ClassificationRouter.route(snapshot(out)).next()) {
                         case ESCALATED -> "ESCALATE";
                         case IGNORED -> "IGNORE";
                         default -> "ANSWER";
                     };
                 }
                 intent = out.intent().name();
-                got = out.questions().stream().map(TriageOutput.Question::slotType).distinct().toList();
+                got = out.questions().stream().map(ClassifierOutput.Question::slotType).distinct().toList();
             }
             if (intent.equals(l.intent())) {
                 intentOk++;
@@ -104,7 +104,7 @@ class EvaluationOllamaTest {
                     + " | " + l.intent() + " | " + intent + " | " + l.slots() + " | " + got + " |");
         }
 
-        StringBuilder md = new StringBuilder("## Triage and routing (" + set.size() + " labelled emails, model "
+        StringBuilder md = new StringBuilder("## Classification and routing (" + set.size() + " labelled emails, model "
                 + "qwen2.5)\n\n");
         long routeOk = confusion.entrySet().stream().mapToLong(e -> e.getValue().getOrDefault(e.getKey(), 0)).sum();
         md.append("- Routing accuracy: ").append(pct(routeOk, set.size())).append('\n');
@@ -113,7 +113,7 @@ class EvaluationOllamaTest {
                 .append(unsafe.isEmpty() ? "" : " " + unsafe).append('\n');
         latencies.sort(Long::compare);
         if (!latencies.isEmpty()) {
-            md.append("- Triage latency: median ").append(latencies.get(latencies.size() / 2)).append(" ms, max ")
+            md.append("- Classification latency: median ").append(latencies.get(latencies.size() / 2)).append(" ms, max ")
                     .append(latencies.get(latencies.size() - 1)).append(" ms\n");
         }
         md.append("\n| Expected \\ Routed | ANSWER | ESCALATE | IGNORE |\n|---|---|---|---|\n");
@@ -133,7 +133,7 @@ class EvaluationOllamaTest {
         md.append("\n<details><summary>Per email</summary>\n\n| Id | Expected route | Routed | Expected intent | "
                 + "Intent | Expected slots | Slots |\n|---|---|---|---|---|---|---|\n")
                 .append(String.join("\n", rows)).append("\n\n</details>\n");
-        write("evaluation-triage.md", md.toString());
+        write("evaluation-classification.md", md.toString());
 
         assertThat(unsafe).as("emails that must reach the owner but were routed to an automatic answer").isEmpty();
     }
@@ -173,15 +173,15 @@ class EvaluationOllamaTest {
         write("evaluation-reviewer.md", md);
     }
 
-    private static EmailSnapshot snapshot(TriageOutput out) {
+    private static EmailSnapshot snapshot(ClassifierOutput out) {
         List<EmailSnapshot.Slot> slots = new ArrayList<>();
         long n = 1;
-        for (TriageOutput.Question q : out.questions()) {
+        for (ClassifierOutput.Question q : out.questions()) {
             String entity = q.entity().strip().toLowerCase();
             slots.add(new EmailSnapshot.Slot(n++, q.slotType(), entity, null, q.text(),
-                    TriageAgent.owner(entity, q.owner()), SlotStatus.UNRESOLVED, null, null));
+                    ClassifierAgent.owner(entity, q.owner()), SlotStatus.UNRESOLVED, null, null));
         }
-        return new EmailSnapshot(1, 0, EmailStatus.TRIAGED, "<x>", null, "s@univ.example", null, "", "",
+        return new EmailSnapshot(1, 0, EmailStatus.CLASSIFIED, "<x>", null, "s@univ.example", null, "", "",
                 Instant.now(), SenderScope.UNKNOWN, out.intent(), out.sensitivity(), out.language(), out.replyNeeded(),
                 null, slots);
     }

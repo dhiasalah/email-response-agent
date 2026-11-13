@@ -13,10 +13,10 @@ import jakarta.validation.constraints.Size;
 import java.util.List;
 
 /**
- * What the triage model must return. Closed enums (the taxonomy), bounded sizes, every field required:
+ * What the classifier model must return. Closed enums (the taxonomy), bounded sizes, every field required:
  * the strict parser refuses anything else, so a hijacked model can't add a field or invent a slot type.
  */
-public record TriageOutput(
+public record ClassifierOutput(
         @JsonProperty(required = true) @NotNull Intent intent,
         @JsonProperty(required = true) @NotNull Boolean replyNeeded,
         @JsonProperty(required = true) @NotNull Sensitivity sensitivity,

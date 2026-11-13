@@ -119,7 +119,7 @@ git commit -m "Verify sender authentication from the receiving server's Authenti
 - Modify: `src/main/java/com/emailagent/config/StartupConfigCheck.java:25` (call the new check)
 - Modify: `src/main/java/com/emailagent/mailbox/MailboxImporter.java:37-41, 103-107`
 - Modify: `src/main/java/com/emailagent/mailbox/SenderDirectory.java` (two overloads)
-- Modify: `src/main/java/com/emailagent/agents/TriageAgent.java:94`
+- Modify: `src/main/java/com/emailagent/agents/ClassifierAgent.java:94`
 - Modify: `src/main/java/com/emailagent/orchestrator/GroupingRun.java:204`
 - Modify: `src/main/java/com/emailagent/security/InjectionDetector.java:85-92`
 - Modify: `src/main/java/com/emailagent/web/ReasonText.java:34-44`
@@ -204,15 +204,15 @@ Expected: compilation failure on `authFlag`, `scopeOf(String, String)` and `chec
 - [ ] **Step 5: Downgrade scope, role and score**
 
 - `SenderDirectory.scopeOf(address, flags)` returns `SenderScope.UNKNOWN` when the comma-separated `flags` contains the exact token `sender_unverified`; otherwise it delegates to `scopeOf(address)`. `roleOf(address, flags)` follows the same rule and returns `SenderRole.UNKNOWN`.
-- `TriageAgent:94` changes to `directory.scopeOf(email.sender(), email.sanitizerFlags())`.
+- `ClassifierAgent:94` changes to `directory.scopeOf(email.sender(), email.sanitizerFlags())`.
 - `GroupingRun:204` changes to `directory.roleOf(s.email.sender, s.email.sanitizerFlags)`.
 - `InjectionDetector.FLAG_WEIGHTS` gets `"sender_unverified", 0.3`. This needs other evidence too: alone it is not enough.
 - `ReasonText.SIGNALS` gets `Map.entry("sender_unverified", "sender address not authenticated (SPF/DKIM/DMARC): treated as unknown")`.
 
 - [ ] **Step 6: Run the tests and confirm they pass**
 
-Run: `./mvnw -q test -Dtest=MailboxImporterAuthTest,SenderDirectoryAuthTest,StartupConfigCheckTest,InjectionDetectorTest,ReviewRulesTest,TriageFlowTest,MailboxImporterTest`
-Expected: `Failures: 0, Errors: 0`. `TriageFlowTest` and `MailboxImporterTest` show that mock mode is unchanged.
+Run: `./mvnw -q test -Dtest=MailboxImporterAuthTest,SenderDirectoryAuthTest,StartupConfigCheckTest,InjectionDetectorTest,ReviewRulesTest,ClassificationFlowTest,MailboxImporterTest`
+Expected: `Failures: 0, Errors: 0`. `ClassificationFlowTest` and `MailboxImporterTest` show that mock mode is unchanged.
 
 - [ ] **Step 7: Commit**
 

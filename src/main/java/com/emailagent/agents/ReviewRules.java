@@ -46,7 +46,7 @@ final class ReviewRules {
             failures.add("unsupported_link");
         }
         String folded = InjectionDetector.fold(content);
-        if (TriageRouter.SENSITIVE_TOPICS.matcher(folded).find() || GRADE.matcher(content).find()) {
+        if (ClassificationRouter.SENSITIVE_TOPICS.matcher(folded).find() || GRADE.matcher(content).find()) {
             failures.add("blocked_topic");
         }
         if (!unsupportedCommitments(folded, facts).isEmpty()) {

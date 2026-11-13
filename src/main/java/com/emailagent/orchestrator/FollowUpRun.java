@@ -1,6 +1,6 @@
 package com.emailagent.orchestrator;
 
-import com.emailagent.agents.TriageAgent;
+import com.emailagent.agents.ClassifierAgent;
 import com.emailagent.config.AppConfig;
 import com.emailagent.model.EmailStatus;
 import com.emailagent.model.NoticeKind;
@@ -25,10 +25,10 @@ public class FollowUpRun {
     private final HoldingReplyStep holdingStep;
     private final AppConfig config;
 
-    public FollowUpRun(Orchestrator orchestrator, TriageAgent triage, SendDispatcher dispatcher, AppConfig config) {
+    public FollowUpRun(Orchestrator orchestrator, ClassifierAgent classifier, SendDispatcher dispatcher, AppConfig config) {
         this.orchestrator = orchestrator;
         this.config = config;
-        this.senderStep = new SenderReplyStep(triage, dispatcher, config.noticeAutoSend(),
+        this.senderStep = new SenderReplyStep(classifier, dispatcher, config.noticeAutoSend(),
                 config.clarificationTimeout(), config.ownerName(), config.aiDisclosure());
         this.holdingStep = new HoldingReplyStep(dispatcher, config.noticeAutoSend(), config.ownerName(),
                 config.aiDisclosure());

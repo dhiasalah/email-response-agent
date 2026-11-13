@@ -48,7 +48,7 @@ class EmailLifecycleTest {
 
     @Test
     void twoAgentsOnOneStatusStopTheApplication() {
-        AgentStep a = OrchestratorTest.step("triage", NEW, e -> StepResult.to(TRIAGED, "{}"));
+        AgentStep a = OrchestratorTest.step("classifier", NEW, e -> StepResult.to(CLASSIFIED, "{}"));
         AgentStep b = OrchestratorTest.step("other", NEW, e -> StepResult.to(ESCALATED, "{}"));
         assertThatThrownBy(() -> Orchestrator.routingTable(List.of(a, b)))
                 .isInstanceOf(IllegalStateException.class).hasMessageContaining("both trigger on NEW");

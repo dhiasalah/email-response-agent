@@ -48,7 +48,7 @@ public class CuratorAgent {
     /** The card being answered, as the curator sees it. */
     public record Card(long id, SlotKey key, SenderScope scope, boolean personal, FieldType fieldType) {}
 
-    /** A question of the replied email, keyed by triage. */
+    /** A question of the replied email, keyed by the classifier. */
     public record Question(long slotId, SlotType type, String entity, String qualifier, String text) {}
 
     /** One answer found in a sent reply: this slot key, this value, for the replied sender's scope. */
@@ -145,7 +145,7 @@ public class CuratorAgent {
     // --- sent replies ---
 
     /**
-     * Answers the owner gave by hand to the questions triage found in the email. The model only points at a
+     * Answers the owner gave by hand to the questions the classifier found in the email. The model only points at a
      * question and copies text; code keeps a pair only if the slot is shareable and the value appears verbatim in
      * the owner's own text (quoted student text removed). A model that obeys an injection gains nothing.
      */

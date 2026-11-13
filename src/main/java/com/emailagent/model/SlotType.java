@@ -1,7 +1,7 @@
 package com.emailagent.model;
 
 /**
- * The registered slot taxonomy (design doc §7.1). Triage may only use these values.
+ * The registered slot taxonomy (design doc §7.1). The classifier may only use these values.
  * The two flags are policy, enforced by code, whatever an LLM says.
  */
 public enum SlotType {

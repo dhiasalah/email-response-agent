@@ -22,7 +22,7 @@ class StepTextTest {
                 .isEqualTo("You approved and sent the draft");
         assertThat(StepText.of("owner", EmailStatus.DRAFT_SAVED, EmailStatus.ESCALATED, "{\"rejected_by\":\"owner\"}",
                 null).text()).isEqualTo("You rejected the draft");
-        assertThat(StepText.of("triage", EmailStatus.NEW, EmailStatus.ESCALATED,
+        assertThat(StepText.of("classifier", EmailStatus.NEW, EmailStatus.ESCALATED,
                 "{\"injection\":{\"score\":1.0,\"signals\":\"hidden_html\"}}", null))
                 .satisfies(s -> {
                     assertThat(s.text()).startsWith("Handed to you: possible prompt injection");

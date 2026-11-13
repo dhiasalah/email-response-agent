@@ -16,20 +16,20 @@ import java.util.Arrays;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
-/** Policy in code: what triage's labels and the taxonomy flags imply, whatever the model wanted. */
-class TriageRouterTest {
+/** Policy in code: what the classifier's labels and the taxonomy flags imply, whatever the model wanted. */
+class ClassificationRouterTest {
 
     @Test
     void ordinaryQuestionGoesToTheResolver() {
         assertThat(route("Notes S2", "Quand les notes seront-elles publiées ?", Intent.QUESTION, Sensitivity.LOW,
                 true, SlotType.GRADES_PUBLICATION_DATE))
-                .isEqualTo(new TriageRouter.Route(EmailStatus.RESOLVING, "resolve_slots"));
+                .isEqualTo(new ClassificationRouter.Route(EmailStatus.RESOLVING, "resolve_slots"));
     }
 
     @Test
     void sensitiveLabelEscalatesEvenWithoutReply() {
         assertThat(route("Merci", "Merci pour votre aide.", Intent.INFORMATION, Sensitivity.HEALTH, false))
-                .isEqualTo(new TriageRouter.Route(EmailStatus.ESCALATED, "sensitive_health"));
+                .isEqualTo(new ClassificationRouter.Route(EmailStatus.ESCALATED, "sensitive_health"));
     }
 
     @Test
@@ -74,13 +74,13 @@ class TriageRouterTest {
                 .isEqualTo(EmailStatus.RESOLVING);
     }
 
-    private static TriageRouter.Route route(String subject, String body, Intent intent, Sensitivity sensitivity,
+    private static ClassificationRouter.Route route(String subject, String body, Intent intent, Sensitivity sensitivity,
             boolean replyNeeded, SlotType... slots) {
         List<EmailSnapshot.Slot> slotViews = Arrays.stream(slots)
                 .map(t -> new EmailSnapshot.Slot(1, t, "s2 exams", null, "?", SlotOwner.USER, SlotStatus.UNRESOLVED,
                         null, null))
                 .toList();
-        return TriageRouter.route(new EmailSnapshot(1, 0, EmailStatus.TRIAGED, "<m@x>", "t", "a@univ.example", "A",
+        return ClassificationRouter.route(new EmailSnapshot(1, 0, EmailStatus.CLASSIFIED, "<m@x>", "t", "a@univ.example", "A",
                 subject, body, Instant.now(), SenderScope.UNKNOWN, intent, sensitivity, Language.FR, replyNeeded, null,
                 slotViews));
     }

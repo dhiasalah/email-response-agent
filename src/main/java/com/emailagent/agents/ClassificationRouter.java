@@ -11,11 +11,11 @@ import jakarta.enterprise.context.ApplicationScoped;
 import java.util.regex.Pattern;
 
 /**
- * TRIAGED → ESCALATED, IGNORED or RESOLVING. Plain code, no model: policy decisions are made here, from triage's
+ * CLASSIFIED → ESCALATED, IGNORED or RESOLVING. Plain code, no model: policy decisions are made here, from the classifier's
  * labels and the taxonomy's own flags, so no email text can argue its way past them (design doc §6, §16.3).
  */
 @ApplicationScoped
-public class TriageRouter implements AgentStep {
+public class ClassificationRouter implements AgentStep {
 
     public record Route(EmailStatus next, String reason) {}
 
@@ -32,7 +32,7 @@ public class TriageRouter implements AgentStep {
 
     @Override
     public EmailStatus trigger() {
-        return EmailStatus.TRIAGED;
+        return EmailStatus.CLASSIFIED;
     }
 
     @Override
@@ -44,7 +44,7 @@ public class TriageRouter implements AgentStep {
     /** Order matters: anything sensitive goes to the owner, even when "no reply is needed". */
     public static Route route(EmailSnapshot e) {
         if (e.sensitivity() == null || e.replyNeeded() == null || e.intent() == null) {
-            return new Route(EmailStatus.ESCALATED, "incomplete_triage"); // fail closed
+            return new Route(EmailStatus.ESCALATED, "incomplete_classification"); // fail closed
         }
         String text = InjectionDetector.fold((e.subject() == null ? "" : e.subject()) + " "
                 + (e.body() == null ? "" : e.body()));

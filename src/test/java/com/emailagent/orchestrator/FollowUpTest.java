@@ -3,7 +3,7 @@ package com.emailagent.orchestrator;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import com.emailagent.agents.TriageAgent;
+import com.emailagent.agents.ClassifierAgent;
 import com.emailagent.config.SendMode;
 import com.emailagent.llm.FakeLlmClient;
 import com.emailagent.llm.LlmOutputParser;
@@ -41,12 +41,12 @@ import org.junit.jupiter.api.Test;
 
 /**
  * Sender clarification and timers (design doc §6, §7.5): a code-written question, the answer merged into the same
- * email, triage again, at most two rounds, a timeout, one holding reply; and a database that holds the same limits.
+ * email, classification again, at most two rounds, a timeout, one holding reply; and a database that holds the same limits.
  */
 @QuarkusTest
 class FollowUpTest {
 
-    static final String RETRIAGE = """
+    static final String RECLASSIFY = """
             {"intent":"QUESTION","replyNeeded":true,"sensitivity":"LOW","language":"EN","suspicious":false,
              "questions":[{"text":"When is the machine learning exam?","slotType":"EXAM_DATE",
                            "entity":"machine learning exam","qualifier":"","owner":"USER"}]}""";
@@ -68,12 +68,12 @@ class FollowUpTest {
         model = new FakeLlmClient(parser);
         dispatcher = new SendDispatcher(new SendDispatcher.Policy(SendMode.DRAFT, Set.of(), 3, 50),
                 "prof.martin@univ.example");
-        step = new SenderReplyStep(new TriageAgent(model, detector, directory, "scripted"), dispatcher, false,
+        step = new SenderReplyStep(new ClassifierAgent(model, detector, directory, "scripted"), dispatcher, false,
                 Duration.ofHours(72), "Prof. Martin", true);
     }
 
     @Test
-    void theSenderIsAskedOnceThenTheirAnswerIsMergedAndTriagedAgain() {
+    void theSenderIsAskedOnceThenTheirAnswerIsMergedAndClassifiedAgain() {
         String sender = sender();
         long id = waiting(sender, "t-" + UUID.randomUUID(), SlotType.EXAM_DATE);
 
@@ -103,10 +103,10 @@ class FollowUpTest {
         assertThat(QuarkusTransaction.requiringNew().call(() -> EmailEntity.findByMessageId("<ans-" + id + "@x>")
                 .orElseThrow().filterReason)).isEqualTo(FilterReason.MERGED_REPLY);
 
-        model.willAnswer(RETRIAGE);
+        model.willAnswer(RECLASSIFY);
         assertThat(orchestrator.runStep(step, id)).isTrue();
 
-        assertThat(status(id)).isEqualTo(EmailStatus.TRIAGED);
+        assertThat(status(id)).isEqualTo(EmailStatus.CLASSIFIED);
         assertThat(email(id).senderReplied).isFalse();
         List<SlotEntity> slots = slots(id);
         assertThat(slots).hasSize(1);
@@ -124,7 +124,7 @@ class FollowUpTest {
                 null, Instant.now(), Map.of())));
 
         assertThat(r.merged()).isZero();
-        assertThat(r.imported()).isEqualTo(1); // a new email of its own, triaged on its own
+        assertThat(r.imported()).isEqualTo(1); // a new email of its own, classified on its own
         assertThat(email(id).body).doesNotContain("cancel the exam");
         assertThat(email(id).senderReplied).isFalse();
     }

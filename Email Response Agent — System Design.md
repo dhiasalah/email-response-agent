@@ -44,7 +44,7 @@ Six specialized agents are coordinated by a deterministic orchestrator through a
 
 ```mermaid
 flowchart TD
-    IN[New email] --> TR[Triage agent<br/>classify, extract slots]
+    IN[New email] --> TR[Classifier agent<br/>classify, extract slots]
     TR -->|no reply needed| IG[Label / archive]
     TR --> RS[Resolver agent<br/>memory, KB, calendar]
     RS -->|all slots filled| WR[Writer agent<br/>one reply per email]
@@ -73,14 +73,14 @@ Each agent has one job, a fixed input, a schema-validated output and a minimal t
 
 | Agent | Input | Output | Tools | Model |
 | --- | --- | --- | --- | --- |
-| Triage | Cleaned email + thread summary + sender profile | Intent, reply needed, sensitivity, urgency, required slots, sender scope | get\_thread, get\_sender\_profile, extract\_attachment | Fast, low cost |
+| Classifier | Cleaned email + thread summary + sender profile | Intent, reply needed, sensitivity, urgency, required slots, sender scope | get\_thread, get\_sender\_profile, extract\_attachment | Fast, low cost |
 | Resolver | Required slots + sender scope | Each slot marked filled (value + source) or unresolved | search\_memory, search\_knowledge\_base, check\_calendar, lookup\_business\_data | Fast |
 | Grouping | Unresolved slots across all open emails | Input requests: question, field type, linked emails; or attach to existing open request | search\_open\_requests, embed\_text | Fast |
 | Writer | Email, thread, filled slots, style examples | Reply draft + list of facts used with their source | get\_style\_examples | Strong |
 | Reviewer | Draft, facts used, policy | Pass / fail, reasons, send mode (auto or draft) | policy rules engine | Strong |
 | Curator | User's answer to an input card + proposed scope | Scoped fact with expiry and shareable flag | write\_memory, update\_memory | Fast |
 
-### 4.1 Triage agent
+### 4.1 Classifier agent
 
 The most important prompt in the system: grouping and memory both depend on consistent slot extraction.
 
@@ -201,13 +201,13 @@ erDiagram
 stateDiagram-v2
     [*] --> new
     new --> filtered_out: spam, loop, list
-    new --> triaged: triage agent
-    triaged --> ignored: no reply needed
-    triaged --> escalated: sensitive
-    triaged --> resolving: resolver agent
+    new --> classified: classifier agent
+    classified --> ignored: no reply needed
+    classified --> escalated: sensitive
+    classified --> resolving: resolver agent
     resolving --> ready: all slots filled
     resolving --> awaiting_sender: sender-owned slot missing
-    awaiting_sender --> triaged: sender replies
+    awaiting_sender --> classified: sender replies
     awaiting_sender --> closed: timeout
     resolving --> awaiting_input: user-owned slot missing
     awaiting_input --> ready: all linked cards answered
@@ -226,7 +226,7 @@ Every email moves through a fixed set of statuses, and each transition triggers 
 
 - **Pre-filter before any LLM call:** drop auto-replies (Auto-Submitted header, out-of-office), mailing lists, no-reply senders and blocked senders. This also prevents reply loops.
 - **Join rule:** an email moves from awaiting\_input to ready only when every one of its slots is filled.
-- **Thread rule:** if the sender writes again in the same thread while an email is in progress, the new message is merged into the existing record and triage re-runs.
+- **Thread rule:** if the sender writes again in the same thread while an email is in progress, the new message is merged into the existing record and classification re-runs.
 - **Timeouts:** an input card unanswered after a set delay (for example 48 hours) triggers an optional holding reply to the senders and a reminder to the user.
 - **Retries:** invalid agent output is retried once with the validation error; a second failure escalates the email.
 - **Idempotence:** every step is keyed by email id and status, so a restart never sends a reply twice.
@@ -255,7 +255,7 @@ Emails are grouped by the input they wait on, not by topic, so one answer from t
 
 ### 7.1 Slot taxonomy
 
-The triage agent may only use registered slot types. A first taxonomy for the professor case:
+The classifier agent may only use registered slot types. A first taxonomy for the professor case:
 
 | Slot type | Example question | Field type | Typically shareable |
 | --- | --- | --- | --- |
@@ -335,10 +335,10 @@ Cards are ordered by a score, so the user answers the few that matter most first
 
 Some missing information belongs to the sender, not the user: which course, which group, student number, which exam. Asking the sender keeps the user's queue for real decisions.
 
-- The triage agent marks each slot with an **owner**: `user` or `sender`.
+- The classifier agent marks each slot with an **owner**: `user` or `sender`.
 - When a sender-owned slot is unresolved, the orchestrator sends one short clarification question in the thread, grouping all missing sender items. The email moves to `awaiting_sender`.
 - An unknown sender scope (section 8) is handled the same way instead of creating a card.
-- The sender's reply re-enters triage on the same email record, and the filled slots are merged.
+- The sender's reply re-enters classification on the same email record, and the filled slots are merged.
 - No reply after a timeout (for example 72 hours): the email is closed without further action, or moved to a user card if it was flagged urgent.
 - Limits: at most two clarification rounds per thread; questions may only ask for items from an allowed list per slot type, and never for sensitive data.
 - Clarifications pass through the reviewer like any reply. Being low risk, they can move to auto-send earlier than answers.
@@ -467,9 +467,9 @@ Each tool is granted only to the agents that need it; write and send capabilitie
 
 | Tool | Purpose | Used by |
 | --- | --- | --- |
-| get\_thread | Cleaned thread without quoted history or signatures | Triage, Writer |
-| extract\_attachment | Text or table from PDF, Excel, image | Triage |
-| get\_sender\_profile | Program, track, year, role of the sender | Triage |
+| get\_thread | Cleaned thread without quoted history or signatures | Classifier, Writer |
+| extract\_attachment | Text or table from PDF, Excel, image | Classifier |
+| get\_sender\_profile | Program, track, year, role of the sender | Classifier |
 | search\_memory | Find valid facts by slot key and scope | Resolver |
 | search\_knowledge\_base | RAG over course pages, syllabus, rules | Resolver |
 | check\_calendar | Availability and proposed slots | Resolver |
@@ -495,7 +495,7 @@ Quality is measured per agent and per slot type, and the user's edits to drafts 
 
 | Metric | What it measures | Target to enable auto-send |
 | --- | --- | --- |
-| Triage accuracy | Correct intent and slots vs labels | Above 95% for the slot type |
+| Classification accuracy | Correct intent and slots vs labels | Above 95% for the slot type |
 | Grouping precision | Emails in a card truly need the same input | Above 98% |
 | Draft acceptance rate | Drafts sent without edits | Above 90% over 4 weeks |
 | Edit distance | How much the user changes drafts | Trending down |
@@ -525,7 +525,7 @@ Four phases, each usable on its own and each producing the data that de-risks th
 
 | Phase | Scope | Agents active | Send mode | Exit criteria |
 | --- | --- | --- | --- | --- |
-| 1. Core loop | Triage, one card per email, drafts | Triage, Writer, Reviewer | Draft only | Triage accuracy above 90% on the evaluation set |
+| 1. Core loop | Classification, one card per email, drafts | Classifier, Writer, Reviewer | Draft only | Classification accuracy above 90% on the evaluation set |
 | 2. Grouping | One card answers many emails | + Resolver, Grouping | Draft only | Grouping precision above 98% |
 | 3. Memory | Scoped facts, reuse, corrections | + Curator | Reused answers in draft | Zero wrong reuse over 4 weeks |
 | 4. Autonomy | Auto-send per slot type, learning from edits | All | Auto-send for proven slot types | Acceptance above 90% per enabled type |
@@ -570,7 +570,7 @@ flowchart LR
         DIR[Sender directory]
     end
     subgraph AG["Agents"]
-        TR[Triage]
+        TR[Classifier]
         RS[Resolver]
         GR[Grouping]
         WR[Writer]
@@ -613,8 +613,8 @@ flowchart LR
 
 | Agent | Triggered by | Reads | Writes | Hands over to |
 | --- | --- | --- | --- | --- |
-| Triage | New email after pre-filter, sender reply | Thread, attachments, sender directory | Email record, slots | Resolver |
-| Resolver | Email triaged | Facts, recent answers, knowledge base, calendar | Slot values (filled or proposed) | Writer, or grouping, or sender clarification |
+| Classifier | New email after pre-filter, sender reply | Thread, attachments, sender directory | Email record, slots | Resolver |
+| Resolver | Email classified | Facts, recent answers, knowledge base, calendar | Slot values (filled or proposed) | Writer, or grouping, or sender clarification |
 | Grouping | Unresolved or proposed slots | Slots, open clusters | Clusters and cards, priority | User (card) |
 | Writer | Email ready, user edit, approved broadcast | Thread, slots, style examples | Drafts with facts used | Reviewer |
 | Reviewer | Draft created | Draft, facts used, policy | Verdict, representative, send mode | Orchestrator (send) or user |
@@ -626,7 +626,7 @@ flowchart LR
 flowchart TD
     A[New mail event] --> B{"Pre-filter: spam, loop, list, auto-reply?"}
     B -->|drop| Z[Status filtered_out]
-    B -->|keep| D[Run triage]
+    B -->|keep| D[Run classification]
     D --> E[Run resolver]
     E -->|unresolved slots| F[Run grouping]
     E -->|sender-owned slot missing| S[Send clarification question]
@@ -642,7 +642,7 @@ flowchart TD
     T[Timers] --> U[Timeouts, reminders, daily digest]
 ```
 
-### 16.3 Triage agent workflow
+### 16.3 Classifier agent workflow
 
 ```mermaid
 flowchart TD
@@ -656,14 +656,14 @@ flowchart TD
     H --> I["Extract slots: type, entity, qualifier, owner"]
     I --> J{Output schema valid?}
     J -->|no| K[Retry once, then escalate]
-    J -->|yes| L[Write email and slots, status triaged]
+    J -->|yes| L[Write email and slots, status classified]
 ```
 
 ### 16.4 Resolver agent workflow
 
 ```mermaid
 flowchart TD
-    A[Slots of a triaged email] --> B{"Valid fact in memory, same scope?"}
+    A[Slots of a classified email] --> B{"Valid fact in memory, same scope?"}
     B -->|yes| F[Slot filled]
     B -->|no| C{"Found in knowledge base or calendar?"}
     C -->|knowledge base| F

@@ -79,7 +79,7 @@ public class EmailEntity extends PanacheEntityBase {
     @Enumerated(EnumType.STRING)
     public FilterReason filterReason;
 
-    /** Triage's answer to "does this need a reply?". Null until triaged. */
+    /** The classifier's answer to "does this need a reply?". Null until classified. */
     public Boolean replyNeeded;
 
     /** Injection detector result: the score and the signals that produced it. */
@@ -88,7 +88,7 @@ public class EmailEntity extends PanacheEntityBase {
     @Size(max = 500)
     public String injectionSignals;
 
-    /** The sender answered a clarification and the answer was merged into this email; triage must run again. */
+    /** The sender answered a clarification and the answer was merged into this email; classification must run again. */
     public boolean senderReplied;
 
     /** Set when retention or an erasure request reduced this row to a tombstone (design doc §13). */

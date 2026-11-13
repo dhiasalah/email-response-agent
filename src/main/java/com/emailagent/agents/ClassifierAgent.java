@@ -20,14 +20,14 @@ import java.util.stream.Collectors;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 /**
- * NEW → TRIAGED (or ESCALATED). Classifies the email and splits it into questions, each with a registered slot
+ * NEW → CLASSIFIED (or ESCALATED). Classifies the email and splits it into questions, each with a registered slot
  * (design doc §4.1, §7.1). The injection detector runs first: a clearly hostile email never reaches the model.
  */
 @ApplicationScoped
-public class TriageAgent implements AgentStep {
+public class ClassifierAgent implements AgentStep {
 
     static final String INSTRUCTIONS = """
-            You triage emails sent to a university professor. Return JSON only, matching the schema.
+            You classify emails sent to a university professor. Return JSON only, matching the schema.
 
             intent: QUESTION (asks for information), REQUEST (asks for an action or exception), MEETING (asks to meet),
               INFORMATION (informs, nothing asked), COMPLAINT (contests or complains), OTHER.
@@ -57,7 +57,7 @@ public class TriageAgent implements AgentStep {
     private final SenderDirectory directory;
     private final String modelVersion;
 
-    public TriageAgent(LlmClient llm, InjectionDetector detector, SenderDirectory directory,
+    public ClassifierAgent(LlmClient llm, InjectionDetector detector, SenderDirectory directory,
             @ConfigProperty(name = "quarkus.langchain4j.ollama.chat-model.model-id") String modelVersion) {
         this.llm = llm;
         this.detector = detector;
@@ -67,7 +67,7 @@ public class TriageAgent implements AgentStep {
 
     @Override
     public String name() {
-        return "triage";
+        return "classifier";
     }
 
     @Override
@@ -83,8 +83,8 @@ public class TriageAgent implements AgentStep {
             return suspicious(before, null);
         }
 
-        TriageOutput out = llm.call(
-                new LlmRequest(name(), ModelTier.FAST, INSTRUCTIONS, render(email)), TriageOutput.class);
+        ClassifierOutput out = llm.call(
+                new LlmRequest(name(), ModelTier.FAST, INSTRUCTIONS, render(email)), ClassifierOutput.class);
 
         InjectionDetector.Assessment after = before.withModelFlag(out.suspicious());
         if (after.suspicious()) {
@@ -92,12 +92,12 @@ public class TriageAgent implements AgentStep {
         }
 
         SenderScope scope = directory.scopeOf(email.sender(), email.sanitizerFlags());
-        return new StepResult(EmailStatus.TRIAGED, log(out, after), null, null, modelVersion, e -> {
+        return new StepResult(EmailStatus.CLASSIFIED, log(out, after), null, null, modelVersion, e -> {
             classify(e, out, after);
             e.scopeProgram = scope.program();
             e.scopeTrack = scope.track();
             e.scopeYear = scope.year();
-            for (TriageOutput.Question q : out.questions()) {
+            for (ClassifierOutput.Question q : out.questions()) {
                 SlotEntity slot = new SlotEntity();
                 slot.email = e;
                 slot.type = q.slotType();
@@ -116,7 +116,7 @@ public class TriageAgent implements AgentStep {
                 + (email.body() == null ? "" : email.body());
     }
 
-    private StepResult suspicious(InjectionDetector.Assessment a, TriageOutput out) {
+    private StepResult suspicious(InjectionDetector.Assessment a, ClassifierOutput out) {
         return new StepResult(EmailStatus.ESCALATED, log(out, a), null, null, out == null ? null : modelVersion, e -> {
             if (out != null) {
                 classify(e, out, a);
@@ -127,7 +127,7 @@ public class TriageAgent implements AgentStep {
         });
     }
 
-    private static void classify(EmailEntity e, TriageOutput out, InjectionDetector.Assessment a) {
+    private static void classify(EmailEntity e, ClassifierOutput out, InjectionDetector.Assessment a) {
         e.intent = out.intent();
         e.sensitivity = out.sensitivity();
         e.language = out.language();
@@ -151,7 +151,7 @@ public class TriageAgent implements AgentStep {
     }
 
     /** Audit row: labels and slot types only, never the question texts (personal data stays in the email row). */
-    private static String log(TriageOutput out, InjectionDetector.Assessment a) {
+    private static String log(ClassifierOutput out, InjectionDetector.Assessment a) {
         String injection = "\"injection\":{\"score\":" + a.score() + ",\"signals\":\"" + a.signalsCsv() + "\"}";
         if (out == null) {
             return "{\"model_called\":false," + injection + "}";

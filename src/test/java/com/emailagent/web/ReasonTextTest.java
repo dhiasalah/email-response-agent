@@ -9,7 +9,7 @@ class ReasonTextTest {
 
     @Test
     void injectionSignalsBecomeAListOfWhatWasFound() {
-        ReasonText.Reason r = ReasonText.of("triage",
+        ReasonText.Reason r = ReasonText.of("classifier",
                 "{\"model_called\":false,\"injection\":{\"score\":2.8,\"signals\":\"override_instructions,name_mixed_scripts,new_trick\"}}");
 
         assertThat(r.kind()).isEqualTo("security");
@@ -32,7 +32,7 @@ class ReasonTextTest {
     void routesOwnerActionsAndFailuresHaveTitles() {
         assertThat(ReasonText.of("router", "{\"route\":\"sensitive_health\"}").title()).contains("health");
         assertThat(ReasonText.of("owner", "{\"rejected_by\":\"owner\"}").title()).isEqualTo("You rejected the draft");
-        assertThat(ReasonText.of("triage", "{\"escalated\":\"llm_timeout\"}").title())
+        assertThat(ReasonText.of("classifier", "{\"escalated\":\"llm_timeout\"}").title())
                 .isEqualTo("The local model failed (timeout)");
         assertThat(ReasonText.of("x", "not json").title()).isEqualTo("Escalated by x");
         assertThat(ReasonText.of(null, null).title()).isEqualTo("Escalated");

@@ -10,7 +10,7 @@ import com.emailagent.model.EmailStatus;
  */
 public interface AgentStep {
 
-    /** Short name written to the decision log ("triage", "writer"…). */
+    /** Short name written to the decision log ("classifier", "writer"…). */
     String name();
 
     /** The status that triggers this step. One step per status, checked at start-up. */

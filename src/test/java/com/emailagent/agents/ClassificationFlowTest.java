@@ -24,11 +24,11 @@ import java.util.Map;
 import org.junit.jupiter.api.Test;
 
 /**
- * The demo inbox through triage and routing, with a scripted model. On m10 the model is "fooled" (says LOW);
+ * The demo inbox through classification and routing, with a scripted model. On m10 the model is "fooled" (says LOW);
  * code still escalates. On m07 and m08 the detector stops the email before any model call.
  */
 @QuarkusTest
-class TriageFlowTest {
+class ClassificationFlowTest {
 
     @Inject MailboxImporter importer;
     @Inject Orchestrator orchestrator;
@@ -54,12 +54,12 @@ class TriageFlowTest {
                     q("Peut-on se rencontrer la semaine prochaine ?", "MEETING_AVAILABILITY", "internship", "")));
 
     @Test
-    void demoInboxIsTriagedAndRouted() {
+    void demoInboxIsClassifiedAndRouted() {
         importer.importNew();
         ScriptedModel model = new ScriptedModel(parser);
-        TriageAgent triage = new TriageAgent(model, detector, directory, "scripted");
+        ClassifierAgent classifier = new ClassifierAgent(model, detector, directory, "scripted");
 
-        orchestrator.process(List.of(triage, new TriageRouter()));
+        orchestrator.process(List.of(classifier, new ClassificationRouter()));
 
         assertThat(status("m01")).isEqualTo(EmailStatus.RESOLVING);
         assertThat(status("m02")).isEqualTo(EmailStatus.RESOLVING);

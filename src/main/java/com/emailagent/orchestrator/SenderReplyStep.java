@@ -1,6 +1,6 @@
 package com.emailagent.orchestrator;
 
-import com.emailagent.agents.TriageAgent;
+import com.emailagent.agents.ClassifierAgent;
 import com.emailagent.llm.LlmException;
 import com.emailagent.model.EmailStatus;
 import com.emailagent.model.Language;
@@ -24,11 +24,11 @@ import java.util.Optional;
 
 /**
  * Everything that happens to an email waiting on its sender (design doc §7.5, §6 timeouts). Plain code; the only
- * model call is triage itself, run again on the merged email. Run by {@link FollowUpRun} through the orchestrator,
+ * model call is classification itself, run again on the merged email. Run by {@link FollowUpRun} through the orchestrator,
  * on emails that have something to do, so it is not one of the steps every tick polls.
  *
  * <ul>
- *   <li>the sender answered → triage again on the merged text (its slots are read again) → TRIAGED;</li>
+ *   <li>the sender answered → classification again on the merged text (its slots are read again) → CLASSIFIED;</li>
  *   <li>no question asked yet, or the last answer still left gaps → ask the next round, stay AWAITING_SENDER;</li>
  *   <li>two rounds answered and still gaps → ESCALATED: the owner takes over;</li>
  *   <li>the last question unanswered past the timeout → CLOSED.</li>
@@ -39,16 +39,16 @@ public class SenderReplyStep implements AgentStep {
     /** Design doc §7.5: at most two clarification rounds per thread (the database holds the same limit). */
     public static final int MAX_ROUNDS = 2;
 
-    private final TriageAgent triage;
+    private final ClassifierAgent classifier;
     private final SendDispatcher dispatcher;
     private final boolean noticeAutoSend;
     private final Duration timeout;
     private final String ownerName;
     private final boolean disclosure;
 
-    public SenderReplyStep(TriageAgent triage, SendDispatcher dispatcher, boolean noticeAutoSend, Duration timeout,
+    public SenderReplyStep(ClassifierAgent classifier, SendDispatcher dispatcher, boolean noticeAutoSend, Duration timeout,
             String ownerName, boolean disclosure) {
-        this.triage = triage;
+        this.classifier = classifier;
         this.dispatcher = dispatcher;
         this.noticeAutoSend = noticeAutoSend;
         this.timeout = timeout;
@@ -81,14 +81,14 @@ public class SenderReplyStep implements AgentStep {
         });
 
         if (loaded.replied()) {
-            // the answer is in the email's text now: triage reads the whole thing again, detector first
-            StepResult triaged = triage.run(email);
-            return new StepResult(triaged.next(), triaged.output(), triaged.confidence(), triaged.sources(),
-                    triaged.modelVersion(), e -> {
+            // the answer is in the email's text now: the classifier reads the whole thing again, detector first
+            StepResult classified = classifier.run(email);
+            return new StepResult(classified.next(), classified.output(), classified.confidence(), classified.sources(),
+                    classified.modelVersion(), e -> {
                         SlotEntity.delete("email.id", e.id);
                         SlotEntity.flush();
                         e.senderReplied = false;
-                        triaged.writes().accept(e);
+                        classified.writes().accept(e);
                     });
         }
         Latest latest = loaded.latest();

@@ -18,10 +18,10 @@ public final class EmailLifecycle {
 
     static {
         // every active status may escalate: when anything goes wrong, a human takes over (fail closed)
-        NEXT.put(NEW, EnumSet.of(FILTERED_OUT, TRIAGED, ESCALATED));
-        NEXT.put(TRIAGED, EnumSet.of(IGNORED, RESOLVING, ESCALATED));
+        NEXT.put(NEW, EnumSet.of(FILTERED_OUT, CLASSIFIED, ESCALATED));
+        NEXT.put(CLASSIFIED, EnumSet.of(IGNORED, RESOLVING, ESCALATED));
         NEXT.put(RESOLVING, EnumSet.of(READY, AWAITING_SENDER, AWAITING_INPUT, ESCALATED));
-        NEXT.put(AWAITING_SENDER, EnumSet.of(TRIAGED, CLOSED, ESCALATED));
+        NEXT.put(AWAITING_SENDER, EnumSet.of(CLASSIFIED, CLOSED, ESCALATED));
         NEXT.put(AWAITING_INPUT, EnumSet.of(READY, ESCALATED));
         NEXT.put(READY, EnumSet.of(DRAFTED, ESCALATED));
         NEXT.put(DRAFTED, EnumSet.of(REVIEWED, ESCALATED));
