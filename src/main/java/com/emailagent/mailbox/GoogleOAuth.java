@@ -84,6 +84,7 @@ final class GoogleOAuth {
             throw new IllegalStateException("Gmail client file missing: " + clientFile
                     + " (see the setup guide: download the Desktop OAuth client JSON there)");
         }
+        tighten(clientFile); // it holds the client secret
         try {
             JsonNode installed = mapper.readTree(clientFile.toFile()).path("installed");
             return new Client(installed.path("client_id").asText(), installed.path("client_secret").asText(),
@@ -178,26 +179,40 @@ final class GoogleOAuth {
         }
     }
 
-    private void store(JsonNode tokens, String refreshToken) {
+    /** Package-private for tests. The refresh token is written readable by the owner only (SecretFiles). */
+    void store(JsonNode tokens, String refreshToken) {
         accessToken = tokens.path("access_token").asText();
         expiresAt = Instant.now().plusSeconds(tokens.path("expires_in").asLong(3600));
         if (refreshToken != null) {
             try {
-                Files.createDirectories(tokenFile.getParent());
                 ObjectNode saved = mapper.createObjectNode().put("refresh_token", refreshToken);
-                Files.writeString(tokenFile, mapper.writeValueAsString(saved));
+                SecretFiles.writeOwnerOnly(tokenFile, mapper.writeValueAsString(saved));
             } catch (IOException e) {
                 throw new UncheckedIOException("cannot save the Gmail token in " + tokenFile, e);
             }
         }
     }
 
-    private String storedRefreshToken() {
+    /** Package-private for tests. A token saved by an earlier version is made owner-only before it is read. */
+    String storedRefreshToken() {
+        if (!Files.exists(tokenFile)) {
+            return null;
+        }
+        tighten(tokenFile);
         try {
-            return Files.exists(tokenFile) ? mapper.readTree(tokenFile.toFile()).path("refresh_token").asText(null)
-                    : null;
+            return mapper.readTree(tokenFile.toFile()).path("refresh_token").asText(null);
         } catch (IOException e) {
             return null;
+        }
+    }
+
+    /** Best effort: a file we can't restrict is still usable, and the warning tells the owner to fix it by hand. */
+    private static void tighten(Path secret) {
+        try {
+            SecretFiles.restrictToOwner(secret);
+        } catch (IOException e) {
+            Log.warnf("could not make %s readable by the owner only (%s)", secret.getFileName(),
+                    e.getClass().getSimpleName());
         }
     }
 
