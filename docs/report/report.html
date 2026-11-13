@@ -272,6 +272,24 @@
 <h2>8&nbsp;&nbsp;Conclusion</h2>
 <p>The Email Response Agent shows that the useful parts of language models can be kept while their decision power stays narrow. Models classify, cluster and write. Code decides routing, trust and sending, and the database enforces the invariants that matter most. The input-slot abstraction reduces the owner's workload to answering each distinct question once. The layered, deterministic-first security design limits what a compromised or misled model can achieve. The remaining risks are known, bounded and documented.</p>
 
+<h2>Author contributions</h2>
+<p>The project was carried out as a team. Table&nbsp;5 gives the area each author led. These are lead responsibilities only: every author contributed to each part, and no part was done by one person alone.</p>
+
+<div class="tblwrap">
+  <p class="tcap"><b>Table 5.</b> Lead responsibilities.</p>
+  <table>
+    <thead><tr><th>Author</th><th>Lead responsibility</th></tr></thead>
+    <tbody>
+      <tr><td>Marouane BENABDELKADER</td><td>System design, core principles, testing</td></tr>
+      <tr><td>Mohamed Dhia BEN SALAH</td><td>Security, infrastructure</td></tr>
+      <tr><td>Kacem ABDELBAKI</td><td>Development</td></tr>
+      <tr><td>Daniel ABOU ORM</td><td>Development</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<p>The team set up a continuous-integration pipeline and integrated all work through pull requests. Every pull request is built, tested and scanned for secrets before it can be merged.</p>
+
 <h2>References</h2>
 <ol class="refs">
   <li>M. Kucherawy. <i>Message Header Field for Indicating Message Authentication Status.</i> RFC 8601, IETF, 2019.</li>
