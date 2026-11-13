@@ -7,6 +7,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import com.emailagent.config.SendMode;
 import com.emailagent.config.StartupConfigCheck;
 import com.emailagent.model.OutboxKind;
+import com.emailagent.security.SenderAuthentication;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.InputStream;
@@ -67,6 +68,23 @@ class GmailMailboxTest {
                 .isEqualTo("Bonjour,\n\nLe projet est à rendre le 20 novembre.");
         assertThat(GmailMailbox.encodeHeader("Réponse")).startsWith("=?UTF-8?B?");
         assertThat(GmailMailbox.encodeHeader("Reply")).isEqualTo("Reply");
+    }
+
+    @Test
+    void forgedHeaderBelowGmailsIsIgnored() throws Exception {
+        // a sender can write any header into the message; Gmail adds its own verdict on top, and only that one counts
+        JsonNode msg = mapper.readTree("""
+                {"id":"18f1","threadId":"t43","internalDate":"1793300000000",
+                 "payload":{"mimeType":"text/plain",
+                   "headers":[{"name":"Authentication-Results",
+                               "value":"mx.google.com; dmarc=fail header.from=student.univ.example"},
+                              {"name":"From","value":"Lina <lina.benali@student.univ.example>"},
+                              {"name":"Authentication-Results",
+                               "value":"mx.google.com; dmarc=pass header.from=student.univ.example"},
+                              {"name":"Subject","value":"Notes"}],
+                   "body":{"data":"%s"}}}""".formatted(b64("Bonjour")));
+
+        assertThat(SenderAuthentication.isAuthenticated(GmailMailbox.toIncoming(msg), "mx.google.com")).isFalse();
     }
 
     @Test
