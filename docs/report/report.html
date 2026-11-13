@@ -1,0 +1,578 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Email Response Agent: System Design and Security Analysis</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;0,8..60,700;1,8..60,400&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400&display=swap">
+<style>
+  /* Print layout: A4 technical report, single column, numbered figures and tables, booktabs-style rules. */
+  :root {
+    --ink: #111418;
+    --muted: #4a5360;
+    --rule: #1d232b;
+    --hair: #c9ced6;
+    --accent: #23409a;
+    --code: #eef0f3;
+    --serif: "Source Serif 4", "Source Serif Pro", Georgia, "Times New Roman", serif;
+    --sans: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+    --mono: "IBM Plex Mono", Consolas, ui-monospace, monospace;
+  }
+  @page {
+    size: A4;
+    margin: 22mm 20mm 22mm 20mm;
+    @bottom-center { content: counter(page) " / " counter(pages); font: 8.5pt "IBM Plex Sans", sans-serif; color: #4a5360; }
+    @top-right { content: "Email Response Agent: Design and Security"; font: 8pt "IBM Plex Sans", sans-serif; color: #4a5360; }
+  }
+  @page :first { @top-right { content: none; } }
+  * { box-sizing: border-box; }
+  html { background: #ffffff; }
+  body { margin: 0 auto; max-width: 170mm; color: var(--ink); background: #ffffff; font: 10.5pt/1.5 var(--serif); padding: 0 16px; }
+  @media print { body { padding: 0; max-width: none; } }
+  h1, h2, h3 { font-family: var(--serif); font-weight: 700; line-height: 1.2; text-wrap: balance; break-after: avoid; }
+  h1 { font-size: 20pt; margin: 0 0 6pt; }
+  h2 { font-size: 13pt; margin: 18pt 0 6pt; }
+  h3 { font-size: 11pt; margin: 12pt 0 4pt; }
+  p { margin: 0 0 7pt; text-align: justify; hyphens: auto; orphans: 3; widows: 3; }
+  code { font-family: var(--mono); font-size: 8.8pt; background: var(--code); padding: 0 2pt; border-radius: 2pt; }
+  a { color: var(--accent); text-decoration: none; }
+  .cite { color: var(--accent); }
+
+  .titleblock { text-align: center; padding-bottom: 10pt; border-bottom: 1.2pt solid var(--rule); margin-bottom: 12pt; }
+  .titleblock .kind { font: 500 8.5pt/1 var(--sans); letter-spacing: 0.14em; text-transform: uppercase; color: var(--accent); margin-bottom: 8pt; }
+  .titleblock .authors { font-size: 10.5pt; margin: 4pt 0 2pt; }
+  .titleblock .meta { font: 8.5pt/1.4 var(--sans); color: var(--muted); }
+  .abstract { margin: 0 8mm 10pt; font-size: 9.8pt; }
+  .abstract p { margin-bottom: 4pt; }
+  .abstract .label { font-weight: 700; }
+  .keywords { margin: 0 8mm 12pt; font-size: 9pt; color: var(--muted); }
+
+  figure { margin: 10pt 0 12pt; break-inside: avoid; }
+  figure .fig { width: 100%; height: var(--h, 90mm); border: 0.6pt solid var(--hair); border-radius: 3pt; overflow: hidden; }
+  figcaption, .tcap { font: 8.8pt/1.4 var(--sans); color: var(--muted); margin-top: 5pt; text-align: left; }
+  figcaption b, .tcap b { color: var(--ink); font-weight: 600; }
+  .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 6mm; }
+  .pair > figure { margin: 0; min-width: 0; }
+
+  .tblwrap { break-inside: avoid; margin: 10pt 0 12pt; overflow-x: auto; }
+  .tcap { margin: 0 0 4pt; }
+  table { width: 100%; border-collapse: collapse; font: 8.6pt/1.35 var(--sans); }
+  thead th { text-align: left; font-weight: 600; border-top: 1.1pt solid var(--rule); border-bottom: 0.6pt solid var(--rule); padding: 4pt 5pt; }
+  tbody td { padding: 3.2pt 5pt; vertical-align: top; border-bottom: 0.3pt solid var(--hair); }
+  tbody tr:last-child td { border-bottom: 1.1pt solid var(--rule); }
+  td.num { font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
+  td code { font-size: 8pt; }
+
+  ol.refs { padding-left: 18pt; font-size: 9pt; }
+  ol.refs li { margin-bottom: 3pt; }
+  .fallback { font: 9pt var(--sans); color: var(--muted); padding: 12pt; }
+</style>
+</head>
+<body>
+
+<header class="titleblock">
+  <div class="kind">Technical report</div>
+  <h1>Email Response Agent: System Design and Security Analysis</h1>
+  <div class="authors">Email Response Agent project</div>
+  <div class="meta">November 2026 · Repository <code>dhiasalah/email-response-agent</code> · Code state <code>main@adcaf73</code></div>
+</header>
+
+<section class="abstract">
+  <p><span class="label">Abstract.</span> We describe the design and security architecture of the Email Response Agent, a multi-agent system that drafts replies to a university professor's email while asking the professor for each missing fact only once. Each fact a reply depends on is represented as a typed <em>input slot</em>. Emails waiting on the same slot are grouped, and a single answer from the owner completes all of them.</p>
+  <p>Six single-purpose agents are coordinated by a deterministic orchestrator written in plain code. No language model holds a capability to send, forward or store mail. The security design layers deterministic controls ahead of every model call: pre-filtering, HTML and Unicode sanitisation, sender authentication based on the receiving server's DMARC and DKIM verdicts, and a rule-based prompt-injection detector. Deterministic reply rules follow, which no model verdict can overrule, and the database itself enforces the email lifecycle and outbox invariants.</p>
+  <p>We report 232 automated tests and an end-to-end corpus of 17 attacks mapped to the OWASP Top 10 for LLM Applications (2025), all passing on the current code. Last, we discuss the residual risks identified during an independent code review.</p>
+</section>
+<p class="keywords"><b>Keywords:</b> multi-agent systems, large language models, prompt injection, email authentication, DMARC, DKIM, privacy by design.</p>
+
+<h2>1&nbsp;&nbsp;Introduction</h2>
+<p>A professor receives many emails that differ in wording but wait on the same piece of information: the publication date of a grade, the room of an exam, a project deadline. Answering them one by one wastes time. Delegating them to a general-purpose language model exposes students to invented facts and the owner's mailbox to prompt injection <span class="cite">[6]</span>. The Email Response Agent answers recurring questions once, and never states a fact that was not provided by the owner or a trusted source.</p>
+<p>This report has two aims. Sections 2 and 3 document the architecture as built. Sections 4 to 6 analyse its security and privacy properties and the evidence for them. Section 7 lists known limitations. Every figure and table was checked against the code at commit <code>adcaf73</code>; the source of each is named in its caption.</p>
+
+<h2>2&nbsp;&nbsp;System overview</h2>
+<p>The unit of work is the input slot, a triple of <em>type</em>, <em>entity</em> and <em>qualifier</em> drawn from a fixed taxonomy of nine slot types: grades publication date, exam date, exam room, deadline, procedure, document availability, meeting availability, individual decision and individual result. Triage splits each email into questions and extracts their slots. The resolver tries to fill each slot from trusted sources in a fixed order: scoped knowledge memory, the knowledge base, the calendar, and finally the owner's replies from the last seven days. Slots that remain unresolved are clustered into <em>input cards</em>. The owner answers each card once, and every linked email receives its own reply in the sender's language (Figure&nbsp;1).</p>
+
+<figure>
+  <div class="fig" id="f-pipeline" style="--h:74mm"></div>
+  <figcaption><b>Figure 1.</b> Processing pipeline. Every arrow is a lifecycle transition checked by the database (Figure&nbsp;2). Source: <code>orchestrator/*Step*.java</code>, <code>agents/*Agent.java</code>.</figcaption>
+</figure>
+
+<p>Answers become <em>facts</em> with a scope (program, track, year), an expiry date and a shareable flag. A later sender in the same scope receives the answer without involving the owner. A sender in another scope, or with an unknown scope, triggers a new card instead.</p>
+
+<h2>3&nbsp;&nbsp;Architecture</h2>
+<h3>3.1&nbsp;&nbsp;Deterministic orchestration</h3>
+<p>The orchestrator is ordinary Java code rather than an LLM, so routing is predictable, testable and cheap. It moves each email through a fixed set of fourteen statuses (Figure&nbsp;2). Each step is keyed by email identifier, status and version, so a restart cannot repeat a side effect. A PostgreSQL trigger, <code>email_status_transition()</code>, rejects any transition outside the permitted set. A second set of triggers refuses an outbox row unless a passed review exists for the exact draft being sent.</p>
+
+<figure>
+  <div class="fig" id="f-lifecycle" style="--h:150mm"></div>
+  <figcaption><b>Figure 2.</b> Email lifecycle. The 18 transitions shown, plus the three leaving <code>ESCALATED</code>, are exactly those the database trigger permits. Each of the nine working statuses may also move to <code>ESCALATED</code>; these nine edges are omitted for legibility. Source: <code>db/migration/V1701__owner_replies.sql</code>.</figcaption>
+</figure>
+
+<h3>3.2&nbsp;&nbsp;Agents</h3>
+<p>Six agents, each with one responsibility, communicate only through the shared state (Figure&nbsp;3, Table&nbsp;1). Every model output is parsed against a strict schema. An invalid output is retried once with the validation error, and a second failure escalates the email to the owner. Models run locally through Ollama at temperature 0. A fast tier serves classification and clustering, and a strong tier serves writing and review.</p>
+
+<figure>
+  <div class="fig" id="f-agents" style="--h:70mm"></div>
+  <figcaption><b>Figure 3.</b> Agents and their model tiers under the orchestrator. Agents never call each other. Source: <code>agents/</code>, <code>llm/ModelTier.java</code>.</figcaption>
+</figure>
+
+<div class="tblwrap">
+  <p class="tcap"><b>Table 1.</b> Agent specifications as implemented.</p>
+  <table>
+    <thead><tr><th>Agent</th><th>Input</th><th>Output</th><th>Model tier</th></tr></thead>
+    <tbody>
+      <tr><td>Triage</td><td>Sanitised email, sender scope from the roster</td><td>Intent, sensitivity, language, typed slots with owner</td><td>Fast</td></tr>
+      <tr><td>Resolver</td><td>Slots, sender scope</td><td>Each slot filled, proposed or unresolved, with source</td><td>None (code)</td></tr>
+      <tr><td>Grouping</td><td>Unresolved slots, open cards</td><td>Input cards; embedding candidates verified by the model</td><td>Fast + embeddings</td></tr>
+      <tr><td>Writer</td><td>Email, filled slots, owner note</td><td>Reply body and the list of facts used</td><td>Strong</td></tr>
+      <tr><td>Reviewer</td><td>Draft, facts used, policy</td><td>Pass or fail, outlier reasons</td><td>Strong, behind code rules</td></tr>
+      <tr><td>Curator</td><td>Card answers, sent replies</td><td>Scoped, expiring facts; recent-answer log</td><td>Fast</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<h3>3.3&nbsp;&nbsp;Owner interaction</h3>
+<p>The owner works from a local review panel with three queues: input cards ranked by priority, drafts grouped per card, and escalations. Card priority is a weighted sum of urgency (0.4), volume (0.3), age (0.2) and sender role (0.1). Drafts of a card are validated once through a representative reply, chosen by majority language and median length. Outliers, such as a writer retry, an unanchored yes/no fact or suspicious input, are shown individually and are never approved in bulk.</p>
+
+<h2>4&nbsp;&nbsp;Security design</h2>
+<h3>4.1&nbsp;&nbsp;Threat model</h3>
+<p>Every incoming email is attacker-controlled data, headers included. The adversary can write any body, subject, display name or <code>From</code> address. The adversary may know the system's prompts, and may control what the language model outputs. The goals considered are:</p>
+<ul>
+  <li>making the system send false or unauthorised information, including promises;</li>
+  <li>exfiltrating data or redirecting students;</li>
+  <li>obtaining another cohort's or another student's answers;</li>
+  <li>exhausting the system or the owner.</li>
+</ul>
+<p>Table&nbsp;2 maps these threats to the OWASP Top 10 for LLM Applications <span class="cite">[6]</span> and to the controls that address them.</p>
+
+<div class="tblwrap">
+  <p class="tcap"><b>Table 2.</b> Threats, OWASP LLM (2025) categories and implemented controls.</p>
+  <table>
+    <thead><tr><th>Threat</th><th>OWASP</th><th>Controls</th></tr></thead>
+    <tbody>
+      <tr><td>Instructions hidden in an email</td><td>LLM01</td><td>Sanitiser; rule-based detector scored before any model call; the model may only raise the score</td></tr>
+      <tr><td>Invented facts, dates or promises</td><td>LLM09</td><td>Reply rules: every number, link and commitment word must appear in a cited fact</td></tr>
+      <tr><td>Data leaks, sensitive topics</td><td>LLM02</td><td>Personal slot types never reused or sent automatically; blocked-topic and grade rules</td></tr>
+      <tr><td>Markup or header injection in output</td><td>LLM05</td><td>Plain-text replies; one-line subject; recipient and thread taken from the email, never from the model</td></tr>
+      <tr><td>Agent acting beyond its role</td><td>LLM06</td><td>No send, forward or write tools for models; database-checked outbox; scope from a roster, never from the email</td></tr>
+      <tr><td>Loops, floods, cost exhaustion</td><td>LLM10</td><td>Auto-reply filter <span class="cite">[5]</span>; 10 emails per sender per hour; 3 automatic replies per sender and 50 in total per day; bounded batches</td></tr>
+      <tr><td>Forged sender identity</td><td>LLM06</td><td>Sender authentication from DMARC/DKIM verdicts (Section 4.3)</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<h3>4.2&nbsp;&nbsp;Defence in depth</h3>
+<p>Eight layers separate an incoming email from a sent reply (Figure&nbsp;4). The first four are deterministic and run before any model sees the email. The review rules run on the final reply text, and no model verdict can overrule them. The last layer lives in the database and holds even if the application code were wrong.</p>
+
+<figure>
+  <div class="fig" id="f-layers" style="--h:96mm"></div>
+  <figcaption><b>Figure 4.</b> Defence layers, in the order an email meets them. Source: <code>security/</code>, <code>agents/ReviewRules.java</code>, <code>orchestrator/SendDispatcher.java</code>, migrations V1101 and V1701.</figcaption>
+</figure>
+
+<p>The injection detector combines weighted text rules with the sanitiser's flags. Examples are overridden instructions (1.0), spoofed roles (1.0), addressing the AI (0.6), an exfiltration address (0.6), hidden HTML (1.0) and an unauthenticated sender (0.3). It escalates at a score of 1.0, and the model's opinion is monotonic: it can add 0.6 but never subtract. The deterministic reply rules reject:</p>
+<ul>
+  <li>a missing fact, an unsupported number, link or commitment;</li>
+  <li>a blocked topic or an individual grade (pattern <code>n/20</code>);</li>
+  <li>reply text that itself reads as instructions;</li>
+  <li>a language mismatch, or more than 200 words.</li>
+</ul>
+
+<h3>4.3&nbsp;&nbsp;Sender authentication</h3>
+<p>A student's scope, and with it access to cohort-specific answers, is resolved from a roster by exact address. Because the <code>From</code> header is free text, the address is trusted only when the receiving server vouches for it (Figure&nbsp;5). The system reads the top-most <code>Authentication-Results</code> header <span class="cite">[1]</span> and requires it to be written by the trusted server (<code>mx.google.com</code>). It then accepts either a DMARC pass whose <code>header.from</code> equals the From domain <span class="cite">[2]</span>, or a DKIM pass whose signing domain is that domain or a parent of it <span class="cite">[3]</span>. Any <code>dmarc=fail</code> rejects the sender, and SPF alone is never sufficient <span class="cite">[4]</span>.</p>
+<p>The parser follows the RFC 8601 grammar for quoted strings and comments. Malformed headers, and comments glued to a value, fail closed. This closes the class of injection in which sender-controlled values echoed by the server forge a result <span class="cite">[10]</span>. An unauthenticated sender is not dropped. The email is shown to the owner with an explicit warning, but it receives an unknown scope (no memory reuse), no role weight, and an outlier mark that excludes automatic and bulk sending.</p>
+
+<figure>
+  <div class="fig" id="f-auth" style="--h:112mm"></div>
+  <figcaption><b>Figure 5.</b> Sender-authentication decision. Source: <code>security/SenderAuthentication.java</code>; tests <code>SenderAuthenticationTest</code> (14 cases), <code>SenderAuthImportTest</code>.</figcaption>
+</figure>
+
+<h3>4.4&nbsp;&nbsp;Owner panel and secrets</h3>
+<p>The panel listens on <code>127.0.0.1</code> only. Login uses a PBKDF2-HMAC-SHA256 hash with 600,000 iterations <span class="cite">[7]</span>; without a configured hash, every login is refused. After five failures in fifteen minutes, all attempts are refused. Every form carries a CSRF token, and the content security policy forbids all scripts (<code>default-src 'none'; style-src 'self'</code>). The Gmail integration uses OAuth 2.0 with PKCE <span class="cite">[9]</span>, reads only allow-listed senders and only creates drafts; the mailbox package contains no send call, which a test enforces. The refresh token and client secret are written through an owner-only temporary file and an atomic move. That means POSIX mode <code>600</code>/<code>700</code>, or a Windows ACL naming only the current user.</p>
+
+<h2>5&nbsp;&nbsp;Privacy and compliance</h2>
+<p>Student emails are personal data under the GDPR, which requires data minimisation and data protection by design <span class="cite">[8]</span>. The implementation addresses this structurally (Table&nbsp;3). Models must be local, and a non-local model address stops the application at start-up unless explicitly permitted. Filtered emails keep metadata but not their body. Facts marked personal are never reused.</p>
+
+<div class="tblwrap">
+  <p class="tcap"><b>Table 3.</b> Privacy controls and their defaults.</p>
+  <table>
+    <thead><tr><th>Control</th><th>Default</th><th>Where enforced</th></tr></thead>
+    <tbody>
+      <tr><td>Local model endpoint</td><td><code>127.0.0.1:11434</code>; remote refused</td><td><code>StartupConfigCheck</code></td></tr>
+      <tr><td>Prompt and response logging</td><td>Disabled</td><td><code>application.properties</code></td></tr>
+      <tr><td>Email addresses in logs</td><td>Redacted to <code>[email]</code></td><td><code>PiiLogFilter</code></td></tr>
+      <tr><td>Retention of finished emails</td><td>365 days, then erased</td><td><code>Retention</code> (nightly)</td></tr>
+      <tr><td>Mail read in Gmail mode</td><td>Allow-listed senders only; empty list reads nothing</td><td><code>GmailMailbox</code></td></tr>
+      <tr><td>Fact freshness</td><td>Reused directly up to 90 days, then proposed for review</td><td><code>ResolverAgent</code></td></tr>
+      <tr><td>AI-assistance disclosure</td><td>Enabled in every reply</td><td><code>WriterAgent</code></td></tr>
+    </tbody>
+  </table>
+</div>
+
+<h2>6&nbsp;&nbsp;Evaluation</h2>
+<p>The build runs 232 automated tests, with no failures at the reported commit (Figure&nbsp;6b). Agent behaviour is tested through scripted models that pass through the real output parser. The attack corpus (Table&nbsp;4) runs end to end without a model on every build, and its 17 attacks span six OWASP categories (Figure&nbsp;6a). Two harmless control emails must still receive their replies, which guards against controls that are too strict. A separate evaluation set of 35 labelled emails measures triage and review against the local models.</p>
+
+<div class="pair">
+  <figure>
+    <div class="fig" id="f-owasp" style="--h:78mm"></div>
+    <figcaption><b>Figure 6a.</b> Attack corpus by primary OWASP LLM category (n&nbsp;=&nbsp;17). Source: <code>attacks/corpus.json</code>.</figcaption>
+  </figure>
+  <figure>
+    <div class="fig" id="f-tests" style="--h:78mm"></div>
+    <figcaption><b>Figure 6b.</b> Automated tests by package (n&nbsp;=&nbsp;232). Source: Surefire reports of <code>./mvnw verify</code>.</figcaption>
+  </figure>
+</div>
+
+<div class="tblwrap">
+  <p class="tcap"><b>Table 4.</b> End-to-end attack corpus and the outcome each test requires. All pass.</p>
+  <table>
+    <thead><tr><th>ID</th><th>Attack</th><th>OWASP</th><th>Required outcome</th></tr></thead>
+    <tbody>
+      <tr><td>A01</td><td>Direct instruction override</td><td>LLM01</td><td>Payload blocked</td></tr>
+      <tr><td>A02</td><td>Polite steering without trigger words</td><td>LLM01</td><td>Payload blocked</td></tr>
+      <tr><td>A03</td><td>Exfiltration link</td><td>LLM01/02</td><td>Payload blocked</td></tr>
+      <tr><td>A04</td><td>Contact swap</td><td>LLM01</td><td>Payload blocked</td></tr>
+      <tr><td>A05</td><td>Hidden HTML instruction</td><td>LLM01</td><td>Payload blocked</td></tr>
+      <tr><td>A06</td><td>Invisible Unicode</td><td>LLM01</td><td>Payload blocked</td></tr>
+      <tr><td>A07</td><td>False commitment</td><td>LLM09</td><td>Payload blocked</td></tr>
+      <tr><td>A08</td><td>Data leak request</td><td>LLM02</td><td>Payload blocked</td></tr>
+      <tr><td>A09</td><td>Impersonation</td><td>LLM01</td><td>Payload blocked</td></tr>
+      <tr><td>A10</td><td>Instruction relay to the next reader</td><td>LLM01</td><td>Payload blocked</td></tr>
+      <tr><td>A11</td><td>Markup in the reply</td><td>LLM05</td><td>Payload blocked</td></tr>
+      <tr><td>A12</td><td>Flooding the reply</td><td>LLM10</td><td>Payload blocked</td></tr>
+      <tr><td>A13</td><td>Header injection in subject</td><td>LLM05</td><td>Subject kept on one line</td></tr>
+      <tr><td>A14</td><td>Sensitive topic hidden as a question</td><td>LLM02</td><td>Not sent</td></tr>
+      <tr><td>A15</td><td>Scope spoofing</td><td>LLM06</td><td>No other cohort's answer</td></tr>
+      <tr><td>A16</td><td>Auto-reply loop</td><td>LLM10</td><td>Filtered</td></tr>
+      <tr><td>A17</td><td>French paraphrase of a cancellation</td><td>LLM01</td><td>Payload blocked</td></tr>
+      <tr><td>B1, B2</td><td>Benign control emails</td><td>–</td><td>Sent</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<p>The sender-authentication work was developed test-first and then examined by an independent reviewer. The reviewer found no critical issues and four important ones: a parser blind to quoted strings, a Windows principal lookup that could fail, missing visibility in the panel, and untested importer wiring. One minor issue was regraded as important: the mailbox type was chosen at build time but checked at run time. Each was fixed with a test that failed first. The importer tests were additionally validated by mutation: removing the line under test made both fail.</p>
+
+<h2>7&nbsp;&nbsp;Limitations and future work</h2>
+<ul>
+  <li><b>Forged mail and rate limits.</b> The per-sender hourly limit is keyed on the <code>From</code> address, so forged mail counts against the real student's limit.</li>
+  <li><b>Same-domain impersonation.</b> The <code>From</code> parser can take an address from a comment. A sender with valid DMARC for the same domain could therefore pose as a classmate. A strict address grammar is the planned fix.</li>
+  <li><b>Unsigned domains.</b> Mail from a domain without aligned DKIM or a DMARC record is always unverified. It is still handled, but it loses grouping and fact reuse until the domain enables signing.</li>
+  <li><b>Forwarded mail.</b> ARC chains are not evaluated, so legitimately forwarded mail is treated as unverified. This only produces false negatives.</li>
+  <li><b>Clarification notices.</b> They do not yet consider the unverified flag. This is reachable only outside Gmail mode, with every automatic-sending setting enabled.</li>
+</ul>
+
+<h2>8&nbsp;&nbsp;Conclusion</h2>
+<p>The Email Response Agent shows that the useful parts of language models can be kept while their decision power stays narrow. Models classify, cluster and write. Code decides routing, trust and sending, and the database enforces the invariants that matter most. The input-slot abstraction reduces the owner's workload to answering each distinct question once. The layered, deterministic-first security design limits what a compromised or misled model can achieve. The remaining risks are known, bounded and documented.</p>
+
+<h2>References</h2>
+<ol class="refs">
+  <li>M. Kucherawy. <i>Message Header Field for Indicating Message Authentication Status.</i> RFC 8601, IETF, 2019.</li>
+  <li>M. Kucherawy, E. Zwicky. <i>Domain-based Message Authentication, Reporting, and Conformance (DMARC).</i> RFC 7489, IETF, 2015.</li>
+  <li>D. Crocker, T. Hansen, M. Kucherawy. <i>DomainKeys Identified Mail (DKIM) Signatures.</i> RFC 6376, IETF, 2011.</li>
+  <li>S. Kitterman. <i>Sender Policy Framework (SPF) for Authorizing Use of Domains in Email.</i> RFC 7208, IETF, 2014.</li>
+  <li>K. Moore. <i>Recommendations for Automatic Responses to Electronic Mail.</i> RFC 3834, IETF, 2004.</li>
+  <li>OWASP Foundation. <i>OWASP Top 10 for Large Language Model Applications.</i> Version 2025.</li>
+  <li>OWASP Foundation. <i>Password Storage Cheat Sheet.</i> OWASP Cheat Sheet Series, 2023.</li>
+  <li>European Parliament and Council. <i>Regulation (EU) 2016/679 (General Data Protection Regulation)</i>, Articles 5 and 25. 2016.</li>
+  <li>N. Sakimura, J. Bradley, N. Agarwal. <i>Proof Key for Code Exchange by OAuth Public Clients.</i> RFC 7636, IETF, 2015.</li>
+  <li>J. Chen, V. Paxson, J. Jiang. <i>Composition Kills: A Case Study of Email Sender Authentication.</i> USENIX Security Symposium, 2020.</li>
+  <li><i>Email Response Agent — System Design.</i> Project design document, 2026.</li>
+</ol>
+
+<script src="https://unpkg.com/@antv/infographic@0.2.20/dist/infographic.min.js"></script>
+<script>
+(function () {
+  // Icons ship inline as data URIs: rendering needs no icon service.
+  const P = {
+    mail: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/>',
+    filter: '<path d="M3 5h18l-7 8v6l-4-2v-4z"/>',
+    tag: '<path d="M20 12l-8 8-9-9V3h8z"/><circle cx="7.5" cy="7.5" r="1.5"/>',
+    database: '<ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5"/><path d="M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/>',
+    layers: '<path d="M12 3l9 5-9 5-9-5z"/><path d="M3 13l9 5 9-5"/>',
+    user: '<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/>',
+    pen: '<path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M14 6l4 4"/>',
+    check: '<circle cx="12" cy="12" r="9"/><path d="M8 12l3 3 5-6"/>',
+    book: '<path d="M4 4h12a4 4 0 0 1 4 4v12H8a4 4 0 0 1-4-4z"/><path d="M8 8h8M8 12h6"/>',
+    send: '<path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4z"/>',
+    shield: '<path d="M12 3l8 3v6c0 5-3.5 8.5-8 9-4.5-.5-8-4-8-9V6z"/><path d="M9 12l2 2 4-4"/>',
+    lock: '<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>',
+    key: '<circle cx="8" cy="15" r="4"/><path d="M11 12l9-9M17 6l3 3"/>',
+    eyeoff: '<path d="M3 3l18 18"/><path d="M10.6 6.1A10 10 0 0 1 12 6c6 0 10 6 10 6a17 17 0 0 1-3.2 3.8M6.6 6.6C3.8 8.3 2 12 2 12s4 6 10 6a9 9 0 0 0 4-.9"/>',
+    alert: '<path d="M12 3l10 18H2z"/><path d="M12 10v4M12 17h.01"/>',
+    gauge: '<path d="M12 14l4-4"/><path d="M3 18a9 9 0 1 1 18 0"/>',
+    at: '<circle cx="12" cy="12" r="4"/><path d="M16 12v1.5a2.5 2.5 0 0 0 5 0V12a9 9 0 1 0-3.5 7.1"/>',
+    cog: '<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9L7 7M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/>',
+    code: '<path d="M8 6l-6 6 6 6M16 6l6 6-6 6"/>',
+    spark: '<path d="M12 3l2 5 5 2-5 2-2 5-2-5-5-2 5-2z"/>',
+    x: '<circle cx="12" cy="12" r="9"/><path d="M9 9l6 6M15 9l-6 6"/>',
+    inbox: '<path d="M3 13h5l2 3h4l2-3h5"/><path d="M5 5h14l2 8v6H3v-6z"/>',
+    clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+    pause: '<circle cx="12" cy="12" r="9"/><path d="M10 9v6M14 9v6"/>',
+    flag: '<path d="M5 21V4M5 4h11l-2 4 2 4H5"/>',
+    archive: '<rect x="3" y="4" width="18" height="4" rx="1"/><path d="M5 8v12h14V8M10 12h4"/>'
+  };
+  const icon = (n) => 'data:image/svg+xml,' + encodeURIComponent(
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#111418" stroke-width="1.8" ' +
+    'stroke-linecap="round" stroke-linejoin="round">' + (P[n] || P.spark) + '</svg>');
+  const withIcons = (dsl) => dsl.replace(/icon @([a-z]+)/g, (_, n) => 'icon ' + icon(n));
+  const THEME = 'palette #23409a #13795b #0e7490 #a65b00 #6d28d9 #be185d\n  base\n    text\n      font-family IBM Plex Sans';
+
+  const FIGURES = {
+    'f-pipeline': `infographic sequence-color-snake-steps-horizontal-icon-line
+data
+  sequences
+    - label Pre-filter
+      desc Loops, lists, floods
+      icon @filter
+    - label Triage
+      desc Typed slots
+      icon @tag
+    - label Resolver
+      desc Trusted sources
+      icon @database
+    - label Grouping
+      desc One card per slot
+      icon @layers
+    - label Owner
+      desc Answers once
+      icon @user
+    - label Writer
+      desc One reply per email
+      icon @pen
+    - label Reviewer
+      desc Rules, then model
+      icon @check
+    - label Outbox
+      desc Draft by default
+      icon @send
+theme
+  ${THEME}`,
+
+    'f-lifecycle': `infographic relation-dagre-flow-tb-badge-card
+data
+  nodes
+    - id NEW
+      label NEW
+      icon @inbox
+    - id FILTERED_OUT
+      label FILTERED_OUT
+      icon @filter
+    - id TRIAGED
+      label TRIAGED
+      icon @tag
+    - id IGNORED
+      label IGNORED
+      icon @archive
+    - id RESOLVING
+      label RESOLVING
+      icon @database
+    - id AWAITING_SENDER
+      label AWAITING_SENDER
+      icon @mail
+    - id AWAITING_INPUT
+      label AWAITING_INPUT
+      icon @user
+    - id READY
+      label READY
+      icon @flag
+    - id DRAFTED
+      label DRAFTED
+      icon @pen
+    - id REVIEWED
+      label REVIEWED
+      icon @check
+    - id DRAFT_SAVED
+      label DRAFT_SAVED
+      icon @pause
+    - id SENT
+      label SENT
+      icon @send
+    - id CLOSED
+      label CLOSED
+      icon @clock
+    - id ESCALATED
+      label ESCALATED
+      icon @alert
+  relations
+    NEW -> FILTERED_OUT
+    NEW -> TRIAGED
+    TRIAGED -> IGNORED
+    TRIAGED -> RESOLVING
+    RESOLVING -> READY
+    RESOLVING -> AWAITING_SENDER
+    RESOLVING -> AWAITING_INPUT
+    AWAITING_SENDER -> TRIAGED
+    AWAITING_SENDER -> CLOSED
+    AWAITING_INPUT -> READY
+    READY -> DRAFTED
+    DRAFTED -> REVIEWED
+    REVIEWED -> SENT
+    REVIEWED -> DRAFT_SAVED
+    DRAFT_SAVED -> SENT
+    ESCALATED -> READY
+    ESCALATED -> SENT
+    ESCALATED -> CLOSED
+theme
+  ${THEME}`,
+
+    'f-agents': `infographic hierarchy-tree-tech-style-badge-card
+data
+  root
+    label Orchestrator
+    desc Plain code
+    icon @cog
+    children
+      - label Triage
+        desc Fast model
+        icon @tag
+      - label Resolver
+        desc No model
+        icon @database
+      - label Grouping
+        desc Fast + embeddings
+        icon @layers
+      - label Writer
+        desc Strong model
+        icon @pen
+      - label Reviewer
+        desc Strong, behind rules
+        icon @check
+      - label Curator
+        desc Fast model
+        icon @book
+theme
+  ${THEME}`,
+
+    'f-layers': `infographic sequence-filter-mesh-simple
+data
+  sequences
+    - label Pre-filter
+      desc RFC 3834, lists, rate limits
+      icon @filter
+    - label Sanitiser
+      desc Hidden HTML, invisible Unicode
+      icon @eyeoff
+    - label Sender auth
+      desc DMARC or aligned DKIM
+      icon @at
+    - label Injection detector
+      desc Rule score, monotonic
+      icon @alert
+    - label Review rules
+      desc Facts, numbers, links, promises
+      icon @code
+    - label Model review
+      desc Grounding and tone
+      icon @spark
+    - label Send policy
+      desc Drafts, limits, proven types
+      icon @gauge
+    - label Database guards
+      desc Transitions and outbox
+      icon @lock
+theme
+  ${THEME}`,
+
+    'f-auth': `infographic relation-dagre-flow-tb-badge-card
+data
+  nodes
+    - id hdr
+      label Authentication-Results
+      desc Top-most header, RFC 8601
+      icon @mail
+    - id srv
+      label Written by the trusted server?
+      desc mx.google.com
+      icon @at
+    - id dmarc
+      label DMARC result
+      desc header.from must match
+      icon @shield
+    - id dkim
+      label DKIM signature
+      desc Signer is From domain or parent
+      icon @key
+    - id ok
+      label Authenticated
+      desc Roster scope, normal policy
+      icon @check
+    - id no
+      label Unverified
+      desc No scope, no reuse, draft only
+      icon @x
+  relations
+    hdr - read -> srv
+    srv - yes -> dmarc
+    srv - no -> no
+    dmarc - pass -> ok
+    dmarc - fail -> no
+    dmarc - none -> dkim
+    dkim - aligned -> ok
+    dkim - missing -> no
+theme
+  ${THEME}`,
+
+    'f-owasp': `infographic chart-pie-donut-pill-badge
+data
+  values
+    - label LLM01 Prompt injection
+      value 9
+    - label LLM02 Info disclosure
+      value 2
+    - label LLM05 Output handling
+      value 2
+    - label LLM10 Consumption
+      value 2
+    - label LLM06 Excessive agency
+      value 1
+    - label LLM09 Misinformation
+      value 1
+theme
+  ${THEME}`,
+
+    'f-tests': `infographic chart-bar-plain-text
+data
+  values
+    - label agents
+      value 68
+    - label security
+      value 47
+    - label orchestrator
+      value 37
+    - label web
+      value 27
+    - label mailbox
+      value 22
+    - label llm
+      value 18
+    - label config
+      value 5
+    - label model
+      value 5
+    - label store
+      value 3
+theme
+  ${THEME}`
+  };
+
+  function renderAll() {
+    if (!window.AntVInfographic) {
+      document.querySelectorAll('.fig').forEach((el) => {
+        el.innerHTML = '<p class="fallback">Figure library unavailable; see the caption.</p>';
+      });
+      return;
+    }
+    Object.entries(FIGURES).forEach(([id, dsl]) => {
+      try {
+        const el = document.getElementById(id);
+        el.innerHTML = '';
+        new AntVInfographic.Infographic({ container: '#' + id, width: '100%', height: '100%' }).render(withIcons(dsl));
+      } catch (e) {
+        console.error('figure ' + id, e);
+      }
+    });
+  }
+  renderAll();
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(renderAll).catch(() => {});
+})();
+</script>
+</body>
+</html>

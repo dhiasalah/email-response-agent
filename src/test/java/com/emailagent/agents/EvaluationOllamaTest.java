@@ -3,7 +3,6 @@ package com.emailagent.agents;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.emailagent.llm.LlmClient;
-import com.emailagent.llm.LlmException;
 import com.emailagent.llm.LlmRequest;
 import com.emailagent.llm.ModelTier;
 import com.emailagent.model.EmailStatus;
@@ -24,12 +23,9 @@ import java.nio.file.Path;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.EnumMap;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.TreeMap;
-import java.util.stream.Collectors;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 

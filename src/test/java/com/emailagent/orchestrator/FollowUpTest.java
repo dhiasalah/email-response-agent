@@ -16,7 +16,6 @@ import com.emailagent.model.Language;
 import com.emailagent.model.NoticeKind;
 import com.emailagent.model.OutboxKind;
 import com.emailagent.model.SlotOwner;
-import com.emailagent.model.SlotStatus;
 import com.emailagent.model.SlotType;
 import com.emailagent.security.InjectionDetector;
 import com.emailagent.store.DecisionLogEntry;
