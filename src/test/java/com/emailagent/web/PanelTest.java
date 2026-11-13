@@ -230,7 +230,7 @@ class PanelTest {
     @Test
     void escalationReasonsAreWrittenForPeople() {
         long id = escalated("Ma note", "Quelle note ?", "Adam");
-        QuarkusTransaction.requiringNew().run(() -> DecisionLogEntry.transition(id, "router", EmailStatus.TRIAGED,
+        QuarkusTransaction.requiringNew().run(() -> DecisionLogEntry.transition(id, "router", EmailStatus.CLASSIFIED,
                 EmailStatus.ESCALATED, "{\"route\":\"not_automatable\"}", null, null, null));
 
         String page = login().page;
@@ -261,7 +261,7 @@ class PanelTest {
     @Test
     void theActivityPageTellsTheStoryInWords() {
         long id = escalated("<b>Ma note</b>", "Quelle note ?", "Adam");
-        QuarkusTransaction.requiringNew().run(() -> DecisionLogEntry.transition(id, "router", EmailStatus.TRIAGED,
+        QuarkusTransaction.requiringNew().run(() -> DecisionLogEntry.transition(id, "router", EmailStatus.CLASSIFIED,
                 EmailStatus.ESCALATED, "{\"route\":\"not_automatable\"}", null, null, null));
 
         String page = given().cookie("quarkus-credential", login().credential).get("/panel/activity").asString();

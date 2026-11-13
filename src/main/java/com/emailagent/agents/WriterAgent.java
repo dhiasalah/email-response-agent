@@ -148,7 +148,7 @@ public class WriterAgent implements AgentStep {
         Language lang = email.language() == null ? Language.EN : email.language();
         List<Fact> facts = facts(email, lang);
         String instructions = instructions(lang, facts, agents.forEmail(email.agent()));
-        String input = TriageAgent.render(email);
+        String input = ClassifierAgent.render(email);
 
         WriterOutput out = llm.call(new LlmRequest(name(), ModelTier.STRONG, instructions, input), WriterOutput.class);
         // checked on the model's text as it will be sent (greeting and sign-off removed), not on our fixed parts
@@ -171,7 +171,7 @@ public class WriterAgent implements AgentStep {
 
     /**
      * The trusted channel carries only trusted bytes: a label we wrote and a value from the owner, the knowledge
-     * base or memory. Not the slot's entity: triage's model wrote it after reading the attacker's email.
+     * base or memory. Not the slot's entity: the classifier's model wrote it after reading the attacker's email.
      */
     static List<Fact> facts(EmailSnapshot email, Language lang) {
         List<Fact> facts = new ArrayList<>();

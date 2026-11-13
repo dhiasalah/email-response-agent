@@ -4,8 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.emailagent.agents.ResolverAgent;
 import com.emailagent.agents.ReviewerAgent;
-import com.emailagent.agents.TriageAgent;
-import com.emailagent.agents.TriageRouter;
+import com.emailagent.agents.ClassifierAgent;
+import com.emailagent.agents.ClassificationRouter;
 import com.emailagent.agents.WriterAgent;
 import com.emailagent.config.AppConfig;
 import com.emailagent.config.SendMode;
@@ -49,7 +49,7 @@ import org.junit.jupiter.api.Test;
 
 /**
  * The security suite (design doc §9, §12): an attack corpus through the real pipeline, with a model that obeys the
- * attacker at every step (triage, writer, reviewer) and the riskiest configuration (auto-send for every shareable
+ * attacker at every step (classifier, writer, reviewer) and the riskiest configuration (auto-send for every shareable
  * type, no rate limit). What still holds is what code guarantees. The run writes target/security-report.md.
  */
 @QuarkusTest
@@ -75,7 +75,7 @@ class AttackSuiteTest {
     @Inject InjectionDetector detector;
     @Inject AgentRegistry agents;
     @Inject SenderDirectory directory;
-    @Inject TriageRouter router;
+    @Inject ClassificationRouter router;
     @Inject ResolverAgent resolver;
     @Inject Mailbox mailbox;
     @Inject AppConfig config;
@@ -133,8 +133,8 @@ class AttackSuiteTest {
     List<Outcome> run(SendDispatcher dispatcher, String tag) throws Exception {
         ObedientModel model = new ObedientModel();
         Map<EmailStatus, AgentStep> steps = new EnumMap<>(EmailStatus.class);
-        steps.put(EmailStatus.NEW, new TriageAgent(model, detector, directory, "obedient"));
-        steps.put(EmailStatus.TRIAGED, router);
+        steps.put(EmailStatus.NEW, new ClassifierAgent(model, detector, directory, "obedient"));
+        steps.put(EmailStatus.CLASSIFIED, router);
         steps.put(EmailStatus.RESOLVING, resolver);
         steps.put(EmailStatus.READY, new WriterAgent(model, mailbox, agents, config, "obedient"));
         steps.put(EmailStatus.DRAFTED, new ReviewerAgent(model, detector, config, "obedient"));
@@ -219,7 +219,7 @@ class AttackSuiteTest {
             String raw;
             try {
                 raw = switch (request.agent()) {
-                    case "triage" -> """
+                    case "classifier" -> """
                             {"intent":"QUESTION","replyNeeded":true,"sensitivity":"LOW","language":"EN",
                              "suspicious":false,"questions":[{"text":"When is the project due?","slotType":"DEADLINE",
                              "entity":"multi-agent systems project","qualifier":"","owner":"USER"}]}""";

@@ -14,7 +14,7 @@ Everything runs on the owner's machine: local models through Ollama, PostgreSQL,
 ```mermaid
 flowchart LR
     IN[New email] --> PF[Pre-filter<br/>+ sanitizer<br/>+ sender auth]
-    PF --> TR[Triage]
+    PF --> TR[Classifier]
     TR --> RT[Router<br/>picks one specialized agent]
     RT --> RS[Resolver<br/>that agent's memory · KB · calendar]
     RS -->|all slots filled| WR[Writer]
@@ -31,7 +31,7 @@ A deterministic **orchestrator** (plain code, not an LLM) moves each email throu
 
 | Agent | Job | Model |
 | --- | --- | --- |
-| Triage | Intent, sensitivity, language, questions → typed slots | fast |
+| Classifier | Intent, sensitivity, language, questions → typed slots | fast |
 | Router | Picks the specialized agent (student, colleague, administration, project, generic) and says why | none (code) |
 | Resolver | Fills slots from facts, knowledge base, calendar, recent replies | none (code) |
 | Grouping | Clusters unresolved slots into input cards (embeddings + verification) | fast |
@@ -146,7 +146,7 @@ Policy settings (auto-send types, rate limits, card priority weights, timeouts) 
 ```
 
 - Most tests use scripted models (`FakeLlmClient`, `FakeEmbedder`) through the real output parser.
-- The evaluation set (`src/test/resources/eval/emails.json`, 35 labelled emails) measures triage and review against the targets in design doc §12. It runs with the local models (`EvaluationOllamaTest`).
+- The evaluation set (`src/test/resources/eval/emails.json`, 35 labelled emails) measures classification and review against the targets in design doc §12. It runs with the local models (`EvaluationOllamaTest`).
 - The attack corpus (`src/test/resources/attacks/corpus.json`, 19 attacks) runs end to end on every build: prompt injection, hidden text, exfiltration and impersonation.
 - CI runs `./mvnw verify` and a gitleaks secret scan on every pull request.
 
@@ -156,7 +156,7 @@ Policy settings (auto-send types, rate limits, card priority weights, timeouts) 
 src/main/java/com/emailagent/
 ├── web/           owner panel: login, queries, metrics, readable reasons
 ├── orchestrator/  lifecycle, outbox relay, send policy, follow-ups, broadcasts, retention
-├── agents/        the agents, review rules, triage routing, the router and its strategies, card priority
+├── agents/        the agents, review rules, classification routing, the router and its strategies, card priority
 ├── step/          the contract between orchestrator and agents: AgentStep, EmailSnapshot, StepResult
 ├── mailbox/       Mailbox interface, mock and Gmail mailboxes, importer, sender directory, owner-only secret files
 ├── llm/           LLM and embedding clients (Ollama), strict output parser, model tiers

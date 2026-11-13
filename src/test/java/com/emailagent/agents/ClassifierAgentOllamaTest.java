@@ -18,10 +18,10 @@ import org.junit.jupiter.api.Test;
 /** The real model on the demo inbox. Checks the labels that matter for routing, prints the rest. */
 @QuarkusTest
 @Tag("ollama")
-class TriageAgentOllamaTest {
+class ClassifierAgentOllamaTest {
 
     @Inject MailboxImporter importer;
-    @Inject TriageAgent triage;
+    @Inject ClassifierAgent classifier;
 
     @Test
     void realModelExtractsTheExpectedSlots() throws LlmException {
@@ -30,7 +30,7 @@ class TriageAgentOllamaTest {
         for (String id : new String[] {"m01", "m02", "m03", "m09", "m10", "m12"}) {
             EmailSnapshot email = QuarkusTransaction.requiringNew().call(() -> EmailSnapshot.of(
                     EmailEntity.findByMessageId("<" + id + "@student.univ.example>").orElseThrow()));
-            StepResult result = triage.run(email);
+            StepResult result = classifier.run(email);
             out.put(id, result.next() + " " + result.output());
             System.out.println(id + " -> " + out.get(id));
         }

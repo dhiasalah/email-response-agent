@@ -155,7 +155,7 @@ public class ReviewerAgent implements AgentStep {
         String instructions = String.format(INSTRUCTIONS, emailTag, replyTag,
                 lang == Language.FR ? "French" : "English", list);
         // the reply is model output written after reading the email: it goes in the untrusted channel too
-        String input = emailTag + "\n" + TriageAgent.render(email) + "\n\n" + replyTag + "\n" + content;
+        String input = emailTag + "\n" + ClassifierAgent.render(email) + "\n\n" + replyTag + "\n" + content;
         ReviewerOutput out = llm.call(new LlmRequest(name(), ModelTier.STRONG, instructions, input),
                 ReviewerOutput.class);
 

@@ -163,7 +163,7 @@ public class MailboxImporter {
 
     /**
      * Adds the sender's new words (quoted text cut) to the waiting email, marks the question answered, and keeps the
-     * reply itself as a filtered row without body, so it is never imported twice. Triage runs again later.
+     * reply itself as a filtered row without body, so it is never imported twice. Classification runs again later.
      */
     private static void merge(EmailEntity target, EmailEntity reply, String text, Set<String> flags) {
         String own = QuotedText.ownWords(text);

@@ -4,7 +4,7 @@ package com.emailagent.model;
 public enum EmailStatus {
     NEW,
     FILTERED_OUT,
-    TRIAGED,
+    CLASSIFIED,
     IGNORED,
     ESCALATED,
     RESOLVING,

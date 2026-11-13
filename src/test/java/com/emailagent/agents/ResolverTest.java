@@ -214,7 +214,7 @@ class ResolverTest {
 
     @Test
     void anEntityChosenByTheAttackerIsOnlyALookupKey() {
-        // triage's entity comes from the model, which read the email: treat it as data in a parameterized query
+        // the classifier's entity comes from the model, which read the email: treat it as data in a parameterized query
         long id = email(M2_IA, slot(SlotType.EXAM_DATE, "x' OR '1'='1", SlotOwner.USER));
 
         orchestrator.runStep(resolver);

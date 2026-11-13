@@ -22,7 +22,7 @@ public final class StepText {
 
     static final Map<String, String> ACTORS = Map.ofEntries(
             Map.entry("prefilter", "Pre-filter"),
-            Map.entry("triage", "Triage"),
+            Map.entry("classifier", "Classifier"),
             Map.entry("router", "Router"),
             Map.entry("resolver", "Resolver"),
             Map.entry("grouping", "Grouping"),
@@ -87,7 +87,7 @@ public final class StepText {
         }
         return switch (to) {
             case FILTERED_OUT -> new Step(when, actor, "Filtered out before any model read it", "neutral");
-            case TRIAGED -> new Step(when, actor, from == EmailStatus.AWAITING_SENDER
+            case CLASSIFIED -> new Step(when, actor, from == EmailStatus.AWAITING_SENDER
                     ? "The sender answered: classified again" : "Classified and split into questions", "neutral");
             case IGNORED -> new Step(when, actor, "No reply needed", "neutral");
             case RESOLVING -> new Step(when, actor, "Routed to the resolver", "neutral");

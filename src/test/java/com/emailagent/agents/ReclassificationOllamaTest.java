@@ -18,17 +18,17 @@ import java.util.List;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
-/** Triage again on an email with the sender's merged answer (design doc §7.5): the gap is now known (printed). */
+/** Classification again on an email with the sender's merged answer (design doc §7.5): the gap is now known (printed). */
 @QuarkusTest
 @Tag("ollama")
-class RetriageOllamaTest {
+class ReclassificationOllamaTest {
 
     @Inject LlmClient llm;
 
     @Test
     void theMergedAnswerTurnsASenderGapIntoAQuestionTheOwnerCanAnswer() throws LlmException {
-        TriageOutput before = triage("Hello, I have a question: when is the exam? Thanks, Lina");
-        TriageOutput after = triage("Hello, I have a question: when is the exam? Thanks, Lina\n\n"
+        ClassifierOutput before = classify("Hello, I have a question: when is the exam? Thanks, Lina");
+        ClassifierOutput after = classify("Hello, I have a question: when is the exam? Thanks, Lina\n\n"
                 + "[Reply of the sender]\nThe machine learning exam, first session.");
         before.questions().forEach(q -> System.out.println("BEFORE -> " + q.slotType() + " " + q.owner() + " "
                 + q.entity()));
@@ -43,10 +43,10 @@ class RetriageOllamaTest {
         });
     }
 
-    private TriageOutput triage(String body) throws LlmException {
+    private ClassifierOutput classify(String body) throws LlmException {
         EmailSnapshot email = new EmailSnapshot(1, 0, EmailStatus.NEW, "<x@test>", null, "s@univ.example", "S",
                 "Exam", body, Instant.now(), SenderScope.UNKNOWN, "student", null, null, null, null, null, List.of());
-        return llm.call(new LlmRequest("triage", ModelTier.FAST, TriageAgent.INSTRUCTIONS, TriageAgent.render(email)),
-                TriageOutput.class);
+        return llm.call(new LlmRequest("classifier", ModelTier.FAST, ClassifierAgent.INSTRUCTIONS, ClassifierAgent.render(email)),
+                ClassifierOutput.class);
     }
 }

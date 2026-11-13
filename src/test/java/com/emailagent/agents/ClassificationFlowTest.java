@@ -24,11 +24,11 @@ import java.util.Map;
 import org.junit.jupiter.api.Test;
 
 /**
- * The demo inbox through triage and routing, with a scripted model. On m10 the model is "fooled" (says LOW);
+ * The demo inbox through classification and routing, with a scripted model. On m10 the model is "fooled" (says LOW);
  * code still escalates. On m07 and m08 the detector stops the email before any model call.
  */
 @QuarkusTest
-class TriageFlowTest {
+class ClassificationFlowTest {
 
     @Inject MailboxImporter importer;
     @Inject Orchestrator orchestrator;
@@ -36,7 +36,7 @@ class TriageFlowTest {
     @Inject SenderDirectory directory;
     @Inject LlmOutputParser parser;
     @Inject ResolverAgent resolver;
-    @Inject TriageRouter router;
+    @Inject ClassificationRouter router;
 
     static final Map<String, String> ANSWERS = Map.of(
             "Notes du S2", answer("QUESTION", "LOW", "FR", true,
@@ -68,12 +68,12 @@ class TriageFlowTest {
                     q("When is deliverable D2.1 due?", "DEADLINE", "supermasproject deliverable d2.1", "")));
 
     @Test
-    void demoInboxIsTriagedAndRouted() {
+    void demoInboxIsClassifiedAndRouted() {
         importer.importNew();
         ScriptedModel model = new ScriptedModel(parser);
-        TriageAgent triage = new TriageAgent(model, detector, directory, "scripted");
+        ClassifierAgent classifier = new ClassifierAgent(model, detector, directory, "scripted");
 
-        orchestrator.process(List.of(triage, router));
+        orchestrator.process(List.of(classifier, router));
 
         assertThat(status("m01")).isEqualTo(EmailStatus.RESOLVING);
         assertThat(status("m02")).isEqualTo(EmailStatus.RESOLVING);

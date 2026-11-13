@@ -54,7 +54,7 @@ public class GroupingAgent {
             return new SlotKey(type, entity, qualifier);
         }
 
-        /** What gets embedded and verified: the sender's question, or the key when triage left none. */
+        /** What gets embedded and verified: the sender's question, or the key when the classifier left none. */
         String text() {
             return question != null && !question.isBlank() ? question
                     : type.name().toLowerCase().replace('_', ' ') + " " + entity;

@@ -91,7 +91,7 @@
 <p>This report has two aims. Sections 2 and 3 document the architecture as built. Sections 4 to 6 analyse its security and privacy properties and the evidence for them. Section 7 lists known limitations. Every figure and table was checked against the code; the source of each is named in its caption.</p>
 
 <h2>2&nbsp;&nbsp;System overview</h2>
-<p>The unit of work is the input slot, a triple of <em>type</em>, <em>entity</em> and <em>qualifier</em> drawn from a fixed taxonomy of nine slot types: grades publication date, exam date, exam room, deadline, procedure, document availability, meeting availability, individual decision and individual result. Triage splits each email into questions and extracts their slots. The resolver tries to fill each slot from trusted sources in a fixed order: scoped knowledge memory, the knowledge base, the calendar, and finally the owner's replies from the last seven days. Slots that remain unresolved are clustered into <em>input cards</em>. The owner answers each card once, and every linked email receives its own reply in the sender's language (Figure&nbsp;1).</p>
+<p>The unit of work is the input slot, a triple of <em>type</em>, <em>entity</em> and <em>qualifier</em> drawn from a fixed taxonomy of nine slot types: grades publication date, exam date, exam room, deadline, procedure, document availability, meeting availability, individual decision and individual result. The classifier splits each email into questions and extracts their slots. The resolver tries to fill each slot from trusted sources in a fixed order: scoped knowledge memory, the knowledge base, the calendar, and finally the owner's replies from the last seven days. Slots that remain unresolved are clustered into <em>input cards</em>. The owner answers each card once, and every linked email receives its own reply in the sender's language (Figure&nbsp;1).</p>
 
 <figure>
   <div class="fig" id="f-pipeline" style="--h:74mm"></div>
@@ -106,7 +106,7 @@
 
 <figure>
   <div class="fig" id="f-lifecycle" style="--h:172mm"></div>
-  <figcaption><b>Figure 2.</b> Email lifecycle. The database trigger permits 27 transitions. The 18 drawn here include the three that leave <code>ESCALATED</code>. The other nine each lead from a working status into <code>ESCALATED</code> and are omitted for legibility. Source: <code>db/migration/V1701__owner_replies.sql</code>.</figcaption>
+  <figcaption><b>Figure 2.</b> Email lifecycle. The database trigger permits 27 transitions. The 18 drawn here include the three that leave <code>ESCALATED</code>. The other nine each lead from a working status into <code>ESCALATED</code> and are omitted for legibility. Source: <code>db/migration/V1801__classified_status.sql</code>.</figcaption>
 </figure>
 
 <h3>3.2&nbsp;&nbsp;Agents</h3>
@@ -122,7 +122,7 @@
   <table>
     <thead><tr><th>Agent</th><th>Input</th><th>Output</th><th>Model tier</th></tr></thead>
     <tbody>
-      <tr><td>Triage</td><td>Sanitised email, sender scope from the roster</td><td>Intent, sensitivity, language, typed slots with owner</td><td>Fast</td></tr>
+      <tr><td>Classifier</td><td>Sanitised email, sender scope from the roster</td><td>Intent, sensitivity, language, typed slots with owner</td><td>Fast</td></tr>
       <tr><td>Resolver</td><td>Slots, sender scope</td><td>Each slot filled, proposed or unresolved, with source</td><td>None (code)</td></tr>
       <tr><td>Grouping</td><td>Unresolved slots, open cards</td><td>Input cards; embedding candidates verified by the model</td><td>Fast + embeddings</td></tr>
       <tr><td>Writer</td><td>Email, filled slots, owner note</td><td>Reply body and the list of facts used</td><td>Strong</td></tr>
@@ -175,7 +175,7 @@
 
 <figure>
   <div class="fig" id="f-layers" style="--h:60mm"></div>
-  <figcaption><b>Figure 5.</b> Defence layers, in the order an email meets them. Source: <code>security/</code>, <code>agents/ReviewRules.java</code>, <code>orchestrator/SendDispatcher.java</code>, migrations V1101 and V1701.</figcaption>
+  <figcaption><b>Figure 5.</b> Defence layers, in the order an email meets them. Source: <code>security/</code>, <code>agents/ReviewRules.java</code>, <code>orchestrator/SendDispatcher.java</code>, migrations V1101 and V1801.</figcaption>
 </figure>
 
 <p>The injection detector combines weighted text rules with the sanitiser's flags. Examples are overridden instructions (1.0), spoofed roles (1.0), addressing the AI (0.6), an exfiltration address (0.6), hidden HTML (1.0) and an unauthenticated sender (0.3). It escalates at a score of 1.0, and the model's opinion is monotonic: it can add 0.6 but never subtract. The deterministic reply rules reject:</p>
@@ -218,7 +218,7 @@
 </div>
 
 <h2>6&nbsp;&nbsp;Evaluation</h2>
-<p>The build runs 234 automated tests, with no failures (Figure&nbsp;7b). Agent behaviour is tested through scripted models that pass through the real output parser. The attack corpus (Table&nbsp;4) runs end to end without a model on every build, and its 17 attacks span six OWASP categories (Figure&nbsp;7a). Two harmless control emails must still receive their replies, which guards against controls that are too strict. A separate evaluation set of 35 labelled emails measures triage and review against the local models.</p>
+<p>The build runs 234 automated tests, with no failures (Figure&nbsp;7b). Agent behaviour is tested through scripted models that pass through the real output parser. The attack corpus (Table&nbsp;4) runs end to end without a model on every build, and its 17 attacks span six OWASP categories (Figure&nbsp;7a). Two harmless control emails must still receive their replies, which guards against controls that are too strict. A separate evaluation set of 35 labelled emails measures classification and review against the local models.</p>
 
 <div class="pair">
   <figure>
@@ -271,6 +271,24 @@
 
 <h2>8&nbsp;&nbsp;Conclusion</h2>
 <p>The Email Response Agent shows that the useful parts of language models can be kept while their decision power stays narrow. Models classify, cluster and write. Code decides routing, trust and sending, and the database enforces the invariants that matter most. The input-slot abstraction reduces the owner's workload to answering each distinct question once. The layered, deterministic-first security design limits what a compromised or misled model can achieve. The remaining risks are known, bounded and documented.</p>
+
+<h2>Author contributions</h2>
+<p>The project was carried out as a team. Table&nbsp;5 gives the area each author led. These are lead responsibilities only: every author contributed to each part, and no part was done by one person alone.</p>
+
+<div class="tblwrap">
+  <p class="tcap"><b>Table 5.</b> Lead responsibilities.</p>
+  <table>
+    <thead><tr><th>Author</th><th>Lead responsibility</th></tr></thead>
+    <tbody>
+      <tr><td>Marouane BENABDELKADER</td><td>System design, core principles, testing</td></tr>
+      <tr><td>Mohamed Dhia BEN SALAH</td><td>Security, infrastructure</td></tr>
+      <tr><td>Kacem ABDELBAKI</td><td>Development</td></tr>
+      <tr><td>Daniel ABOU ORM</td><td>Development</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<p>The team set up a continuous-integration pipeline and integrated all work through pull requests. Every pull request is built, tested and scanned for secrets before it can be merged.</p>
 
 <h2>References</h2>
 <ol class="refs">
@@ -334,7 +352,7 @@ data
     - label Pre-filter
       desc Loops, lists, floods
       icon @filter
-    - label Triage
+    - label Classifier
       desc Typed slots
       icon @tag
     - label Resolver
@@ -367,8 +385,8 @@ data
     - id FILTERED_OUT
       label FILTERED_OUT
       icon @filter
-    - id TRIAGED
-      label TRIAGED
+    - id CLASSIFIED
+      label CLASSIFIED
       icon @tag
     - id IGNORED
       label IGNORED
@@ -405,13 +423,13 @@ data
       icon @alert
   relations
     NEW -> FILTERED_OUT
-    NEW -> TRIAGED
-    TRIAGED -> IGNORED
-    TRIAGED -> RESOLVING
+    NEW -> CLASSIFIED
+    CLASSIFIED -> IGNORED
+    CLASSIFIED -> RESOLVING
     RESOLVING -> READY
     RESOLVING -> AWAITING_SENDER
     RESOLVING -> AWAITING_INPUT
-    AWAITING_SENDER -> TRIAGED
+    AWAITING_SENDER -> CLASSIFIED
     AWAITING_SENDER -> CLOSED
     AWAITING_INPUT -> READY
     READY -> DRAFTED
@@ -428,7 +446,7 @@ theme
     'f-agents': `infographic list-grid-badge-card
 data
   lists
-    - label Triage
+    - label Classifier
       desc Fast model. Classifies, extracts typed slots
       icon @tag
     - label Resolver

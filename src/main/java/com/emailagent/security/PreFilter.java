@@ -39,7 +39,7 @@ public class PreFilter {
 
     /**
      * @param recentFromSender emails already received from this sender in the hour before this one
-     * @return the reason to drop it, or empty if it may go on to triage
+     * @return the reason to drop it, or empty if it may go on to classification
      */
     public Optional<FilterReason> check(IncomingEmail email, long recentFromSender) {
         String from = email.from() == null ? "" : email.from().toLowerCase(Locale.ROOT).strip();

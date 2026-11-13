@@ -6,7 +6,7 @@
 ALTER TABLE email ADD COLUMN agent_id VARCHAR(50);
 -- emails already past the router were handled in the single, student-only context of earlier versions
 UPDATE email SET agent_id = 'student'
-    WHERE status NOT IN ('NEW', 'FILTERED_OUT', 'TRIAGED')
+    WHERE status NOT IN ('NEW', 'FILTERED_OUT', 'CLASSIFIED')
       AND NOT (status = 'ESCALATED' AND NOT EXISTS (SELECT 1 FROM slot WHERE slot.email_id = email.id));
 
 -- Rows written before agents existed all came from cohort-scoped student emails: they belong to the student agent.

@@ -13,7 +13,7 @@ import java.util.Set;
 /**
  * The texts the system writes without a model (design doc §7.5, §7.7, §6 timeouts). Their variable parts are trusted:
  * items from a fixed list per slot type, the owner's name, a fact value and its cohort. Nothing from the email is
- * echoed, not even the question: triage's model wrote that after reading the sender's text.
+ * echoed, not even the question: the classifier's model wrote that after reading the sender's text.
  */
 public final class NoticeTemplates {
 
@@ -74,7 +74,7 @@ public final class NoticeTemplates {
 
     /**
      * One announcement in both languages, for a whole cohort. {@code topic} is the card's key (normalized by code,
-     * from triage's model): acceptable here only because the owner approves this exact text before it leaves.
+     * from the classifier's model): acceptable here only because the owner approves this exact text before it leaves.
      */
     public static String broadcastBody(SenderScope scope, String label, String topic, String valueEn, String valueFr,
             String ownerName) {

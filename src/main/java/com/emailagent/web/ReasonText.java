@@ -44,7 +44,7 @@ public final class ReasonText {
             Map.entry("name_mixed_scripts", "sender name uses look-alike letters (possible impersonation)"),
             Map.entry("sender_unverified", "sender address not authenticated (SPF/DKIM/DMARC): treated as unknown"),
             Map.entry("subject_mixed_scripts", "subject uses look-alike letters"),
-            Map.entry("model_flag", "the triage model found it suspicious"));
+            Map.entry("model_flag", "the classifier model found it suspicious"));
 
     static final Map<String, String> ROUTES = Map.of(
             "sensitive_keyword", "Sensitive topic (dispute, legal, health…): you answer it yourself",

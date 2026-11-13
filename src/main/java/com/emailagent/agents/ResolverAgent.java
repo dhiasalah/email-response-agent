@@ -30,7 +30,7 @@ import java.util.stream.Collectors;
 /**
  * RESOLVING → READY, AWAITING_INPUT or AWAITING_SENDER (design doc §4.2, §8, §16.4). Plain code, no model:
  * deciding which stored answer a sender may receive is an access decision, and an access decision must not be
- * something an email can argue with. The model only chose the slot key (triage); the scope comes from the roster.
+ * something an email can argue with. The model only chose the slot key (classification); the scope comes from the roster.
  *
  * <p>Every source is the email's own agent's (brief §5.2): its knowledge base and calendar files, and the facts and
  * recent answers learned from that agent's emails. Another agent's context is never read.

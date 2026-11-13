@@ -71,7 +71,7 @@ public class ReplyLearning {
         return new Result(replies, pairs);
     }
 
-    /** Null when there is nothing to ask the model now (already read, nothing learnable, or not triaged yet). */
+    /** Null when there is nothing to ask the model now (already read, nothing learnable, or not classified yet). */
     private static Context context(SentMessage m, Instant now) {
         if (ProcessedReplyEntity.findById(m.messageId()) != null) {
             return null;
@@ -83,13 +83,13 @@ public class ReplyLearning {
         }
         if (email.slots.isEmpty()) {
             if (email.status == EmailStatus.NEW) {
-                return null; // triage has not run yet: come back once the questions are known
+                return null; // classification has not run yet: come back once the questions are known
             }
             ProcessedReplyEntity.mark(m.messageId(), email.id, 0, now);
             return null;
         }
         if (email.agentId == null) {
-            if (email.status == EmailStatus.TRIAGED) {
+            if (email.status == EmailStatus.CLASSIFIED) {
                 return null; // the router has not run yet: come back once the agent is known
             }
             ProcessedReplyEntity.mark(m.messageId(), email.id, 0, now); // never routed: no agent memory to feed
