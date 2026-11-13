@@ -89,7 +89,9 @@ public class InjectionDetector {
             "invisible_unicode", 0.3,
             "mixed_scripts", 0.3,
             "subject_mixed_scripts", 0.3,
-            "name_mixed_scripts", 0.6);
+            "name_mixed_scripts", 0.6,
+            // the From address may be someone else's; alone not enough, some university domains don't sign mail
+            SenderAuthentication.UNVERIFIED_FLAG, 0.3);
 
     private static void text(String name, double weight, String regex) {
         TEXT_RULES.put(name, new Rule(Pattern.compile(regex), weight));

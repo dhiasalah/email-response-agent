@@ -91,7 +91,7 @@ public class TriageAgent implements AgentStep {
             return suspicious(after, out);
         }
 
-        SenderScope scope = directory.scopeOf(email.sender());
+        SenderScope scope = directory.scopeOf(email.sender(), email.sanitizerFlags());
         return new StepResult(EmailStatus.TRIAGED, log(out, after), null, null, modelVersion, e -> {
             classify(e, out, after);
             e.scopeProgram = scope.program();

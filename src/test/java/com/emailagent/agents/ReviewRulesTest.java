@@ -122,4 +122,10 @@ class ReviewRulesTest {
                 List.of());
         return ReviewRules.failures(content, email, facts, detector);
     }
+
+    @Test
+    void unverifiedSenderIsAnOutlier() {
+        // never sent automatically or in bulk: the owner looks at it on its own
+        assertThat(ReviewRules.outliers(1, List.of(), "sender_unverified", null)).containsExactly("suspicious_input");
+    }
 }

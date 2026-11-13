@@ -7,6 +7,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.Observes;
 import java.net.URI;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
@@ -23,6 +24,7 @@ public class StartupConfigCheck {
         Set<SlotType> autoTypes = config.autoSendTypes().orElse(Set.of());
         checkAutoSendTypes(autoTypes);
         checkGmailMode(config.mailbox(), config.sendMode(), config.noticeAutoSend());
+        checkSenderAuth(config.mailbox(), config.requireSenderAuth());
         if (!config.allowRemoteLlm()) {
             checkLocal(llmUrl);
             checkLocal(strongLlmUrl);
@@ -56,6 +58,17 @@ public class StartupConfigCheck {
         if ("gmail".equals(mailbox) && (sendMode != SendMode.DRAFT || noticeAutoSend)) {
             throw new IllegalStateException("the Gmail mailbox only creates drafts: set send-mode=draft and "
                     + "notice-auto-send=false");
+        }
+    }
+
+    /**
+     * Real mail can carry any From address: in Gmail mode, the sender's identity is checked whatever the
+     * configuration says. Only the mock fixtures, which have no authentication headers, may go without.
+     */
+    public static void checkSenderAuth(String mailbox, Optional<Boolean> required) {
+        if ("gmail".equals(mailbox) && required.isPresent() && !required.get()) {
+            throw new IllegalStateException("the Gmail mailbox requires sender authentication: remove "
+                    + "emailagent.require-sender-auth=false");
         }
     }
 

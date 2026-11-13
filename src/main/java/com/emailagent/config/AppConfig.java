@@ -54,6 +54,17 @@ public interface AppConfig {
     @WithDefault("14")
     int gmailLookbackDays();
 
+    /**
+     * Reject the From header's identity unless the receiving server authenticated it (DMARC, or aligned DKIM): an
+     * unauthenticated sender gets no scope, no role and no automatic reply (design doc §9, §15). Empty: on for gmail,
+     * off for the mock fixtures, which carry no authentication headers. Gmail mode can't turn it off.
+     */
+    Optional<Boolean> requireSenderAuth();
+
+    /** The receiving server whose Authentication-Results header is trusted; a header from anyone else is ignored. */
+    @WithDefault("mx.google.com")
+    String trustedAuthservId();
+
     /** Classpath JSON file the mock mailbox reads. */
     @WithDefault("mailbox/inbox.json")
     String mailboxFixture();

@@ -3,6 +3,7 @@ package com.emailagent.mailbox;
 import com.emailagent.config.AppConfig;
 import com.emailagent.model.SenderRole;
 import com.emailagent.model.SenderScope;
+import com.emailagent.security.SenderAuthentication;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -63,6 +64,24 @@ public class SenderDirectory {
             return SenderScope.UNKNOWN;
         }
         return byAddress.getOrDefault(address.toLowerCase(Locale.ROOT), SenderScope.UNKNOWN);
+    }
+
+    /**
+     * The scope, unless the importer found that the receiving server didn't authenticate the sender: then the From
+     * address may be someone else's, and the email gets no scope (design doc §8.1: unknown scope, no reuse).
+     */
+    public SenderScope scopeOf(String address, String sanitizerFlags) {
+        return unverified(sanitizerFlags) ? SenderScope.UNKNOWN : scopeOf(address);
+    }
+
+    /** The role, with the same rule: an unauthenticated sender adds no weight to a card. */
+    public SenderRole roleOf(String address, String sanitizerFlags) {
+        return unverified(sanitizerFlags) ? SenderRole.UNKNOWN : roleOf(address);
+    }
+
+    private static boolean unverified(String sanitizerFlags) {
+        return sanitizerFlags != null
+                && List.of(sanitizerFlags.split(",")).contains(SenderAuthentication.UNVERIFIED_FLAG);
     }
 
     /** Role for card priority (design doc §7.4), same exact-match rule: unknown address, no weight. */
