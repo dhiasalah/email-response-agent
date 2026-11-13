@@ -1,5 +1,6 @@
 package com.emailagent.config;
 
+import com.emailagent.mailbox.Mailbox;
 import com.emailagent.model.SlotType;
 import io.quarkus.logging.Log;
 import io.quarkus.runtime.StartupEvent;
@@ -18,13 +19,13 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
 @ApplicationScoped
 public class StartupConfigCheck {
 
-    void onStart(@Observes StartupEvent event, AppConfig config,
+    void onStart(@Observes StartupEvent event, AppConfig config, Mailbox mailbox,
             @ConfigProperty(name = "quarkus.langchain4j.ollama.base-url") String llmUrl,
             @ConfigProperty(name = "quarkus.langchain4j.ollama.strong.base-url") String strongLlmUrl) {
         Set<SlotType> autoTypes = config.autoSendTypes().orElse(Set.of());
         checkAutoSendTypes(autoTypes);
         checkGmailMode(config.mailbox(), config.sendMode(), config.noticeAutoSend());
-        checkSenderAuth(config.mailbox(), config.requireSenderAuth());
+        checkSenderAuth(mailbox.authenticatesSenders(), config.requireSenderAuth());
         if (!config.allowRemoteLlm()) {
             checkLocal(llmUrl);
             checkLocal(strongLlmUrl);
@@ -62,11 +63,11 @@ public class StartupConfigCheck {
     }
 
     /**
-     * Real mail can carry any From address: in Gmail mode, the sender's identity is checked whatever the
-     * configuration says. Only the mock fixtures, which have no authentication headers, may go without.
+     * Real mail can carry any From address: with a real mailbox running (Gmail), the sender's identity is checked
+     * whatever the configuration says. Only the mock fixtures, which have no authentication headers, may go without.
      */
-    public static void checkSenderAuth(String mailbox, Optional<Boolean> required) {
-        if ("gmail".equals(mailbox) && required.isPresent() && !required.get()) {
+    public static void checkSenderAuth(boolean realMailbox, Optional<Boolean> required) {
+        if (realMailbox && required.isPresent() && !required.get()) {
             throw new IllegalStateException("the Gmail mailbox requires sender authentication: remove "
                     + "emailagent.require-sender-auth=false");
         }

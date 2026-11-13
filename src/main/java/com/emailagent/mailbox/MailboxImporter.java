@@ -42,8 +42,16 @@ public class MailboxImporter {
         this.mailbox = mailbox;
         this.preFilter = preFilter;
         this.sanitizer = sanitizer;
-        this.senderAuthRequired = config.requireSenderAuth().orElse("gmail".equals(config.mailbox()));
+        this.senderAuthRequired = senderAuthRequired(config.requireSenderAuth(), mailbox.authenticatesSenders());
         this.trustedAuthServId = config.trustedAuthservId();
+    }
+
+    /**
+     * Unset: required exactly when the mailbox running carries real mail. The mailbox bean is chosen when the
+     * application is built, so the running bean decides, not a MAILBOX variable that may differ at start.
+     */
+    static boolean senderAuthRequired(Optional<Boolean> configured, boolean realMailbox) {
+        return configured.orElse(realMailbox);
     }
 
     /**

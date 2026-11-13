@@ -3,6 +3,7 @@ package com.emailagent.mailbox;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.io.IOException;
 import java.net.http.HttpClient;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
@@ -10,8 +11,11 @@ import java.nio.file.Path;
 import java.nio.file.attribute.AclEntry;
 import java.nio.file.attribute.AclEntryType;
 import java.nio.file.attribute.AclFileAttributeView;
+import java.nio.file.attribute.GroupPrincipal;
 import java.nio.file.attribute.PosixFilePermissions;
 import java.nio.file.attribute.UserPrincipal;
+import java.nio.file.attribute.UserPrincipalLookupService;
+import java.nio.file.attribute.UserPrincipalNotFoundException;
 import java.util.List;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
@@ -37,6 +41,38 @@ class SecretFilesTest {
             assertThat(e.type()).isEqualTo(AclEntryType.ALLOW);
             assertThat(e.principal()).isEqualTo(me);
         });
+    }
+
+    /** A lookup that knows only the given names, like Windows for an Entra ID account ("AzureAD\\lina" only). */
+    static UserPrincipalLookupService knowing(String... names) {
+        return new UserPrincipalLookupService() {
+            @Override
+            public UserPrincipal lookupPrincipalByName(String name) throws IOException {
+                if (List.of(names).contains(name)) {
+                    return () -> name;
+                }
+                throw new UserPrincipalNotFoundException(name);
+            }
+
+            @Override
+            public GroupPrincipal lookupPrincipalByGroupName(String group) throws IOException {
+                throw new UserPrincipalNotFoundException(group);
+            }
+        };
+    }
+
+    @Test
+    void theDomainQualifiedNameIsTriedFirst(@TempDir Path dir) throws Exception {
+        assertThat(SecretFiles.currentUser(knowing("AzureAD\\lina", "lina"), "AzureAD", "lina", dir).getName())
+                .isEqualTo("AzureAD\\lina");
+        assertThat(SecretFiles.currentUser(knowing("lina"), null, "lina", dir).getName()).isEqualTo("lina");
+    }
+
+    @Test
+    void anUnresolvableUserFallsBackToTheFileOwner(@TempDir Path dir) throws Exception {
+        // an Entra ID account whose bare name Windows can't resolve must still be able to save its token
+        Path file = Files.writeString(dir.resolve("f"), "x");
+        assertThat(SecretFiles.currentUser(knowing(), "AzureAD", "lina", file)).isEqualTo(Files.getOwner(file));
     }
 
     @Test

@@ -14,6 +14,8 @@ import java.nio.file.attribute.AclFileAttributeView;
 import java.nio.file.attribute.PosixFileAttributeView;
 import java.nio.file.attribute.PosixFilePermissions;
 import java.nio.file.attribute.UserPrincipal;
+import java.nio.file.attribute.UserPrincipalLookupService;
+import java.nio.file.attribute.UserPrincipalNotFoundException;
 import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.EnumSet;
@@ -58,10 +60,8 @@ final class SecretFiles {
         }
         AclFileAttributeView acl = Files.getFileAttributeView(path, AclFileAttributeView.class);
         if (acl != null) {
-            // the current user, not the file's owner: an administrator's new files can belong to the Administrators
-            // group, which a normal (non-elevated) process can't use
-            UserPrincipal me = FileSystems.getDefault().getUserPrincipalLookupService()
-                    .lookupPrincipalByName(System.getProperty("user.name"));
+            UserPrincipal me = currentUser(FileSystems.getDefault().getUserPrincipalLookupService(),
+                    System.getenv("USERDOMAIN"), System.getProperty("user.name"), path);
             AclEntry.Builder entry = AclEntry.newBuilder().setType(AclEntryType.ALLOW).setPrincipal(me)
                     .setPermissions(EnumSet.allOf(AclEntryPermission.class));
             if (directory) {
@@ -73,6 +73,25 @@ final class SecretFiles {
         if (WARNED.compareAndSet(false, true)) {
             Log.warn("this file system has no permissions to set: the Gmail secrets are protected only by the folder");
         }
+    }
+
+    /**
+     * The account the application runs as. The current user rather than the file's owner, because an administrator's
+     * new files can belong to the Administrators group, which a normal (non-elevated) process can't use. Tried as
+     * "DOMAIN\\user" first (an Entra ID account often resolves only that way), then the bare name; the file's owner is
+     * the last resort, so a name Windows can't resolve never blocks saving the Gmail login.
+     */
+    static UserPrincipal currentUser(UserPrincipalLookupService lookup, String domain, String user, Path fallback)
+            throws IOException {
+        List<String> names = domain == null || domain.isBlank() ? List.of(user) : List.of(domain + "\\" + user, user);
+        for (String name : names) {
+            try {
+                return lookup.lookupPrincipalByName(name);
+            } catch (UserPrincipalNotFoundException e) {
+                // try the next form of the name
+            }
+        }
+        return Files.getOwner(fallback);
     }
 
     /** Creates the missing folders of the path, each one owner-only; folders that already exist are left alone. */

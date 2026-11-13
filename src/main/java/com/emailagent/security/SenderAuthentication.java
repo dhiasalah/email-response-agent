@@ -1,7 +1,9 @@
 package com.emailagent.security;
 
 import com.emailagent.mailbox.IncomingEmail;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
@@ -18,6 +20,11 @@ public final class SenderAuthentication {
 
     private SenderAuthentication() {}
 
+    /** True when the stored sanitizer flags (comma-separated) say the sender wasn't authenticated. */
+    public static boolean flagged(String sanitizerFlags) {
+        return sanitizerFlags != null && List.of(sanitizerFlags.split(",")).contains(UNVERIFIED_FLAG);
+    }
+
     /**
      * @param trustedAuthServId the receiving server's name at the start of its header ("mx.google.com"): a header
      *     written by anyone else is ignored
@@ -28,21 +35,20 @@ public final class SenderAuthentication {
         if (header == null || fromDomain == null || trustedAuthServId == null) {
             return false;
         }
-        String[] segments = normalize(header).split(";");
-        String authServId = segments[0].strip().split(" ")[0];
-        if (!authServId.equals(trustedAuthServId.toLowerCase(Locale.ROOT))) {
+        List<List<String>> segments = tokenize(header);
+        if (segments == null || segments.get(0).isEmpty()
+                || !segments.get(0).get(0).equals(trustedAuthServId.toLowerCase(Locale.ROOT))) {
             return false;
         }
         boolean dmarcPass = false;
         boolean dkimAligned = false;
-        for (int i = 1; i < segments.length; i++) {
-            String[] tokens = segments[i].strip().split(" ");
-            int eq = tokens[0].indexOf('=');
+        for (List<String> tokens : segments.subList(1, segments.size())) {
+            int eq = tokens.isEmpty() ? -1 : tokens.get(0).indexOf('=');
             if (eq <= 0) {
                 continue;
             }
-            String method = tokens[0].substring(0, eq);
-            String result = tokens[0].substring(eq + 1);
+            String method = tokens.get(0).substring(0, eq);
+            String result = tokens.get(0).substring(eq + 1);
             Map<String, String> props = properties(tokens);
             if (method.equals("dmarc") && result.equals("fail")) {
                 return false; // the domain's own policy says no: nothing else outweighs it
@@ -59,25 +65,78 @@ public final class SenderAuthentication {
     }
 
     /**
-     * Comments removed (a server may quote attacker-chosen text in them), whitespace and folding collapsed, lower
-     * case: header names, results and domains are case-insensitive.
+     * The header as segments (split on ";") of tokens (split on whitespace), lower case, read the way RFC 8601 writes
+     * it: a quoted string is one opaque piece of a token, whatever it holds, and a comment is dropped. The receiving
+     * server echoes values the sender chose (the envelope sender, the HELO name, a DKIM identity), so a ";" or a
+     * "(" inside them must never start a result of its own. Null when the header is malformed: an unbalanced quote or
+     * comment, or a comment glued to the text before it, which a server never writes but an injected HELO name
+     * (no spaces allowed) needs to separate its fake properties.
      */
-    private static String normalize(String header) {
-        String s = header;
-        String previous;
-        do {
-            previous = s;
-            s = s.replaceAll("\\([^()]*\\)", " ");
-        } while (!s.equals(previous));
-        return s.replaceAll("\\s+", " ").toLowerCase(Locale.ROOT);
+    static List<List<String>> tokenize(String header) {
+        List<List<String>> segments = new ArrayList<>();
+        List<String> tokens = new ArrayList<>();
+        StringBuilder token = new StringBuilder();
+        boolean quoted = false;
+        int depth = 0;
+        for (int i = 0; i < header.length(); i++) {
+            char c = header.charAt(i);
+            if (quoted) {
+                if (c == '\\' && i + 1 < header.length()) {
+                    token.append(header.charAt(++i));
+                } else if (c == '"') {
+                    quoted = false;
+                } else {
+                    token.append(c);
+                }
+            } else if (depth > 0) {
+                if (c == '\\') {
+                    i++;
+                } else if (c == '(') {
+                    depth++;
+                } else if (c == ')') {
+                    depth--;
+                }
+            } else if (c == '"') {
+                quoted = true;
+            } else if (c == '(') {
+                char before = i == 0 ? ' ' : header.charAt(i - 1);
+                if (!Character.isWhitespace(before) && before != ';') {
+                    return null;
+                }
+                depth = 1;
+            } else if (c == ')') {
+                return null;
+            } else if (c == ';') {
+                endToken(token, tokens);
+                segments.add(tokens);
+                tokens = new ArrayList<>();
+            } else if (Character.isWhitespace(c)) {
+                endToken(token, tokens);
+            } else {
+                token.append(c);
+            }
+        }
+        if (quoted || depth != 0) {
+            return null;
+        }
+        endToken(token, tokens);
+        segments.add(tokens);
+        return segments;
     }
 
-    private static Map<String, String> properties(String[] tokens) {
+    private static void endToken(StringBuilder token, List<String> tokens) {
+        if (!token.isEmpty()) {
+            tokens.add(token.toString().toLowerCase(Locale.ROOT));
+            token.setLength(0);
+        }
+    }
+
+    private static Map<String, String> properties(List<String> tokens) {
         Map<String, String> props = new HashMap<>();
-        for (int i = 1; i < tokens.length; i++) {
-            int eq = tokens[i].indexOf('=');
+        for (String t : tokens.subList(1, tokens.size())) {
+            int eq = t.indexOf('=');
             if (eq > 0) {
-                props.putIfAbsent(tokens[i].substring(0, eq), tokens[i].substring(eq + 1).replace("\"", ""));
+                props.putIfAbsent(t.substring(0, eq), t.substring(eq + 1));
             }
         }
         return props;

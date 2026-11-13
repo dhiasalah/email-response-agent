@@ -71,17 +71,12 @@ public class SenderDirectory {
      * address may be someone else's, and the email gets no scope (design doc §8.1: unknown scope, no reuse).
      */
     public SenderScope scopeOf(String address, String sanitizerFlags) {
-        return unverified(sanitizerFlags) ? SenderScope.UNKNOWN : scopeOf(address);
+        return SenderAuthentication.flagged(sanitizerFlags) ? SenderScope.UNKNOWN : scopeOf(address);
     }
 
     /** The role, with the same rule: an unauthenticated sender adds no weight to a card. */
     public SenderRole roleOf(String address, String sanitizerFlags) {
-        return unverified(sanitizerFlags) ? SenderRole.UNKNOWN : roleOf(address);
-    }
-
-    private static boolean unverified(String sanitizerFlags) {
-        return sanitizerFlags != null
-                && List.of(sanitizerFlags.split(",")).contains(SenderAuthentication.UNVERIFIED_FLAG);
+        return SenderAuthentication.flagged(sanitizerFlags) ? SenderRole.UNKNOWN : roleOf(address);
     }
 
     /** Role for card priority (design doc §7.4), same exact-match rule: unknown address, no weight. */

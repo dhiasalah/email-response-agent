@@ -77,6 +77,37 @@ class SenderAuthenticationTest {
     }
 
     @Test
+    void quotedEnvelopeSenderCannotInjectAResult() {
+        // the sender chooses the envelope local part and Gmail echoes it inside its own header
+        assertThat(auth("mx.google.com; spf=pass smtp.mailfrom=\"x;dmarc=pass header.from=student.univ.example x\""
+                + "@evil.example")).isFalse();
+        assertThat(auth("mx.google.com; spf=pass smtp.mailfrom=\"x;dmarc=pass(a)header.from=student.univ.example(b)\""
+                + "@evil.example")).isFalse();
+        assertThat(auth("mx.google.com; dkim=pass header.i=\"a;dkim=pass header.d=univ.example x\"@evil.example"))
+                .isFalse();
+    }
+
+    @Test
+    void commentGluedToAValueIsRejected() {
+        // a HELO name can't hold spaces, so an injected result needs comments as separators: Gmail never glues them
+        assertThat(auth("mx.google.com; spf=none smtp.helo=x;dmarc=pass(a)header.from=student.univ.example(b)"))
+                .isFalse();
+    }
+
+    @Test
+    void unbalancedQuotesOrCommentsAreRejected() {
+        assertThat(auth("mx.google.com; dmarc=pass header.from=student.univ.example; spf=pass "
+                + "smtp.mailfrom=\"x@evil.example")).isFalse();
+        assertThat(auth("mx.google.com; dmarc=pass (p=NONE header.from=student.univ.example")).isFalse();
+        assertThat(auth("mx.google.com; dmarc=pass header.from=student.univ.example) x")).isFalse();
+    }
+
+    @Test
+    void aQuotedDomainStillCounts() {
+        assertThat(auth("mx.google.com; dmarc=pass header.from=\"student.univ.example\"")).isTrue();
+    }
+
+    @Test
     void foldedMixedCaseHeaderIsParsed() {
         assertThat(auth("MX.Google.com;\r\n\tDMARC=PASS (p=NONE)\r\n\theader.from=Student.Univ.Example")).isTrue();
     }

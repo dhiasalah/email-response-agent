@@ -8,6 +8,7 @@ import com.emailagent.agents.GroupingAgent;
 import com.emailagent.model.EmailStatus;
 import com.emailagent.model.NoticeKind;
 import com.emailagent.orchestrator.OwnerActions;
+import com.emailagent.security.SenderAuthentication;
 import com.emailagent.store.DecisionLogEntry;
 import com.emailagent.store.DraftEntity;
 import com.emailagent.store.EmailEntity;
@@ -105,10 +106,11 @@ public class PanelQueries {
 
     /**
      * {@code draft}: the rejected or stopped reply, if there is one, for the owner to edit and send. {@code spoofed}:
-     * the display name uses look-alike letters, so the panel warns before the owner trusts the name.
+     * why the sender may not be who the From says (unauthenticated address, look-alike name), so the panel warns
+     * before the owner trusts it; null when nothing says so.
      */
     public record EscalationView(long emailId, String sender, String senderName, String subject, String excerpt,
-            ReasonText.Reason reason, String draft, boolean canRetry, boolean spoofed, String language,
+            ReasonText.Reason reason, String draft, boolean canRetry, String spoofed, String language,
             List<StepText.Step> history) {}
 
     public record BroadcastView(long id, String recipient, String subject, String body) {}
@@ -199,8 +201,31 @@ public class PanelQueries {
         }
         String outliers = ReviewEntity.latestFor(e.id).map(r -> r.outlierReasons).orElse(null);
         return new DraftView(e.id, e.sender, e.senderName, e.subject, excerpt(e.body), d.get().body,
-                d.get().language.name(), d.get().factsUsed, outliers == null ? List.of() : List.of(outliers.split(",")),
-                history(e.id));
+                d.get().language.name(), d.get().factsUsed, outlierCodes(outliers, e.sanitizerFlags), history(e.id));
+    }
+
+    /**
+     * The review's outlier reasons, plus "sender_unverified" when the receiving server didn't authenticate the
+     * sender: the review only says "suspicious_input", and the owner should know which suspicion it is.
+     */
+    static List<String> outlierCodes(String reviewOutliers, String sanitizerFlags) {
+        List<String> codes = new ArrayList<>(reviewOutliers == null || reviewOutliers.isBlank() ? List.of()
+                : List.of(reviewOutliers.split(",")));
+        if (SenderAuthentication.flagged(sanitizerFlags) && !codes.contains(SenderAuthentication.UNVERIFIED_FLAG)) {
+            codes.add(SenderAuthentication.UNVERIFIED_FLAG);
+        }
+        return List.copyOf(codes);
+    }
+
+    /** Why the sender may not be who the From says, in words for the escalation card; null when nothing says so. */
+    static String spoofWarning(String injectionSignals, String sanitizerFlags) {
+        if (SenderAuthentication.flagged(sanitizerFlags)) {
+            return "The receiving server did not authenticate this sender address: it may not be who it claims to be.";
+        }
+        if (injectionSignals != null && injectionSignals.contains("name_mixed_scripts")) {
+            return "Look-alike letters in the sender name: it may not be who it claims to be.";
+        }
+        return null;
     }
 
     static DraftGroup group(Long cardId, String title, List<DraftView> views) {
@@ -232,7 +257,7 @@ public class PanelQueries {
         return EmailEntity.<EmailEntity>list("status = ?1 order by receivedAt, id", EmailStatus.ESCALATED).stream()
                 .map(e -> new EscalationView(e.id, e.sender, e.senderName, e.subject, excerpt(e.body), reason(e.id),
                         DraftEntity.currentFor(e.id).map(d -> d.body).orElse(null), OwnerActions.canRetry(e.id),
-                        e.injectionSignals != null && e.injectionSignals.contains("name_mixed_scripts"),
+                        spoofWarning(e.injectionSignals, e.sanitizerFlags),
                         e.language == null ? null : e.language.name(), history(e.id)))
                 .toList();
     }

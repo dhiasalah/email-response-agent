@@ -22,10 +22,11 @@ class StartupConfigCheckTest {
     }
 
     @Test
-    void gmailCannotTurnSenderAuthOff() {
-        assertThatThrownBy(() -> StartupConfigCheck.checkSenderAuth("gmail", Optional.of(false)))
+    void aRealMailboxCannotTurnSenderAuthOff() {
+        // true = the mailbox running carries real mail (Gmail), whatever MAILBOX says at run time
+        assertThatThrownBy(() -> StartupConfigCheck.checkSenderAuth(true, Optional.of(false)))
                 .isInstanceOf(IllegalStateException.class).hasMessageContaining("require-sender-auth");
-        assertThatCode(() -> StartupConfigCheck.checkSenderAuth("gmail", Optional.empty())).doesNotThrowAnyException();
-        assertThatCode(() -> StartupConfigCheck.checkSenderAuth("mock", Optional.of(false))).doesNotThrowAnyException();
+        assertThatCode(() -> StartupConfigCheck.checkSenderAuth(true, Optional.empty())).doesNotThrowAnyException();
+        assertThatCode(() -> StartupConfigCheck.checkSenderAuth(false, Optional.of(false))).doesNotThrowAnyException();
     }
 }
