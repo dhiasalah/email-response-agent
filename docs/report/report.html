@@ -232,45 +232,49 @@
 </div>
 
 <div class="tblwrap">
-  <p class="tcap"><b>Table 4.</b> End-to-end attack corpus and the outcome each test requires. All pass.</p>
+  <p class="tcap"><b>Table 4.</b> End-to-end attack corpus, grouped by the outcome each test requires. All pass.</p>
   <table>
-    <thead><tr><th>ID</th><th>Attack</th><th>OWASP</th><th>Required outcome</th></tr></thead>
+    <thead><tr><th style="width:20%">IDs</th><th>Attacks</th><th style="width:14%">OWASP</th><th style="width:22%">Required outcome</th></tr></thead>
     <tbody>
-      <tr><td>A01</td><td>Direct instruction override</td><td>LLM01</td><td>Payload blocked</td></tr>
-      <tr><td>A02</td><td>Polite steering without trigger words</td><td>LLM01</td><td>Payload blocked</td></tr>
-      <tr><td>A03</td><td>Exfiltration link</td><td>LLM01/02</td><td>Payload blocked</td></tr>
-      <tr><td>A04</td><td>Contact swap</td><td>LLM01</td><td>Payload blocked</td></tr>
-      <tr><td>A05</td><td>Hidden HTML instruction</td><td>LLM01</td><td>Payload blocked</td></tr>
-      <tr><td>A06</td><td>Invisible Unicode</td><td>LLM01</td><td>Payload blocked</td></tr>
-      <tr><td>A07</td><td>False commitment</td><td>LLM09</td><td>Payload blocked</td></tr>
-      <tr><td>A08</td><td>Data leak request</td><td>LLM02</td><td>Payload blocked</td></tr>
-      <tr><td>A09</td><td>Impersonation</td><td>LLM01</td><td>Payload blocked</td></tr>
-      <tr><td>A10</td><td>Instruction relay to the next reader</td><td>LLM01</td><td>Payload blocked</td></tr>
-      <tr><td>A11</td><td>Markup in the reply</td><td>LLM05</td><td>Payload blocked</td></tr>
-      <tr><td>A12</td><td>Flooding the reply</td><td>LLM10</td><td>Payload blocked</td></tr>
+      <tr><td>A01, A02, A04, A09, A10, A17</td><td>Direct override, polite steering, contact swap, impersonation, relay to the next reader, French paraphrase of a cancellation</td><td>LLM01</td><td>Payload blocked</td></tr>
+      <tr><td>A03, A05, A06</td><td>Exfiltration link, hidden HTML instruction, invisible Unicode</td><td>LLM01/02</td><td>Payload blocked</td></tr>
+      <tr><td>A07, A08, A11, A12</td><td>False commitment, data leak request, markup in the reply, flooding the reply</td><td>LLM09/02/05/10</td><td>Payload blocked</td></tr>
       <tr><td>A13</td><td>Header injection in subject</td><td>LLM05</td><td>Subject kept on one line</td></tr>
       <tr><td>A14</td><td>Sensitive topic hidden as a question</td><td>LLM02</td><td>Not sent</td></tr>
       <tr><td>A15</td><td>Scope spoofing</td><td>LLM06</td><td>No other cohort's answer</td></tr>
       <tr><td>A16</td><td>Auto-reply loop</td><td>LLM10</td><td>Filtered</td></tr>
-      <tr><td>A17</td><td>French paraphrase of a cancellation</td><td>LLM01</td><td>Payload blocked</td></tr>
       <tr><td>B1, B2</td><td>Benign control emails</td><td>–</td><td>Sent</td></tr>
     </tbody>
   </table>
 </div>
 
-<p>The sender-authentication work was developed test-first and then examined by an independent reviewer. The reviewer found no critical issues and four important ones: a parser blind to quoted strings, a Windows principal lookup that could fail, missing visibility in the panel, and untested importer wiring. One minor issue was regraded as important: the mailbox type was chosen at build time but checked at run time. Each was fixed with a test that failed first. The importer tests were additionally validated by mutation: removing the line under test made both fail.</p>
+<p>The sender-authentication work was developed test-first and then examined by an independent reviewer, who found no critical issues and five important ones, among them a parser blind to quoted strings and untested importer wiring. Each was fixed with a test that failed first, and the importer tests were validated by mutation.</p>
 
 <h2>7&nbsp;&nbsp;Limitations and future work</h2>
 <ul>
   <li><b>Forged mail and rate limits.</b> The per-sender hourly limit is keyed on the <code>From</code> address, so forged mail counts against the real student's limit.</li>
   <li><b>Same-domain impersonation.</b> The <code>From</code> parser can take an address from a comment. A sender with valid DMARC for the same domain could therefore pose as a classmate. A strict address grammar is the planned fix.</li>
-  <li><b>Unsigned domains.</b> Mail from a domain without aligned DKIM or a DMARC record is always unverified. It is still handled, but it loses grouping and fact reuse until the domain enables signing.</li>
-  <li><b>Forwarded mail.</b> ARC chains are not evaluated, so legitimately forwarded mail is treated as unverified. This only produces false negatives.</li>
+  <li><b>Unsigned domains and forwarded mail.</b> Mail from a domain without aligned DKIM or a DMARC record, and forwarded mail (ARC chains are not evaluated), is always unverified. It is still handled, but loses grouping and fact reuse.</li>
   <li><b>Clarification notices.</b> They do not yet consider the unverified flag. This is reachable only outside Gmail mode, with every automatic-sending setting enabled.</li>
 </ul>
 
 <h2>8&nbsp;&nbsp;Conclusion</h2>
-<p>The Email Response Agent shows that the useful parts of language models can be kept while their decision power stays narrow. Models classify, cluster and write. Code decides routing, trust and sending, and the database enforces the invariants that matter most. The input-slot abstraction reduces the owner's workload to answering each distinct question once. The layered, deterministic-first security design limits what a compromised or misled model can achieve. The remaining risks are known, bounded and documented.</p>
+<p>The Email Response Agent shows that the useful parts of language models can be kept while their decision power stays narrow. Models classify, cluster and write. Code decides routing, trust and sending, and the database enforces the invariants that matter most. The input-slot abstraction reduces the owner's workload to answering each distinct question once, and the deterministic-first security design limits what a misled model can achieve.</p>
+
+<h2>9&nbsp;&nbsp;Contributions of group members</h2>
+
+<div class="tblwrap">
+  <p class="tcap"><b>Table 5.</b> Contributions of group members. All four also took part in design reviews, testing and the writing of this report.</p>
+  <table>
+    <thead><tr><th style="width:25%">Student</th><th style="width:10%;white-space:nowrap">Student no.</th><th style="width:20%">Parts of the project</th><th>Main tasks carried out</th></tr></thead>
+    <tbody>
+      <tr><td>Marouane BENABDELKADER</td><td>[to fill]</td><td>System design and core principles</td><td>Input-slot model, agent roles, deterministic orchestrator, email lifecycle, package layering, report</td></tr>
+      <tr><td>Mohamed Dhia BEN SALAH</td><td>[to fill]</td><td>Security and infrastructure</td><td>Threat model, sanitiser, injection detector, sender authentication, Gmail OAuth, secrets, CI, attack corpus</td></tr>
+      <tr><td>Daniel ABOU ORM</td><td>[to fill]</td><td>Development: LLM layer, analysis agents</td><td>Ollama client, strict parsing and retry; triage, resolver and grouping agents; evaluation runs</td></tr>
+      <tr><td>Kacem ABDELBAKI</td><td>[to fill]</td><td>Development: reply agents, owner panel</td><td>Writer, reviewer and curator agents; reply rules; guarded outbox; knowledge memory; review panel</td></tr>
+    </tbody>
+  </table>
+</div>
 
 <h2>References</h2>
 <ol class="refs">
@@ -287,7 +291,7 @@
   <li><i>Email Response Agent — System Design.</i> Project design document, 2026.</li>
 </ol>
 
-<p style="font: 7.5pt var(--sans); color: var(--muted); margin-top: 10pt;">Logo: Université Côte d'Azur, via Wikimedia Commons (CC BY 2.5).</p>
+<p style="font: 7.5pt var(--sans); color: var(--muted); margin-top: 2pt;">Logo: Université Côte d'Azur, via Wikimedia Commons (CC BY 2.5).</p>
 
 <script src="https://unpkg.com/@antv/infographic@0.2.20/dist/infographic.min.js"></script>
 <script>
