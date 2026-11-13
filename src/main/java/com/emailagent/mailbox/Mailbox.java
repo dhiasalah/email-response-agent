@@ -13,6 +13,14 @@ public interface Mailbox {
     }
 
     /**
+     * True for a mailbox of real mail whose receiving server writes Authentication-Results: there, the From address
+     * must be authenticated before it earns any trust (design doc §9). Fixtures have no such header.
+     */
+    default boolean authenticatesSenders() {
+        return false;
+    }
+
+    /**
      * Saves the reply in the owner's drafts or sends it, by its kind. Called only by the outbox relay, with a row
      * the database already checked (design doc §11: send and create_draft belong to the orchestrator).
      */

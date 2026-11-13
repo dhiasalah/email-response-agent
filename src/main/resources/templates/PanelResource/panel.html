@@ -287,7 +287,7 @@
         <p class="sub">From <strong>{esc.senderName ?: esc.sender}</strong> &lt;{esc.sender}&gt;</p>
         {#if esc.spoofed}
         <p class="spoof"><svg class="i sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 4 6v6c0 5 3.4 8.3 8 9 4.6-.7 8-4 8-9V6l-8-3z"/><path d="M12 9v4"/><path d="M12 16h.01"/></svg>
-          Look-alike letters in the sender name: it may not be who it claims to be.</p>
+          {esc.spoofed}</p>
         {/if}
 
         <div class="reason {esc.reason.kind}">

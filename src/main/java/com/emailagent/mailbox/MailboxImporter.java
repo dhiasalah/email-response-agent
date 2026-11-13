@@ -1,11 +1,13 @@
 package com.emailagent.mailbox;
 
 import com.emailagent.agents.CuratorAgent;
+import com.emailagent.config.AppConfig;
 import com.emailagent.model.EmailStatus;
 import com.emailagent.model.FilterReason;
 import com.emailagent.orchestrator.Retention;
 import com.emailagent.security.PreFilter;
 import com.emailagent.security.Sanitizer;
+import com.emailagent.security.SenderAuthentication;
 import com.emailagent.store.DecisionLogEntry;
 import com.emailagent.store.EmailEntity;
 import com.emailagent.store.NoticeEntity;
@@ -33,11 +35,32 @@ public class MailboxImporter {
     private final Mailbox mailbox;
     private final PreFilter preFilter;
     private final Sanitizer sanitizer;
+    private final boolean senderAuthRequired;
+    private final String trustedAuthServId;
 
-    public MailboxImporter(Mailbox mailbox, PreFilter preFilter, Sanitizer sanitizer) {
+    public MailboxImporter(Mailbox mailbox, PreFilter preFilter, Sanitizer sanitizer, AppConfig config) {
         this.mailbox = mailbox;
         this.preFilter = preFilter;
         this.sanitizer = sanitizer;
+        this.senderAuthRequired = senderAuthRequired(config.requireSenderAuth(), mailbox.authenticatesSenders());
+        this.trustedAuthServId = config.trustedAuthservId();
+    }
+
+    /**
+     * Unset: required exactly when the mailbox running carries real mail. The mailbox bean is chosen when the
+     * application is built, so the running bean decides, not a MAILBOX variable that may differ at start.
+     */
+    static boolean senderAuthRequired(Optional<Boolean> configured, boolean realMailbox) {
+        return configured.orElse(realMailbox);
+    }
+
+    /**
+     * The flag for a sender the receiving server didn't authenticate, when the mailbox requires it (design doc §9):
+     * the email is still imported and shown to the owner, but its From address earns no trust.
+     */
+    static Optional<String> authFlag(IncomingEmail in, boolean required, String authServId) {
+        return required && !SenderAuthentication.isAuthenticated(in, authServId)
+                ? Optional.of(SenderAuthentication.UNVERIFIED_FLAG) : Optional.empty();
     }
 
     public ImportResult importNew() {
@@ -104,6 +127,8 @@ public class MailboxImporter {
         Set<String> flags = new TreeSet<>(body.flags());
         name.flags().forEach(f -> flags.add("name_" + f));
         subject.flags().forEach(f -> flags.add("subject_" + f));
+        // before the merge: a forged answer to a clarification also marks the email it joins
+        authFlag(in, senderAuthRequired, trustedAuthServId).ifPresent(flags::add);
 
         Optional<EmailEntity> answered = answeredEmail(in);
         if (answered.isPresent()) {

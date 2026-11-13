@@ -69,6 +69,12 @@ public class GmailMailbox implements Mailbox {
         return out;
     }
 
+    /** Gmail writes its verdict (mx.google.com) on top of every message it receives. */
+    @Override
+    public boolean authenticatesSenders() {
+        return true;
+    }
+
     @Override
     public List<SentMessage> fetchSent() {
         if (allowed.isEmpty()) {

@@ -42,6 +42,7 @@ public final class ReasonText {
             Map.entry("role_spoof", "pretends to be staff or the system"),
             Map.entry("mixed_scripts", "look-alike letters from mixed alphabets in the text"),
             Map.entry("name_mixed_scripts", "sender name uses look-alike letters (possible impersonation)"),
+            Map.entry("sender_unverified", "sender address not authenticated (SPF/DKIM/DMARC): treated as unknown"),
             Map.entry("subject_mixed_scripts", "subject uses look-alike letters"),
             Map.entry("model_flag", "the triage model found it suspicious"));
 

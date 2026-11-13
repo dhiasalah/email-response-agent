@@ -201,7 +201,7 @@ public class GroupingRun {
             if (card.status.acceptsMembers()) {
                 Set<Long> seen = new HashSet<>();
                 List<CardPriority.Member> ranked = waiting.stream().filter(s -> seen.add(s.email.id))
-                        .map(s -> new CardPriority.Member(s.email.sender, directory.roleOf(s.email.sender),
+                        .map(s -> new CardPriority.Member(s.email.sender, directory.roleOf(s.email.sender, s.email.sanitizerFlags),
                                 s.email.receivedAt, (s.email.subject == null ? "" : s.email.subject) + " "
                                         + (s.question == null ? "" : s.question)))
                         .toList();
