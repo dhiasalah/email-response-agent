@@ -75,14 +75,14 @@
   <img class="logo" src="assets/universite-cote-dazur-logo.png" alt="Université Côte d'Azur">
   <div class="kind">Technical report</div>
   <h1>Email Response Agent: System Design and Security Analysis</h1>
-  <div class="authors">Marouane BENABDELKADER · Kacem ABDELBAKI<br>Daniel ABOU ORM · Mohamed Dhia BEN SALAH</div>
+  <div class="authors">Marouane BENABDELKADER (22511762) · Kacem ABDELBAKI (22512796)<br>Daniel ABOU ORM (22307026) · Mohamed Dhia BEN SALAH (22510772)</div>
   <div class="meta">Université Côte d'Azur · November 2026</div>
 </header>
 
 <section class="abstract">
   <p><span class="label">Abstract.</span> We describe the design and security architecture of the Email Response Agent, a multi-agent system that drafts replies to a university professor's email while asking the professor for each missing fact only once. Each fact a reply depends on is represented as a typed <em>input slot</em>. Emails waiting on the same slot are grouped, and a single answer from the owner completes all of them.</p>
-  <p>Six single-purpose agents are coordinated by a deterministic orchestrator written in plain code. No language model holds a capability to send, forward or store mail. The security design layers deterministic controls ahead of every model call: pre-filtering, HTML and Unicode sanitisation, sender authentication based on the receiving server's DMARC and DKIM verdicts, and a rule-based prompt-injection detector. Deterministic reply rules follow, which no model verdict can overrule, and the database itself enforces the email lifecycle and outbox invariants.</p>
-  <p>We report 234 automated tests and an end-to-end corpus of 17 attacks mapped to the OWASP Top 10 for LLM Applications (2025), all passing on the current code. Last, we discuss the residual risks identified during an independent code review.</p>
+  <p>Six single-purpose agents are coordinated by a deterministic orchestrator written in plain code. A router, also plain code, hands each email to one specialized agent (student, colleague, administration, research project), each with its own instructions, knowledge base, calendar and learned memory, which no other agent reads. No language model holds a capability to send, forward or store mail. The security design layers deterministic controls ahead of every model call: pre-filtering, HTML and Unicode sanitisation, sender authentication based on the receiving server's DMARC and DKIM verdicts, and a rule-based prompt-injection detector. Deterministic reply rules follow, which no model verdict can overrule, and the database itself enforces the email lifecycle and outbox invariants.</p>
+  <p>We report 258 automated tests and an end-to-end corpus of 17 attacks mapped to the OWASP Top 10 for LLM Applications (2025), all passing on the current code. Last, we discuss the residual risks identified during an independent code review.</p>
 </section>
 <p class="keywords"><b>Keywords:</b> multi-agent systems, large language models, prompt injection, email authentication, DMARC, DKIM, privacy by design.</p>
 
@@ -91,7 +91,7 @@
 <p>This report has two aims. Sections 2 and 3 document the architecture as built. Sections 4 to 6 analyse its security and privacy properties and the evidence for them. Section 7 lists known limitations. Every figure and table was checked against the code; the source of each is named in its caption.</p>
 
 <h2>2&nbsp;&nbsp;System overview</h2>
-<p>The unit of work is the input slot, a triple of <em>type</em>, <em>entity</em> and <em>qualifier</em> drawn from a fixed taxonomy of nine slot types: grades publication date, exam date, exam room, deadline, procedure, document availability, meeting availability, individual decision and individual result. The classifier splits each email into questions and extracts their slots. The resolver tries to fill each slot from trusted sources in a fixed order: scoped knowledge memory, the knowledge base, the calendar, and finally the owner's replies from the last seven days. Slots that remain unresolved are clustered into <em>input cards</em>. The owner answers each card once, and every linked email receives its own reply in the sender's language (Figure&nbsp;1).</p>
+<p>The unit of work is the input slot, a triple of <em>type</em>, <em>entity</em> and <em>qualifier</em> drawn from a fixed taxonomy of nine slot types: grades publication date, exam date, exam room, deadline, procedure, document availability, meeting availability, individual decision and individual result. The classifier splits each email into questions and extracts their slots. The router then gives the email to one specialized agent, whose instructions and context are used from then on (Section 3.3). The resolver tries to fill each slot from that agent's trusted sources in a fixed order: scoped knowledge memory, the knowledge base, the calendar, and finally the owner's replies from the last seven days. Slots that remain unresolved are clustered into <em>input cards</em>. The owner answers each card once, and every linked email receives its own reply in the sender's language (Figure&nbsp;1).</p>
 
 <figure>
   <div class="fig" id="f-pipeline" style="--h:74mm"></div>
@@ -110,11 +110,11 @@
 </figure>
 
 <h3>3.2&nbsp;&nbsp;Agents</h3>
-<p>Six agents, each with one responsibility, communicate only through the shared state (Figure&nbsp;3, Table&nbsp;1). Every model output is parsed against a strict schema. An invalid output is retried once with the validation error, and a second failure escalates the email to the owner. Models run locally through Ollama at temperature 0. A fast tier serves classification and clustering, and a strong tier serves writing and review.</p>
+<p>Six agents, each with one responsibility, communicate only through the shared state (Figure&nbsp;3, Table&nbsp;1). The router, which picks the specialized agent, uses no model (Section 3.3). Every model output is parsed against a strict schema. An invalid output is retried once with the validation error, and a second failure escalates the email to the owner. Models run locally through Ollama at temperature 0. A fast tier serves classification and clustering, and a strong tier serves writing and review.</p>
 
 <figure>
   <div class="fig" id="f-agents" style="--h:62mm"></div>
-  <figcaption><b>Figure 3.</b> The six agents and their model tiers. The orchestrator triggers each one; agents never call each other. Source: <code>agents/</code>, <code>llm/ModelTier.java</code>.</figcaption>
+  <figcaption><b>Figure 3.</b> The six agents, the router and their model tiers. The orchestrator triggers each one; agents never call each other. Source: <code>agents/</code>, <code>llm/ModelTier.java</code>.</figcaption>
 </figure>
 
 <div class="tblwrap">
@@ -123,19 +123,41 @@
     <thead><tr><th>Agent</th><th>Input</th><th>Output</th><th>Model tier</th></tr></thead>
     <tbody>
       <tr><td>Classifier</td><td>Sanitised email, sender scope from the roster</td><td>Intent, sensitivity, language, typed slots with owner</td><td>Fast</td></tr>
-      <tr><td>Resolver</td><td>Slots, sender scope</td><td>Each slot filled, proposed or unresolved, with source</td><td>None (code)</td></tr>
+      <tr><td>Router</td><td>Classifier labels; sender, role and authentication; thread</td><td>Policy route; specialized agent with reasons and confidence</td><td>None (code)</td></tr>
+      <tr><td>Resolver</td><td>Slots, sender scope, the email's agent</td><td>Each slot filled, proposed or unresolved, with source</td><td>None (code)</td></tr>
       <tr><td>Grouping</td><td>Unresolved slots, open cards</td><td>Input cards; embedding candidates verified by the model</td><td>Fast + embeddings</td></tr>
-      <tr><td>Writer</td><td>Email, filled slots, owner note</td><td>Reply body and the list of facts used</td><td>Strong</td></tr>
+      <tr><td>Writer</td><td>Email, filled slots, owner note, agent prompt</td><td>Reply body and the list of facts used</td><td>Strong</td></tr>
       <tr><td>Reviewer</td><td>Draft, facts used, policy</td><td>Pass or fail, outlier reasons</td><td>Strong, behind code rules</td></tr>
       <tr><td>Curator</td><td>Card answers, sent replies</td><td>Scoped, expiring facts; recent-answer log</td><td>Fast</td></tr>
     </tbody>
   </table>
 </div>
 
-<h3>3.3&nbsp;&nbsp;Owner interaction</h3>
+<h3>3.3&nbsp;&nbsp;Specialized agents and per-agent context</h3>
+<p>A professor's correspondents fall into groups with different needs. Students ask about exams and grades, colleagues about juries and grading, the administration about forms and agreements, and the partners of a research project about deliverables and meetings. The same person can belong to several groups: a colleague may write about a jury one day and about a joint project the next. Each group therefore has a <em>specialized agent</em>, with its own instructions for the writer and its own context.</p>
+<p>The router is plain code, part of the classification routing step. It scores every agent by adding up evidence (Table&nbsp;2) and gives the email to the highest score. Sender evidence counts only for an authenticated sender (Section 4.3). Keywords match whole words, ignoring case and accents, and their total is capped so that words alone cannot outweigh who sent the email. Below a score of 0.3 no agent fits, and a fallback agent answers. When the two best scores are within 0.1, the agent listed first wins and the decision is marked as a close call. Confidence is min(1,&nbsp;<i>s</i><sub>1</sub>)&nbsp;·&nbsp;<i>s</i><sub>1</sub>&nbsp;/&nbsp;(<i>s</i><sub>1</sub>&nbsp;+&nbsp;<i>s</i><sub>2</sub>), where <i>s</i><sub>1</sub> and <i>s</i><sub>2</sub> are the best and second scores. Every decision is logged with its reasons, so the owner can see why an email went where it did.</p>
+
+<div class="tblwrap">
+  <p class="tcap"><b>Table 2.</b> Routing evidence and weights. Source: <code>agents/RoutingStrategies.java</code>, <code>agents/AgentRouter.java</code>.</p>
+  <table>
+    <thead><tr><th>Evidence</th><th>Weight</th><th>Condition</th></tr></thead>
+    <tbody>
+      <tr><td>Sender address listed by the agent</td><td class="num">1.0</td><td>Authenticated sender only</td></tr>
+      <tr><td>An earlier email of the same thread went to the agent</td><td class="num">0.8</td><td>–</td></tr>
+      <tr><td>Sender domain listed by the agent</td><td class="num">0.5</td><td>Authenticated sender only</td></tr>
+      <tr><td>Sender role from the directory</td><td class="num">0.4</td><td>Role comes from the roster, never from the email</td></tr>
+      <tr><td>Each keyword in the subject or body</td><td class="num">0.3</td><td>Whole words; at most 0.6 in total</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<p>Context is kept per agent. Each agent reads only its own knowledge-base and calendar files. The facts the owner teaches through answered cards, the answers learned from sent replies, and the cards themselves carry the agent's identifier. The resolver, the grouping agent and the curator read and write only the email's own agent. A database trigger refuses a card that would join emails of two agents. An email that has not been routed is escalated, never resolved from another agent's context. An agent can also be <em>members-only</em>: the research project's agent takes email only from the authenticated addresses of its members, so an outsider who names the project is handled by another agent and never sees the project's documents. Membership is not evidence: a member writing about something else goes to the agent that fits the topic.</p>
+<p>Agents are data, not code. Each is a definition file with a prompt, a knowledge base and a calendar, in a folder read at start-up, so adding an agent means adding files. The loader rejects an unknown key, a missing file, a file outside the folder, or a folder without exactly one fallback agent; a mistake stops the start-up instead of silently changing routing. The writer appends the agent's prompt after its own rules. The prompt sets role, tone and structure but cannot override the rules, and the review rules still require every fact to come from a trusted source. The shipped configuration defines five agents: student, colleague, administration, a members-only research project, and a generic fallback.</p>
+
+<h3>3.4&nbsp;&nbsp;Owner interaction</h3>
 <p>The owner works from a local review panel with three queues: input cards ranked by priority, drafts grouped per card, and escalations. Card priority is a weighted sum of urgency (0.4), volume (0.3), age (0.2) and sender role (0.1). Drafts of a card are validated once through a representative reply, chosen by majority language and median length. Outliers, such as a writer retry, an unanchored yes/no fact or suspicious input, are shown individually and are never approved in bulk.</p>
 
-<h3>3.4&nbsp;&nbsp;Package structure</h3>
+<h3>3.5&nbsp;&nbsp;Package structure</h3>
 <p>The code is organised in ten packages that form strict layers (Figure&nbsp;4). A package may use only the packages after it in that order, so each layer can be read, tested and changed without the ones above. The contract between the orchestrator and the agents (<code>AgentStep</code>, <code>EmailSnapshot</code>, <code>StepResult</code>) has its own package, <code>step</code>, so that neither side depends on the other. An architecture test fails the build if a dependency cycle or an upward dependency appears.</p>
 
 <figure>
@@ -149,13 +171,13 @@
 <ul>
   <li>making the system send false or unauthorised information, including promises;</li>
   <li>exfiltrating data or redirecting students;</li>
-  <li>obtaining another cohort's or another student's answers;</li>
+  <li>obtaining another cohort's or another student's answers, or another agent's context, such as a research project's documents;</li>
   <li>exhausting the system or the owner.</li>
 </ul>
-<p>Table&nbsp;2 maps these threats to the OWASP Top 10 for LLM Applications <span class="cite">[6]</span> and to the controls that address them.</p>
+<p>Table&nbsp;3 maps these threats to the OWASP Top 10 for LLM Applications <span class="cite">[6]</span> and to the controls that address them.</p>
 
 <div class="tblwrap">
-  <p class="tcap"><b>Table 2.</b> Threats, OWASP LLM (2025) categories and implemented controls.</p>
+  <p class="tcap"><b>Table 3.</b> Threats, OWASP LLM (2025) categories and implemented controls.</p>
   <table>
     <thead><tr><th>Threat</th><th>OWASP</th><th>Controls</th></tr></thead>
     <tbody>
@@ -165,6 +187,7 @@
       <tr><td>Markup or header injection in output</td><td>LLM05</td><td>Plain-text replies; one-line subject; recipient and thread taken from the email, never from the model</td></tr>
       <tr><td>Agent acting beyond its role</td><td>LLM06</td><td>No send, forward or write tools for models; database-checked outbox; scope from a roster, never from the email</td></tr>
       <tr><td>Loops, floods, cost exhaustion</td><td>LLM10</td><td>Auto-reply filter <span class="cite">[5]</span>; 10 emails per sender per hour; 3 automatic replies per sender and 50 in total per day; bounded batches</td></tr>
+      <tr><td>Reaching another agent's context</td><td>LLM02</td><td>Knowledge, memory and cards kept per agent; database refuses a card mixing agents; members-only agents need an authenticated member</td></tr>
       <tr><td>Forged sender identity</td><td>LLM06</td><td>Sender authentication from DMARC/DKIM verdicts (Section 4.3)</td></tr>
     </tbody>
   </table>
@@ -175,7 +198,7 @@
 
 <figure>
   <div class="fig" id="f-layers" style="--h:60mm"></div>
-  <figcaption><b>Figure 5.</b> Defence layers, in the order an email meets them. Source: <code>security/</code>, <code>agents/ReviewRules.java</code>, <code>orchestrator/SendDispatcher.java</code>, migrations V1101 and V1801.</figcaption>
+  <figcaption><b>Figure 5.</b> Defence layers, in the order an email meets them. Source: <code>security/</code>, <code>agents/ReviewRules.java</code>, <code>orchestrator/SendDispatcher.java</code>, migrations V1101, V1801 and V1802.</figcaption>
 </figure>
 
 <p>The injection detector combines weighted text rules with the sanitiser's flags. Examples are overridden instructions (1.0), spoofed roles (1.0), addressing the AI (0.6), an exfiltration address (0.6), hidden HTML (1.0) and an unauthenticated sender (0.3). It escalates at a score of 1.0, and the model's opinion is monotonic: it can add 0.6 but never subtract. The deterministic reply rules reject:</p>
@@ -199,10 +222,10 @@
 <p>The panel listens on <code>127.0.0.1</code> only. Login uses a PBKDF2-HMAC-SHA256 hash with 600,000 iterations <span class="cite">[7]</span>; without a configured hash, every login is refused. After five failures in fifteen minutes, all attempts are refused. Every form carries a CSRF token, and the content security policy forbids all scripts (<code>default-src 'none'; style-src 'self'</code>). The Gmail integration uses OAuth 2.0 with PKCE <span class="cite">[9]</span>, reads only allow-listed senders and only creates drafts; the mailbox package contains no send call, which a test enforces. The refresh token and client secret are written through an owner-only temporary file and an atomic move. That means POSIX mode <code>600</code>/<code>700</code>, or a Windows ACL naming only the current user.</p>
 
 <h2>5&nbsp;&nbsp;Privacy and compliance</h2>
-<p>Student emails are personal data under the GDPR, which requires data minimisation and data protection by design <span class="cite">[8]</span>. The implementation addresses this structurally (Table&nbsp;3). Models must be local, and a non-local model address stops the application at start-up unless explicitly permitted. Filtered emails keep metadata but not their body. Facts marked personal are never reused.</p>
+<p>Student emails are personal data under the GDPR, which requires data minimisation and data protection by design <span class="cite">[8]</span>. The implementation addresses this structurally (Table&nbsp;4). Models must be local, and a non-local model address stops the application at start-up unless explicitly permitted. Filtered emails keep metadata but not their body. Facts marked personal are never reused.</p>
 
 <div class="tblwrap">
-  <p class="tcap"><b>Table 3.</b> Privacy controls and their defaults.</p>
+  <p class="tcap"><b>Table 4.</b> Privacy controls and their defaults.</p>
   <table>
     <thead><tr><th>Control</th><th>Default</th><th>Where enforced</th></tr></thead>
     <tbody>
@@ -218,7 +241,8 @@
 </div>
 
 <h2>6&nbsp;&nbsp;Evaluation</h2>
-<p>The build runs 234 automated tests, with no failures (Figure&nbsp;7b). Agent behaviour is tested through scripted models that pass through the real output parser. The attack corpus (Table&nbsp;4) runs end to end without a model on every build, and its 17 attacks span six OWASP categories (Figure&nbsp;7a). Two harmless control emails must still receive their replies, which guards against controls that are too strict. A separate evaluation set of 35 labelled emails measures classification and review against the local models.</p>
+<p>The build runs 258 automated tests, with no failures (Figure&nbsp;7b). Agent behaviour is tested through scripted models that pass through the real output parser. The attack corpus (Table&nbsp;5) runs end to end without a model on every build, and its 17 attacks span six OWASP categories (Figure&nbsp;7a). Two harmless control emails must still receive their replies, which guards against controls that are too strict. A separate evaluation set of 35 labelled emails measures classification and review against the local models.</p>
+<p>Routing is tested on the shipped agents. The same colleague goes to the colleague agent for a jury and to the project agent for a deliverable. A student who names the project, and a project member whose address is not authenticated, are both kept out of the project agent. Close calls, weak matches, the fallback, threads and keyword matching each have a test. Isolation tests check that an agent never reads another agent's facts, knowledge base or cards, and that the database refuses a card mixing agents. The demo inbox contains one email for each routing case, and an end-to-end test checks where each one goes and which knowledge base answered it.</p>
 
 <div class="pair">
   <figure>
@@ -227,12 +251,12 @@
   </figure>
   <figure>
     <div class="fig" id="f-tests" style="--h:62mm"></div>
-    <figcaption><b>Figure 7b.</b> Automated tests by package (n&nbsp;=&nbsp;234). Source: Surefire reports of <code>./mvnw verify</code>.</figcaption>
+    <figcaption><b>Figure 7b.</b> Automated tests by package (n&nbsp;=&nbsp;258). Source: Surefire reports of <code>./mvnw verify</code>.</figcaption>
   </figure>
 </div>
 
 <div class="tblwrap">
-  <p class="tcap"><b>Table 4.</b> End-to-end attack corpus and the outcome each test requires. All pass.</p>
+  <p class="tcap"><b>Table 5.</b> End-to-end attack corpus and the outcome each test requires. All pass.</p>
   <table>
     <thead><tr><th>ID</th><th>Attack</th><th>OWASP</th><th>Required outcome</th></tr></thead>
     <tbody>
@@ -266,27 +290,18 @@
   <li><b>Same-domain impersonation.</b> The <code>From</code> parser can take an address from a comment. A sender with valid DMARC for the same domain could therefore pose as a classmate. A strict address grammar is the planned fix.</li>
   <li><b>Unsigned domains.</b> Mail from a domain without aligned DKIM or a DMARC record is always unverified. It is still handled, but it loses grouping and fact reuse until the domain enables signing.</li>
   <li><b>Forwarded mail.</b> ARC chains are not evaluated, so legitimately forwarded mail is treated as unverified. This only produces false negatives.</li>
+  <li><b>Specialized agents are configurations.</b> They differ in instructions and context, not in code. All of them share the same pipeline and slot taxonomy; an agent that needs different behaviour would need code.</li>
+  <li><b>Lexical routing.</b> Keywords are matched as words, not by meaning. A paraphrase without any listed keyword falls back on sender evidence or the fallback agent. Close calls are flagged in the log but not yet put to the owner.</li>
+  <li><b>Agents are edited as files.</b> The panel shows each agent's routing, prompt and context but cannot change them, and changes take effect at the next start. Renaming an agent leaves its stored memory under the old identifier.</li>
   <li><b>Clarification notices.</b> They do not yet consider the unverified flag. This is reachable only outside Gmail mode, with every automatic-sending setting enabled.</li>
 </ul>
 
 <h2>8&nbsp;&nbsp;Conclusion</h2>
-<p>The Email Response Agent shows that the useful parts of language models can be kept while their decision power stays narrow. Models classify, cluster and write. Code decides routing, trust and sending, and the database enforces the invariants that matter most. The input-slot abstraction reduces the owner's workload to answering each distinct question once. The layered, deterministic-first security design limits what a compromised or misled model can achieve. The remaining risks are known, bounded and documented.</p>
+<p>The Email Response Agent shows that the useful parts of language models can be kept while their decision power stays narrow. Models classify, cluster and write. Code decides routing, trust and sending, and the database enforces the invariants that matter most. Specialized agents keep each group of correspondents' context apart, so what the owner tells one group never reaches another. The input-slot abstraction reduces the owner's workload to answering each distinct question once. The layered, deterministic-first security design limits what a compromised or misled model can achieve. The remaining risks are known, bounded and documented.</p>
 
 <h2>Author contributions</h2>
-<p>The project was carried out as a team. Table&nbsp;5 gives the area each author led. These are lead responsibilities only: every author contributed to each part, and no part was done by one person alone.</p>
+<p>The project was carried out as a team: every author contributed to each part, and no part was done by one person alone.</p>
 
-<div class="tblwrap">
-  <p class="tcap"><b>Table 5.</b> Lead responsibilities.</p>
-  <table>
-    <thead><tr><th>Author</th><th>Lead responsibility</th></tr></thead>
-    <tbody>
-      <tr><td>Marouane BENABDELKADER</td><td>System design, core principles, testing</td></tr>
-      <tr><td>Mohamed Dhia BEN SALAH</td><td>Security, infrastructure</td></tr>
-      <tr><td>Kacem ABDELBAKI</td><td>Development</td></tr>
-      <tr><td>Daniel ABOU ORM</td><td>Development</td></tr>
-    </tbody>
-  </table>
-</div>
 
 <p>The team set up a continuous-integration pipeline and integrated all work through pull requests. Every pull request is built, tested and scanned for secrets before it can be merged.</p>
 
@@ -355,6 +370,9 @@ data
     - label Classifier
       desc Typed slots
       icon @tag
+    - label Router
+      desc One specialized agent
+      icon @flag
     - label Resolver
       desc Trusted sources
       icon @database
@@ -449,8 +467,11 @@ data
     - label Classifier
       desc Fast model. Classifies, extracts typed slots
       icon @tag
+    - label Router
+      desc No model. Picks the specialized agent
+      icon @flag
     - label Resolver
-      desc No model. Fills slots from trusted sources
+      desc No model. Fills slots from the agent's sources
       icon @database
     - label Grouping
       desc Fast model and embeddings. Builds input cards
@@ -492,7 +513,7 @@ data
       desc Filters, sender auth
       icon @shield
     - label store
-      desc Entities, memory
+      desc Entities, memory, agents
       icon @database
     - label config
       desc Typed settings
@@ -594,7 +615,7 @@ theme
 data
   values
     - label agents
-      value 68
+      value 83
     - label security
       value 47
     - label orchestrator
@@ -605,12 +626,12 @@ data
       value 22
     - label llm
       value 18
+    - label store
+      value 12
     - label config
       value 5
     - label model
       value 5
-    - label store
-      value 3
     - label architecture
       value 2
 theme
