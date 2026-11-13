@@ -39,6 +39,7 @@
   .cite { color: var(--accent); }
 
   .titleblock { text-align: center; padding-bottom: 10pt; border-bottom: 1.2pt solid var(--rule); margin-bottom: 12pt; }
+  .titleblock .logo { height: 13mm; width: auto; display: block; margin: 0 auto 9pt; }
   .titleblock .kind { font: 500 8.5pt/1 var(--sans); letter-spacing: 0.14em; text-transform: uppercase; color: var(--accent); margin-bottom: 8pt; }
   .titleblock .authors { font-size: 10.5pt; margin: 4pt 0 2pt; }
   .titleblock .meta { font: 8.5pt/1.4 var(--sans); color: var(--muted); }
@@ -71,22 +72,23 @@
 <body>
 
 <header class="titleblock">
+  <img class="logo" src="assets/universite-cote-dazur-logo.png" alt="Université Côte d'Azur">
   <div class="kind">Technical report</div>
   <h1>Email Response Agent: System Design and Security Analysis</h1>
   <div class="authors">Email Response Agent project</div>
-  <div class="meta">November 2026 · Repository <code>dhiasalah/email-response-agent</code> · Code state <code>main@adcaf73</code></div>
+  <div class="meta">November 2026 · Repository <code>dhiasalah/email-response-agent</code> · Code state <code>b7d5ece</code></div>
 </header>
 
 <section class="abstract">
   <p><span class="label">Abstract.</span> We describe the design and security architecture of the Email Response Agent, a multi-agent system that drafts replies to a university professor's email while asking the professor for each missing fact only once. Each fact a reply depends on is represented as a typed <em>input slot</em>. Emails waiting on the same slot are grouped, and a single answer from the owner completes all of them.</p>
   <p>Six single-purpose agents are coordinated by a deterministic orchestrator written in plain code. No language model holds a capability to send, forward or store mail. The security design layers deterministic controls ahead of every model call: pre-filtering, HTML and Unicode sanitisation, sender authentication based on the receiving server's DMARC and DKIM verdicts, and a rule-based prompt-injection detector. Deterministic reply rules follow, which no model verdict can overrule, and the database itself enforces the email lifecycle and outbox invariants.</p>
-  <p>We report 232 automated tests and an end-to-end corpus of 17 attacks mapped to the OWASP Top 10 for LLM Applications (2025), all passing on the current code. Last, we discuss the residual risks identified during an independent code review.</p>
+  <p>We report 234 automated tests and an end-to-end corpus of 17 attacks mapped to the OWASP Top 10 for LLM Applications (2025), all passing on the current code. Last, we discuss the residual risks identified during an independent code review.</p>
 </section>
 <p class="keywords"><b>Keywords:</b> multi-agent systems, large language models, prompt injection, email authentication, DMARC, DKIM, privacy by design.</p>
 
 <h2>1&nbsp;&nbsp;Introduction</h2>
 <p>A professor receives many emails that differ in wording but wait on the same piece of information: the publication date of a grade, the room of an exam, a project deadline. Answering them one by one wastes time. Delegating them to a general-purpose language model exposes students to invented facts and the owner's mailbox to prompt injection <span class="cite">[6]</span>. The Email Response Agent answers recurring questions once, and never states a fact that was not provided by the owner or a trusted source.</p>
-<p>This report has two aims. Sections 2 and 3 document the architecture as built. Sections 4 to 6 analyse its security and privacy properties and the evidence for them. Section 7 lists known limitations. Every figure and table was checked against the code at commit <code>adcaf73</code>; the source of each is named in its caption.</p>
+<p>This report has two aims. Sections 2 and 3 document the architecture as built. Sections 4 to 6 analyse its security and privacy properties and the evidence for them. Section 7 lists known limitations. Every figure and table was checked against the code at commit <code>b7d5ece</code>; the source of each is named in its caption.</p>
 
 <h2>2&nbsp;&nbsp;System overview</h2>
 <p>The unit of work is the input slot, a triple of <em>type</em>, <em>entity</em> and <em>qualifier</em> drawn from a fixed taxonomy of nine slot types: grades publication date, exam date, exam room, deadline, procedure, document availability, meeting availability, individual decision and individual result. Triage splits each email into questions and extracts their slots. The resolver tries to fill each slot from trusted sources in a fixed order: scoped knowledge memory, the knowledge base, the calendar, and finally the owner's replies from the last seven days. Slots that remain unresolved are clustered into <em>input cards</em>. The owner answers each card once, and every linked email receives its own reply in the sender's language (Figure&nbsp;1).</p>
@@ -103,16 +105,16 @@
 <p>The orchestrator is ordinary Java code rather than an LLM, so routing is predictable, testable and cheap. It moves each email through a fixed set of fourteen statuses (Figure&nbsp;2). Each step is keyed by email identifier, status and version, so a restart cannot repeat a side effect. A PostgreSQL trigger, <code>email_status_transition()</code>, rejects any transition outside the permitted set. A second set of triggers refuses an outbox row unless a passed review exists for the exact draft being sent.</p>
 
 <figure>
-  <div class="fig" id="f-lifecycle" style="--h:150mm"></div>
-  <figcaption><b>Figure 2.</b> Email lifecycle. The 18 transitions shown, plus the three leaving <code>ESCALATED</code>, are exactly those the database trigger permits. Each of the nine working statuses may also move to <code>ESCALATED</code>; these nine edges are omitted for legibility. Source: <code>db/migration/V1701__owner_replies.sql</code>.</figcaption>
+  <div class="fig" id="f-lifecycle" style="--h:172mm"></div>
+  <figcaption><b>Figure 2.</b> Email lifecycle. The database trigger permits 27 transitions. The 18 drawn here include the three that leave <code>ESCALATED</code>. The other nine each lead from a working status into <code>ESCALATED</code> and are omitted for legibility. Source: <code>db/migration/V1701__owner_replies.sql</code>.</figcaption>
 </figure>
 
 <h3>3.2&nbsp;&nbsp;Agents</h3>
 <p>Six agents, each with one responsibility, communicate only through the shared state (Figure&nbsp;3, Table&nbsp;1). Every model output is parsed against a strict schema. An invalid output is retried once with the validation error, and a second failure escalates the email to the owner. Models run locally through Ollama at temperature 0. A fast tier serves classification and clustering, and a strong tier serves writing and review.</p>
 
 <figure>
-  <div class="fig" id="f-agents" style="--h:70mm"></div>
-  <figcaption><b>Figure 3.</b> Agents and their model tiers under the orchestrator. Agents never call each other. Source: <code>agents/</code>, <code>llm/ModelTier.java</code>.</figcaption>
+  <div class="fig" id="f-agents" style="--h:62mm"></div>
+  <figcaption><b>Figure 3.</b> The six agents and their model tiers. The orchestrator triggers each one; agents never call each other. Source: <code>agents/</code>, <code>llm/ModelTier.java</code>.</figcaption>
 </figure>
 
 <div class="tblwrap">
@@ -132,6 +134,14 @@
 
 <h3>3.3&nbsp;&nbsp;Owner interaction</h3>
 <p>The owner works from a local review panel with three queues: input cards ranked by priority, drafts grouped per card, and escalations. Card priority is a weighted sum of urgency (0.4), volume (0.3), age (0.2) and sender role (0.1). Drafts of a card are validated once through a representative reply, chosen by majority language and median length. Outliers, such as a writer retry, an unanchored yes/no fact or suspicious input, are shown individually and are never approved in bulk.</p>
+
+<h3>3.4&nbsp;&nbsp;Package structure</h3>
+<p>The code is organised in ten packages that form strict layers (Figure&nbsp;4). A package may use only the packages after it in that order, so each layer can be read, tested and changed without the ones above. The contract between the orchestrator and the agents (<code>AgentStep</code>, <code>EmailSnapshot</code>, <code>StepResult</code>) has its own package, <code>step</code>, so that neither side depends on the other. An architecture test fails the build if a dependency cycle or an upward dependency appears.</p>
+
+<figure>
+  <div class="fig" id="f-packages" style="--h:104mm"></div>
+  <figcaption><b>Figure 4.</b> Package layers. The arrows run from the top layer (<code>web</code>) to the bottom (<code>model</code>). A package uses only packages that come after it. Source: <code>ArchitectureTest</code> (layer order and cycle check).</figcaption>
+</figure>
 
 <h2>4&nbsp;&nbsp;Security design</h2>
 <h3>4.1&nbsp;&nbsp;Threat model</h3>
@@ -161,11 +171,11 @@
 </div>
 
 <h3>4.2&nbsp;&nbsp;Defence in depth</h3>
-<p>Eight layers separate an incoming email from a sent reply (Figure&nbsp;4). The first four are deterministic and run before any model sees the email. The review rules run on the final reply text, and no model verdict can overrule them. The last layer lives in the database and holds even if the application code were wrong.</p>
+<p>Eight layers separate an incoming email from a sent reply (Figure&nbsp;5). The first four are deterministic and run before any model sees the email. The review rules run on the final reply text, and no model verdict can overrule them. The last layer lives in the database and holds even if the application code were wrong.</p>
 
 <figure>
-  <div class="fig" id="f-layers" style="--h:96mm"></div>
-  <figcaption><b>Figure 4.</b> Defence layers, in the order an email meets them. Source: <code>security/</code>, <code>agents/ReviewRules.java</code>, <code>orchestrator/SendDispatcher.java</code>, migrations V1101 and V1701.</figcaption>
+  <div class="fig" id="f-layers" style="--h:60mm"></div>
+  <figcaption><b>Figure 5.</b> Defence layers, in the order an email meets them. Source: <code>security/</code>, <code>agents/ReviewRules.java</code>, <code>orchestrator/SendDispatcher.java</code>, migrations V1101 and V1701.</figcaption>
 </figure>
 
 <p>The injection detector combines weighted text rules with the sanitiser's flags. Examples are overridden instructions (1.0), spoofed roles (1.0), addressing the AI (0.6), an exfiltration address (0.6), hidden HTML (1.0) and an unauthenticated sender (0.3). It escalates at a score of 1.0, and the model's opinion is monotonic: it can add 0.6 but never subtract. The deterministic reply rules reject:</p>
@@ -177,12 +187,12 @@
 </ul>
 
 <h3>4.3&nbsp;&nbsp;Sender authentication</h3>
-<p>A student's scope, and with it access to cohort-specific answers, is resolved from a roster by exact address. Because the <code>From</code> header is free text, the address is trusted only when the receiving server vouches for it (Figure&nbsp;5). The system reads the top-most <code>Authentication-Results</code> header <span class="cite">[1]</span> and requires it to be written by the trusted server (<code>mx.google.com</code>). It then accepts either a DMARC pass whose <code>header.from</code> equals the From domain <span class="cite">[2]</span>, or a DKIM pass whose signing domain is that domain or a parent of it <span class="cite">[3]</span>. Any <code>dmarc=fail</code> rejects the sender, and SPF alone is never sufficient <span class="cite">[4]</span>.</p>
+<p>A student's scope, and with it access to cohort-specific answers, is resolved from a roster by exact address. Because the <code>From</code> header is free text, the address is trusted only when the receiving server vouches for it (Figure&nbsp;6). The system reads the top-most <code>Authentication-Results</code> header <span class="cite">[1]</span> and requires it to be written by the trusted server (<code>mx.google.com</code>). It then accepts either a DMARC pass whose <code>header.from</code> equals the From domain <span class="cite">[2]</span>, or a DKIM pass whose signing domain is that domain or a parent of it <span class="cite">[3]</span>. Any <code>dmarc=fail</code> rejects the sender, and SPF alone is never sufficient <span class="cite">[4]</span>.</p>
 <p>The parser follows the RFC 8601 grammar for quoted strings and comments. Malformed headers, and comments glued to a value, fail closed. This closes the class of injection in which sender-controlled values echoed by the server forge a result <span class="cite">[10]</span>. An unauthenticated sender is not dropped. The email is shown to the owner with an explicit warning, but it receives an unknown scope (no memory reuse), no role weight, and an outlier mark that excludes automatic and bulk sending.</p>
 
 <figure>
   <div class="fig" id="f-auth" style="--h:112mm"></div>
-  <figcaption><b>Figure 5.</b> Sender-authentication decision. Source: <code>security/SenderAuthentication.java</code>; tests <code>SenderAuthenticationTest</code> (14 cases), <code>SenderAuthImportTest</code>.</figcaption>
+  <figcaption><b>Figure 6.</b> Sender-authentication decision. Source: <code>security/SenderAuthentication.java</code>; tests <code>SenderAuthenticationTest</code> (14 cases), <code>SenderAuthImportTest</code>.</figcaption>
 </figure>
 
 <h3>4.4&nbsp;&nbsp;Owner panel and secrets</h3>
@@ -202,22 +212,22 @@
       <tr><td>Retention of finished emails</td><td>365 days, then erased</td><td><code>Retention</code> (nightly)</td></tr>
       <tr><td>Mail read in Gmail mode</td><td>Allow-listed senders only; empty list reads nothing</td><td><code>GmailMailbox</code></td></tr>
       <tr><td>Fact freshness</td><td>Reused directly up to 90 days, then proposed for review</td><td><code>ResolverAgent</code></td></tr>
-      <tr><td>AI-assistance disclosure</td><td>Enabled in every reply</td><td><code>WriterAgent</code></td></tr>
+      <tr><td>AI-assistance disclosure</td><td>Enabled by default</td><td><code>WriterAgent</code></td></tr>
     </tbody>
   </table>
 </div>
 
 <h2>6&nbsp;&nbsp;Evaluation</h2>
-<p>The build runs 232 automated tests, with no failures at the reported commit (Figure&nbsp;6b). Agent behaviour is tested through scripted models that pass through the real output parser. The attack corpus (Table&nbsp;4) runs end to end without a model on every build, and its 17 attacks span six OWASP categories (Figure&nbsp;6a). Two harmless control emails must still receive their replies, which guards against controls that are too strict. A separate evaluation set of 35 labelled emails measures triage and review against the local models.</p>
+<p>The build runs 234 automated tests, with no failures at the reported commit (Figure&nbsp;7b). Agent behaviour is tested through scripted models that pass through the real output parser. The attack corpus (Table&nbsp;4) runs end to end without a model on every build, and its 17 attacks span six OWASP categories (Figure&nbsp;7a). Two harmless control emails must still receive their replies, which guards against controls that are too strict. A separate evaluation set of 35 labelled emails measures triage and review against the local models.</p>
 
 <div class="pair">
   <figure>
-    <div class="fig" id="f-owasp" style="--h:78mm"></div>
-    <figcaption><b>Figure 6a.</b> Attack corpus by primary OWASP LLM category (n&nbsp;=&nbsp;17). Source: <code>attacks/corpus.json</code>.</figcaption>
+    <div class="fig" id="f-owasp" style="--h:62mm"></div>
+    <figcaption><b>Figure 7a.</b> Attack corpus by primary OWASP LLM category (n&nbsp;=&nbsp;17): LLM01 prompt injection, LLM02 sensitive information disclosure, LLM05 improper output handling, LLM06 excessive agency, LLM09 misinformation, LLM10 unbounded consumption. Source: <code>attacks/corpus.json</code>.</figcaption>
   </figure>
   <figure>
-    <div class="fig" id="f-tests" style="--h:78mm"></div>
-    <figcaption><b>Figure 6b.</b> Automated tests by package (n&nbsp;=&nbsp;232). Source: Surefire reports of <code>./mvnw verify</code>.</figcaption>
+    <div class="fig" id="f-tests" style="--h:62mm"></div>
+    <figcaption><b>Figure 7b.</b> Automated tests by package (n&nbsp;=&nbsp;234). Source: Surefire reports of <code>./mvnw verify</code>.</figcaption>
   </figure>
 </div>
 
@@ -276,6 +286,8 @@
   <li>J. Chen, V. Paxson, J. Jiang. <i>Composition Kills: A Case Study of Email Sender Authentication.</i> USENIX Security Symposium, 2020.</li>
   <li><i>Email Response Agent — System Design.</i> Project design document, 2026.</li>
 </ol>
+
+<p style="font: 7.5pt var(--sans); color: var(--muted); margin-top: 10pt;">Logo: Université Côte d'Azur, via Wikimedia Commons (CC BY 2.5).</p>
 
 <script src="https://unpkg.com/@antv/infographic@0.2.20/dist/infographic.min.js"></script>
 <script>
@@ -413,31 +425,63 @@ data
 theme
   ${THEME}`,
 
-    'f-agents': `infographic hierarchy-tree-tech-style-badge-card
+    'f-agents': `infographic list-grid-badge-card
 data
-  root
-    label Orchestrator
-    desc Plain code
-    icon @cog
-    children
-      - label Triage
-        desc Fast model
-        icon @tag
-      - label Resolver
-        desc No model
-        icon @database
-      - label Grouping
-        desc Fast + embeddings
-        icon @layers
-      - label Writer
-        desc Strong model
-        icon @pen
-      - label Reviewer
-        desc Strong, behind rules
-        icon @check
-      - label Curator
-        desc Fast model
-        icon @book
+  lists
+    - label Triage
+      desc Fast model. Classifies, extracts typed slots
+      icon @tag
+    - label Resolver
+      desc No model. Fills slots from trusted sources
+      icon @database
+    - label Grouping
+      desc Fast model and embeddings. Builds input cards
+      icon @layers
+    - label Writer
+      desc Strong model. One grounded reply per email
+      icon @pen
+    - label Reviewer
+      desc Strong model, behind code rules
+      icon @check
+    - label Curator
+      desc Fast model. Scoped, expiring facts
+      icon @book
+theme
+  ${THEME}`,
+
+    'f-packages': `infographic sequence-snake-steps-compact-card
+data
+  sequences
+    - label web
+      desc Owner panel
+      icon @user
+    - label orchestrator
+      desc Lifecycle, send policy
+      icon @cog
+    - label agents
+      desc Agents, review rules
+      icon @spark
+    - label step
+      desc Agent contract
+      icon @code
+    - label mailbox
+      desc Mailboxes, importer
+      icon @mail
+    - label llm
+      desc Model clients
+      icon @pen
+    - label security
+      desc Filters, sender auth
+      icon @shield
+    - label store
+      desc Entities, memory
+      icon @database
+    - label config
+      desc Typed settings
+      icon @key
+    - label model
+      desc Value types
+      icon @tag
 theme
   ${THEME}`,
 
@@ -500,30 +544,30 @@ data
       icon @x
   relations
     hdr - read -> srv
+    srv - other server -> no
     srv - yes -> dmarc
-    srv - no -> no
-    dmarc - pass -> ok
     dmarc - fail -> no
     dmarc - none -> dkim
+    dmarc - pass -> ok
+    dkim - not aligned -> no
     dkim - aligned -> ok
-    dkim - missing -> no
 theme
   ${THEME}`,
 
     'f-owasp': `infographic chart-pie-donut-pill-badge
 data
   values
-    - label LLM01 Prompt injection
+    - label LLM01
       value 9
-    - label LLM02 Info disclosure
+    - label LLM02
       value 2
-    - label LLM05 Output handling
+    - label LLM05
       value 2
-    - label LLM10 Consumption
+    - label LLM10
       value 2
-    - label LLM06 Excessive agency
+    - label LLM06
       value 1
-    - label LLM09 Misinformation
+    - label LLM09
       value 1
 theme
   ${THEME}`,
@@ -549,6 +593,8 @@ data
       value 5
     - label store
       value 3
+    - label architecture
+      value 2
 theme
   ${THEME}`
   };
