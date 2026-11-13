@@ -6,14 +6,15 @@ import com.emailagent.llm.LlmException;
 import com.emailagent.llm.LlmRequest;
 import com.emailagent.llm.ModelTier;
 import com.emailagent.mailbox.Mailbox;
+import com.emailagent.mailbox.QuotedText;
 import com.emailagent.mailbox.SentMessage;
 import com.emailagent.model.EmailStatus;
 import com.emailagent.model.FieldType;
 import com.emailagent.model.Language;
 import com.emailagent.model.SlotStatus;
-import com.emailagent.orchestrator.AgentStep;
-import com.emailagent.orchestrator.EmailSnapshot;
-import com.emailagent.orchestrator.StepResult;
+import com.emailagent.step.AgentStep;
+import com.emailagent.step.EmailSnapshot;
+import com.emailagent.step.StepResult;
 import com.emailagent.store.DraftEntity;
 import jakarta.enterprise.context.ApplicationScoped;
 import java.text.Normalizer;
@@ -184,7 +185,7 @@ public class WriterAgent implements AgentStep {
     List<String> styleExamples() {
         return mailbox.fetchSent().stream()
                 .sorted(Comparator.comparing(SentMessage::sentAt, Comparator.nullsLast(Comparator.reverseOrder())))
-                .map(m -> CuratorAgent.ownerText(m.bodyText()))
+                .map(m -> QuotedText.ownWords(m.bodyText()))
                 .map(t -> t.contains("\n") ? t.substring(t.indexOf('\n') + 1).strip() : "")
                 .filter(t -> !t.isBlank())
                 .map(t -> t.length() > 300 ? t.substring(0, 300) : t)

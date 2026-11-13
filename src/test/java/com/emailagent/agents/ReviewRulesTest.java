@@ -5,7 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.emailagent.model.EmailStatus;
 import com.emailagent.model.Language;
 import com.emailagent.model.SenderScope;
-import com.emailagent.orchestrator.EmailSnapshot;
+import com.emailagent.step.EmailSnapshot;
 import com.emailagent.security.InjectionDetector;
 import java.time.Instant;
 import java.util.List;

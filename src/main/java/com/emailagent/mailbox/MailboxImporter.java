@@ -1,10 +1,10 @@
 package com.emailagent.mailbox;
 
-import com.emailagent.agents.CuratorAgent;
 import com.emailagent.config.AppConfig;
+import com.emailagent.config.StartupConfigCheck;
 import com.emailagent.model.EmailStatus;
 import com.emailagent.model.FilterReason;
-import com.emailagent.orchestrator.Retention;
+import com.emailagent.model.IncomingEmail;
 import com.emailagent.security.PreFilter;
 import com.emailagent.security.Sanitizer;
 import com.emailagent.security.SenderAuthentication;
@@ -14,6 +14,7 @@ import com.emailagent.store.NoticeEntity;
 import com.emailagent.store.OutboxEntity;
 import io.quarkus.logging.Log;
 import io.quarkus.narayana.jta.QuarkusTransaction;
+import io.quarkus.runtime.Startup;
 import jakarta.enterprise.context.ApplicationScoped;
 import java.time.Duration;
 import java.time.Instant;
@@ -28,6 +29,7 @@ import java.util.TreeSet;
  * One transaction per email, so one broken message can't block the others (availability).
  */
 @ApplicationScoped
+@Startup // created at start-up, so a forbidden sender-auth setting stops the start (see the constructor)
 public class MailboxImporter {
 
     public record ImportResult(int imported, int filtered, int duplicates, int rejected, int merged) {}
@@ -42,6 +44,7 @@ public class MailboxImporter {
         this.mailbox = mailbox;
         this.preFilter = preFilter;
         this.sanitizer = sanitizer;
+        StartupConfigCheck.checkSenderAuth(mailbox.authenticatesSenders(), config.requireSenderAuth());
         this.senderAuthRequired = senderAuthRequired(config.requireSenderAuth(), mailbox.authenticatesSenders());
         this.trustedAuthServId = config.trustedAuthservId();
     }
@@ -96,7 +99,7 @@ public class MailboxImporter {
 
     private Outcome importOne(IncomingEmail in) {
         if (EmailEntity.findByMessageId(in.messageId()).isPresent()
-                || EmailEntity.findByMessageId(Retention.erasedMessageId(in.messageId())).isPresent()) {
+                || EmailEntity.findByMessageId(EmailEntity.erasedMessageId(in.messageId())).isPresent()) {
             // an erased email still in the mailbox is not imported again
             return Outcome.DUPLICATE; // idempotence: the same message is never processed twice
         }
@@ -163,7 +166,7 @@ public class MailboxImporter {
      * reply itself as a filtered row without body, so it is never imported twice. Triage runs again later.
      */
     private static void merge(EmailEntity target, EmailEntity reply, String text, Set<String> flags) {
-        String own = CuratorAgent.ownerText(text);
+        String own = QuotedText.ownWords(text);
         String merged = (target.body == null ? "" : target.body) + "\n\n[Reply of the sender]\n" + own;
         target.body = merged.length() > MAX_BODY ? merged.substring(0, MAX_BODY) : merged;
         if (!flags.isEmpty()) {

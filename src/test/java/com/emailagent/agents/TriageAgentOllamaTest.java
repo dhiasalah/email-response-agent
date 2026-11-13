@@ -4,8 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.emailagent.llm.LlmException;
 import com.emailagent.mailbox.MailboxImporter;
-import com.emailagent.orchestrator.EmailSnapshot;
-import com.emailagent.orchestrator.StepResult;
+import com.emailagent.step.EmailSnapshot;
+import com.emailagent.step.StepResult;
 import com.emailagent.store.EmailEntity;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.junit.QuarkusTest;

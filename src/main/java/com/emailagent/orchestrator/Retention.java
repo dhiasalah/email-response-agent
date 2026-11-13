@@ -9,12 +9,8 @@ import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.scheduler.Scheduled;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.persistence.EntityManager;
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.HexFormat;
 import java.util.List;
 import java.util.Locale;
 
@@ -98,21 +94,8 @@ public class Retention {
                     sender = ?1, message_id = ?2, scope_program = NULL, scope_track = NULL, scope_year = NULL,
                     erased_at = now()
                 WHERE id = ?3""")
-                .setParameter(1, "erased-" + id + "@erased.invalid").setParameter(2, erasedMessageId(e.messageId))
+                .setParameter(1, "erased-" + id + "@erased.invalid").setParameter(2, EmailEntity.erasedMessageId(e.messageId))
                 .setParameter(3, id).executeUpdate();
         DecisionLogEntry.record(id, "retention", "email " + id, "{\"erased\":\"" + reason + "\"}");
-    }
-
-    /** The stored form of an erased email's Message-ID; the importer compares new mail against it too. */
-    public static String erasedMessageId(String messageId) {
-        if (messageId == null || messageId.startsWith("erased:")) {
-            return messageId;
-        }
-        try {
-            byte[] hash = MessageDigest.getInstance("SHA-256").digest(messageId.getBytes(StandardCharsets.UTF_8));
-            return "erased:" + HexFormat.of().formatHex(hash);
-        } catch (NoSuchAlgorithmException ex) {
-            throw new IllegalStateException(ex);
-        }
     }
 }

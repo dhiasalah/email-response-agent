@@ -13,6 +13,7 @@ import com.emailagent.model.SenderScope;
 import com.emailagent.model.SlotOwner;
 import com.emailagent.model.SlotStatus;
 import com.emailagent.model.SlotType;
+import com.emailagent.step.EmailSnapshot;
 import com.emailagent.store.DecisionLogEntry;
 import com.emailagent.store.DraftEntity;
 import com.emailagent.store.EmailEntity;

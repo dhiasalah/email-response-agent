@@ -3,6 +3,7 @@ package com.emailagent.mailbox;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.emailagent.model.EmailStatus;
+import com.emailagent.model.IncomingEmail;
 import com.emailagent.store.EmailEntity;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.junit.QuarkusTest;

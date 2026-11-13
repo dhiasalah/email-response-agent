@@ -5,6 +5,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.emailagent.model.EmailStatus;
+import com.emailagent.step.AgentStep;
+import com.emailagent.step.StepResult;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 

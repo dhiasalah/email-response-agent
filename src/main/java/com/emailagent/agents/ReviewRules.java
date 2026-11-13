@@ -1,7 +1,7 @@
 package com.emailagent.agents;
 
 import com.emailagent.model.Language;
-import com.emailagent.orchestrator.EmailSnapshot;
+import com.emailagent.step.EmailSnapshot;
 import com.emailagent.security.InjectionDetector;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;

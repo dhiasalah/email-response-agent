@@ -1,6 +1,6 @@
 package com.emailagent.security;
 
-import com.emailagent.mailbox.IncomingEmail;
+import com.emailagent.model.IncomingEmail;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;

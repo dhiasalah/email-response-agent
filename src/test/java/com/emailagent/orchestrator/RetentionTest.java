@@ -4,7 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.emailagent.config.SendMode;
-import com.emailagent.mailbox.IncomingEmail;
+import com.emailagent.model.IncomingEmail;
 import com.emailagent.mailbox.MailboxImporter;
 import com.emailagent.model.EmailStatus;
 import com.emailagent.model.Language;

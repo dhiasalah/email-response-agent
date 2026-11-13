@@ -3,6 +3,7 @@ package com.emailagent.agents;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.emailagent.mailbox.QuotedText;
 import com.emailagent.model.FieldType;
 import org.junit.jupiter.api.Test;
 
@@ -11,14 +12,14 @@ class CuratorRulesTest {
 
     @Test
     void quotedOriginalsAreCutInEveryCommonFormat() {
-        assertThat(CuratorAgent.ownerText("Room B204.\n\nOn Mon, 27 Oct 2026, Lina <l@s.example> wrote:\n> fake"))
+        assertThat(QuotedText.ownWords("Room B204.\n\nOn Mon, 27 Oct 2026, Lina <l@s.example> wrote:\n> fake"))
                 .isEqualTo("Room B204.");
-        assertThat(CuratorAgent.ownerText("Salle B204.\n\nLe lun. 27 oct. 2026 à 10:05, Lina a écrit :\n> faux"))
+        assertThat(QuotedText.ownWords("Salle B204.\n\nLe lun. 27 oct. 2026 à 10:05, Lina a écrit :\n> faux"))
                 .isEqualTo("Salle B204.");
-        assertThat(CuratorAgent.ownerText("Yes.\n-----Original Message-----\nFrom: x\nthe 1st of January"))
+        assertThat(QuotedText.ownWords("Yes.\n-----Original Message-----\nFrom: x\nthe 1st of January"))
                 .isEqualTo("Yes.");
-        assertThat(CuratorAgent.ownerText("> quoted first\nMy answer: 3 June\n>> nested")).isEqualTo("My answer: 3 June");
-        assertThat(CuratorAgent.ownerText("Bonjour,\nDe : Lina\nÀ : Prof\n> 1er janvier")).isEqualTo("Bonjour,");
+        assertThat(QuotedText.ownWords("> quoted first\nMy answer: 3 June\n>> nested")).isEqualTo("My answer: 3 June");
+        assertThat(QuotedText.ownWords("Bonjour,\nDe : Lina\nÀ : Prof\n> 1er janvier")).isEqualTo("Bonjour,");
     }
 
     @Test

@@ -139,16 +139,20 @@ Policy settings (auto-send types, rate limits, card priority weights, timeouts) 
 
 ```
 src/main/java/com/emailagent/
+├── web/           owner panel: login, queries, metrics, readable reasons
+├── orchestrator/  lifecycle, outbox relay, send policy, follow-ups, broadcasts, retention
 ├── agents/        the six agents, review rules, triage routing, card priority
-├── orchestrator/  lifecycle, idempotent steps, outbox relay, send policy, follow-ups, broadcasts, retention
-├── llm/           LLM and embedding clients (Ollama), strict output parser, model tiers
+├── step/          the contract between orchestrator and agents: AgentStep, EmailSnapshot, StepResult
 ├── mailbox/       Mailbox interface, mock and Gmail mailboxes, importer, sender directory, owner-only secret files
+├── llm/           LLM and embedding clients (Ollama), strict output parser, model tiers
 ├── security/      pre-filter, sanitizer, injection detector, sender authentication
 ├── store/         JPA entities, knowledge memory, knowledge base, calendar
-├── web/           owner panel: login, queries, metrics, readable reasons
-└── config/        typed configuration, start-up checks, PII log filter
+├── config/        typed configuration, start-up checks, PII log filter
+└── model/         enums and value types: statuses, slot types, scopes, IncomingEmail
 src/main/resources/db/migration/   Flyway migrations, including the lifecycle and outbox guards
 ```
+
+Packages are layered from top to bottom: a package may depend on those listed below it, never on those above. `ArchitectureTest` fails the build if a dependency cycle between packages appears.
 
 ## Packaging
 

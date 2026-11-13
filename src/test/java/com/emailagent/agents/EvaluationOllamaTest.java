@@ -11,7 +11,7 @@ import com.emailagent.model.SenderScope;
 import com.emailagent.model.SlotOwner;
 import com.emailagent.model.SlotStatus;
 import com.emailagent.model.SlotType;
-import com.emailagent.orchestrator.EmailSnapshot;
+import com.emailagent.step.EmailSnapshot;
 import com.emailagent.security.InjectionDetector;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;

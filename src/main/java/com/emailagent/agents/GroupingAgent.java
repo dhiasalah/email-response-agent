@@ -163,40 +163,48 @@ public class GroupingAgent {
                 continue;
             }
 
-            String note = null;
-            Draft best = null;
-            double bestScore = -1;
-            if (vector != null) {
-                for (Draft c : allowed) {
-                    if (!numbersMatch(c.key, slot.key())) {
-                        note = "number_mismatch";
-                        continue;
-                    }
-                    Double s = similarity(c, vector);
-                    if (s != null && s >= threshold && s > bestScore) {
-                        best = c;
-                        bestScore = s;
-                    }
-                }
-            } else {
-                note = "embedding_failed";
-            }
-
-            if (best != null) {
+            Candidate near = nearest(allowed, slot, vector);
+            String note = near.note();
+            if (near.card() != null) {
                 calls++;
-                Boolean same = verify(best.sampleQuestion, slot.text());
+                Boolean same = verify(near.card().sampleQuestion, slot.text());
                 if (Boolean.TRUE.equals(same)) {
-                    join(best, slot, vector);
-                    assignments.add(new Assignment(slot, best, GroupedBy.VERIFIED, bestScore, vector, null));
+                    join(near.card(), slot, vector);
+                    assignments.add(new Assignment(slot, near.card(), GroupedBy.VERIFIED, near.score(), vector, null));
                     continue;
                 }
                 note = same == null ? "verifier_failed" : "verifier_rejected";
             }
             Draft fresh = newCard(slot, false, vector);
             cards.add(fresh);
-            assignments.add(new Assignment(slot, fresh, GroupedBy.NEW, best == null ? null : bestScore, vector, note));
+            assignments.add(new Assignment(slot, fresh, GroupedBy.NEW, near.card() == null ? null : near.score(),
+                    vector, note));
         }
         return new Plan(cards, assignments, calls);
+    }
+
+    /** The most similar allowed card at or above the threshold (or none), and why a card was passed over. */
+    private record Candidate(Draft card, double score, String note) {}
+
+    private Candidate nearest(List<Draft> allowed, PendingSlot slot, float[] vector) {
+        if (vector == null) {
+            return new Candidate(null, -1, "embedding_failed");
+        }
+        String note = null;
+        Draft best = null;
+        double bestScore = -1;
+        for (Draft c : allowed) {
+            if (!numbersMatch(c.key, slot.key())) {
+                note = "number_mismatch";
+                continue;
+            }
+            Double s = similarity(c, vector);
+            if (s != null && s >= threshold && s > bestScore) {
+                best = c;
+                bestScore = s;
+            }
+        }
+        return new Candidate(best, bestScore, note);
     }
 
     /**

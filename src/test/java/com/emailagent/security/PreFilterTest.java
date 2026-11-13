@@ -2,7 +2,7 @@ package com.emailagent.security;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.emailagent.mailbox.IncomingEmail;
+import com.emailagent.model.IncomingEmail;
 import com.emailagent.model.FilterReason;
 import java.time.Instant;
 import java.util.Map;

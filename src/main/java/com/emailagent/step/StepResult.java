@@ -1,4 +1,4 @@
-package com.emailagent.orchestrator;
+package com.emailagent.step;
 
 import com.emailagent.model.EmailStatus;
 import com.emailagent.store.EmailEntity;

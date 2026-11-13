@@ -1,6 +1,5 @@
 package com.emailagent.config;
 
-import com.emailagent.mailbox.Mailbox;
 import com.emailagent.model.SlotType;
 import io.quarkus.logging.Log;
 import io.quarkus.runtime.StartupEvent;
@@ -19,13 +18,12 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
 @ApplicationScoped
 public class StartupConfigCheck {
 
-    void onStart(@Observes StartupEvent event, AppConfig config, Mailbox mailbox,
+    void onStart(@Observes StartupEvent event, AppConfig config,
             @ConfigProperty(name = "quarkus.langchain4j.ollama.base-url") String llmUrl,
             @ConfigProperty(name = "quarkus.langchain4j.ollama.strong.base-url") String strongLlmUrl) {
         Set<SlotType> autoTypes = config.autoSendTypes().orElse(Set.of());
         checkAutoSendTypes(autoTypes);
         checkGmailMode(config.mailbox(), config.sendMode(), config.noticeAutoSend());
-        checkSenderAuth(mailbox.authenticatesSenders(), config.requireSenderAuth());
         if (!config.allowRemoteLlm()) {
             checkLocal(llmUrl);
             checkLocal(strongLlmUrl);

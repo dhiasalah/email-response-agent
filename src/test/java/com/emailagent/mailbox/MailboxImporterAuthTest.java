@@ -3,6 +3,7 @@ package com.emailagent.mailbox;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.emailagent.config.AppConfig;
+import com.emailagent.model.IncomingEmail;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.lang.reflect.Proxy;
 import java.nio.file.Path;

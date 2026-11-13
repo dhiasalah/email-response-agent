@@ -6,6 +6,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.emailagent.config.SendMode;
 import com.emailagent.config.StartupConfigCheck;
+import com.emailagent.model.IncomingEmail;
 import com.emailagent.model.OutboxKind;
 import com.emailagent.security.SenderAuthentication;
 import com.fasterxml.jackson.databind.JsonNode;

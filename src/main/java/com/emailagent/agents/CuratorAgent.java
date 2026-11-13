@@ -5,11 +5,13 @@ import com.emailagent.llm.LlmClient;
 import com.emailagent.llm.LlmException;
 import com.emailagent.llm.LlmRequest;
 import com.emailagent.llm.ModelTier;
+import com.emailagent.mailbox.QuotedText;
 import com.emailagent.model.FieldType;
 import com.emailagent.model.ScopeChoice;
 import com.emailagent.model.SenderScope;
 import com.emailagent.model.SlotKey;
 import com.emailagent.model.SlotType;
+import com.emailagent.store.FactDecision;
 import jakarta.enterprise.context.ApplicationScoped;
 import java.text.Normalizer;
 import java.time.Duration;
@@ -45,15 +47,6 @@ public class CuratorAgent {
 
     /** The card being answered, as the curator sees it. */
     public record Card(long id, SlotKey key, SenderScope scope, boolean personal, FieldType fieldType) {}
-
-    /** What to store, or why nothing is stored ({@code store} false). */
-    public record FactDecision(boolean store, String reason, SlotKey key, SenderScope scope, String value,
-            Instant validUntil, String source, Long requestId) {
-
-        static FactDecision none(String reason) {
-            return new FactDecision(false, reason, null, null, null, null, null, null);
-        }
-    }
 
     /** A question of the replied email, keyed by triage. */
     public record Question(long slotId, SlotType type, String entity, String qualifier, String text) {}
@@ -157,7 +150,7 @@ public class CuratorAgent {
      * the owner's own text (quoted student text removed). A model that obeys an injection gains nothing.
      */
     public List<Learned> extract(List<Question> questions, String replyBody) throws LlmException {
-        String own = ownerText(replyBody);
+        String own = QuotedText.ownWords(replyBody);
         List<Question> shareable = questions.stream().filter(q -> q.type().shareable()).toList();
         if (own.isBlank() || shareable.isEmpty()) {
             return List.of();
@@ -221,28 +214,6 @@ public class CuratorAgent {
                 return value;
             }
         }
-    }
-
-    private static final Pattern QUOTE_HEADER = Pattern.compile(
-            "(?im)^(on .{0,200} wrote:|le .{0,200} a [ée]crit ?:|-{2,}\\s*original message\\s*-{2,}|from:\\s.*|de\\s?:\\s.*)$");
-
-    /** The owner's own words: everything above the quoted original, without "> " lines. */
-    public static String ownerText(String body) {
-        if (body == null) {
-            return "";
-        }
-        String text = body.replace("\r\n", "\n");
-        var m = QUOTE_HEADER.matcher(text);
-        if (m.find()) {
-            text = text.substring(0, m.start());
-        }
-        StringBuilder out = new StringBuilder();
-        for (String line : text.split("\n")) {
-            if (!line.stripLeading().startsWith(">")) {
-                out.append(line).append('\n');
-            }
-        }
-        return out.toString().strip();
     }
 
     /** Grounding check: the value, compared loosely (case, accents, punctuation), is a substring of the owner's text. */

@@ -1,6 +1,5 @@
 package com.emailagent.store;
 
-import com.emailagent.agents.CuratorAgent.FactDecision;
 import com.emailagent.model.SlotKey;
 import jakarta.enterprise.context.ApplicationScoped;
 import java.time.Instant;

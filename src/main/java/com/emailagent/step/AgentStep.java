@@ -1,4 +1,4 @@
-package com.emailagent.orchestrator;
+package com.emailagent.step;
 
 import com.emailagent.llm.LlmException;
 import com.emailagent.model.EmailStatus;

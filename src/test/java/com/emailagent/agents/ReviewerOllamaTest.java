@@ -9,7 +9,7 @@ import com.emailagent.model.SenderScope;
 import com.emailagent.model.SlotOwner;
 import com.emailagent.model.SlotStatus;
 import com.emailagent.model.SlotType;
-import com.emailagent.orchestrator.EmailSnapshot;
+import com.emailagent.step.EmailSnapshot;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import java.time.Instant;

@@ -10,7 +10,7 @@ import com.emailagent.model.Sensitivity;
 import com.emailagent.model.SlotOwner;
 import com.emailagent.model.SlotStatus;
 import com.emailagent.model.SlotType;
-import com.emailagent.orchestrator.EmailSnapshot;
+import com.emailagent.step.EmailSnapshot;
 import java.time.Instant;
 import java.util.Arrays;
 import java.util.List;

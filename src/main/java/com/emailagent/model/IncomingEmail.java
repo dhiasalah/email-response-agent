@@ -1,4 +1,4 @@
-package com.emailagent.mailbox;
+package com.emailagent.model;
 
 import java.time.Instant;
 import java.util.Map;

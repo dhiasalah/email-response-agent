@@ -1,13 +1,13 @@
 package com.emailagent.orchestrator;
 
 import com.emailagent.agents.CuratorAgent;
-import com.emailagent.agents.CuratorAgent.FactDecision;
 import com.emailagent.model.ClusterStatus;
 import com.emailagent.model.EmailStatus;
 import com.emailagent.model.ScopeChoice;
 import com.emailagent.model.SlotStatus;
 import com.emailagent.store.DecisionLogEntry;
 import com.emailagent.store.EmailEntity;
+import com.emailagent.store.FactDecision;
 import com.emailagent.store.InputRequestEntity;
 import com.emailagent.store.KnowledgeMemory;
 import com.emailagent.store.SlotEntity;
@@ -48,16 +48,7 @@ public class CardAnswers {
     public Result answer(long cardId, long expectedVersion, String rawValue, ScopeChoice choice) {
         Instant now = Instant.now();
         return QuarkusTransaction.requiringNew().call(() -> {
-            InputRequestEntity card = InputRequestEntity.findById(cardId);
-            if (card == null) {
-                throw new IllegalArgumentException("no such card");
-            }
-            if (card.version != expectedVersion) {
-                throw new IllegalStateException("the card changed since it was shown; reload it");
-            }
-            if (!card.status.acceptsMembers()) {
-                throw new IllegalStateException("the card is already " + card.status);
-            }
+            InputRequestEntity card = answerable(cardId, expectedVersion);
             String value = CuratorAgent.validateAnswer(card.fieldType, rawValue);
             if (card.status == ClusterStatus.OPEN) {
                 card.status = ClusterStatus.WAITING_INPUT; // answering it means it was shown
@@ -66,49 +57,79 @@ public class CardAnswers {
             card.lastActivity = now;
 
             String source = "card:" + card.id + " answered by owner";
-            Set<EmailEntity> touched = new LinkedHashSet<>();
-            int filled = 0;
-            for (SlotEntity s : SlotEntity.<SlotEntity>list("requestId = ?1 order by id", card.id)) {
-                if (s.email.status == EmailStatus.AWAITING_INPUT && s.status != SlotStatus.FILLED) {
-                    s.fill(value, source, SlotStatus.FILLED);
-                    touched.add(s.email);
-                    filled++;
-                }
-            }
-            List<Long> ready = new ArrayList<>();
-            for (EmailEntity e : touched) {
-                boolean complete = e.slots.stream().allMatch(s -> s.status == SlotStatus.FILLED);
-                if (complete && EmailLifecycle.allowed(e.status, EmailStatus.READY)) {
-                    DecisionLogEntry.transition(e.id, "owner", e.status, EmailStatus.READY,
-                            "{\"card\":" + card.id + "}", null, source, null);
-                    e.status = EmailStatus.READY;
-                    ready.add(e.id);
-                }
-            }
-
-            FactDecision decision = curator.decide(new CuratorAgent.Card(card.id, card.key(), card.scope(),
-                    card.personal, card.fieldType), value, choice, now);
-            Long factId = null;
-            Integer factVersion = null;
-            List<Long> toCorrect = List.of();
-            if (decision.store()) {
-                KnowledgeMemory.Written w = memory.write(decision, now);
-                factId = w.fact().id;
-                factVersion = w.fact().factVersion;
-                toCorrect = w.toCorrect();
-                for (Long emailId : toCorrect) {
-                    // who received the old value: the correction flow (design doc §8.2) starts from these rows
-                    DecisionLogEntry.record(emailId, "curator", "fact " + w.previous().id + " replaced by " + factId,
-                            "{\"correction_needed\":true,\"old_fact\":" + w.previous().id + ",\"new_fact\":" + factId + "}");
-                }
-            }
+            List<SlotEntity> filled = fillSlots(card.id, value, source);
+            List<Long> ready = markReady(filled, card.id, source);
+            Remembered fact = remember(card, value, choice, now);
             // the value itself stays in the slot and fact rows; the log says what happened, not what was said
             DecisionLogEntry.record(null, "curator", "card " + card.id + " answered",
-                    "{\"card\":" + card.id + ",\"filled\":" + filled + ",\"ready\":" + ready.size()
-                            + (factId == null ? ",\"fact\":null,\"reason\":\"" + decision.reason() + "\""
-                                    : ",\"fact\":" + factId + ",\"version\":" + factVersion)
-                            + ",\"corrections\":" + toCorrect.size() + "}");
-            return new Result(card.id, filled, ready, factId, factVersion, decision.reason(), toCorrect);
+                    "{\"card\":" + card.id + ",\"filled\":" + filled.size() + ",\"ready\":" + ready.size()
+                            + (fact.id() == null ? ",\"fact\":null,\"reason\":\"" + fact.reason() + "\""
+                                    : ",\"fact\":" + fact.id() + ",\"version\":" + fact.version())
+                            + ",\"corrections\":" + fact.toCorrect().size() + "}");
+            return new Result(card.id, filled.size(), ready, fact.id(), fact.version(), fact.reason(), fact.toCorrect());
         });
+    }
+
+    /** The card, if the owner may still answer it as they saw it. */
+    private static InputRequestEntity answerable(long cardId, long expectedVersion) {
+        InputRequestEntity card = InputRequestEntity.findById(cardId);
+        if (card == null) {
+            throw new IllegalArgumentException("no such card");
+        }
+        if (card.version != expectedVersion) {
+            throw new IllegalStateException("the card changed since it was shown; reload it");
+        }
+        if (!card.status.acceptsMembers()) {
+            throw new IllegalStateException("the card is already " + card.status);
+        }
+        return card;
+    }
+
+    /** Fills the card's open slots of emails still waiting on it; returns the slots filled. */
+    private static List<SlotEntity> fillSlots(long cardId, String value, String source) {
+        List<SlotEntity> filled = new ArrayList<>();
+        for (SlotEntity s : SlotEntity.<SlotEntity>list("requestId = ?1 order by id", cardId)) {
+            if (s.email.status == EmailStatus.AWAITING_INPUT && s.status != SlotStatus.FILLED) {
+                s.fill(value, source, SlotStatus.FILLED);
+                filled.add(s);
+            }
+        }
+        return filled;
+    }
+
+    /** Join rule: an email whose slots are now all filled becomes READY. Returns those emails' ids. */
+    private static List<Long> markReady(List<SlotEntity> filled, long cardId, String source) {
+        Set<EmailEntity> touched = new LinkedHashSet<>();
+        filled.forEach(s -> touched.add(s.email));
+        List<Long> ready = new ArrayList<>();
+        for (EmailEntity e : touched) {
+            boolean complete = e.slots.stream().allMatch(s -> s.status == SlotStatus.FILLED);
+            if (complete && EmailLifecycle.allowed(e.status, EmailStatus.READY)) {
+                DecisionLogEntry.transition(e.id, "owner", e.status, EmailStatus.READY,
+                        "{\"card\":" + cardId + "}", null, source, null);
+                e.status = EmailStatus.READY;
+                ready.add(e.id);
+            }
+        }
+        return ready;
+    }
+
+    /** What the answer became for later senders: a fact (and who must get a correction), or why nothing. */
+    private record Remembered(Long id, Integer version, String reason, List<Long> toCorrect) {}
+
+    private Remembered remember(InputRequestEntity card, String value, ScopeChoice choice, Instant now) {
+        FactDecision decision = curator.decide(new CuratorAgent.Card(card.id, card.key(), card.scope(),
+                card.personal, card.fieldType), value, choice, now);
+        if (!decision.store()) {
+            return new Remembered(null, null, decision.reason(), List.of());
+        }
+        KnowledgeMemory.Written w = memory.write(decision, now);
+        Long factId = w.fact().id;
+        for (Long emailId : w.toCorrect()) {
+            // who received the old value: the correction flow (design doc §8.2) starts from these rows
+            DecisionLogEntry.record(emailId, "curator", "fact " + w.previous().id + " replaced by " + factId,
+                    "{\"correction_needed\":true,\"old_fact\":" + w.previous().id + ",\"new_fact\":" + factId + "}");
+        }
+        return new Remembered(factId, w.fact().factVersion, decision.reason(), w.toCorrect());
     }
 }

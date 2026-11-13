@@ -22,8 +22,12 @@ import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.HexFormat;
 import java.util.List;
 import java.util.Optional;
 
@@ -100,6 +104,22 @@ public class EmailEntity extends PanacheEntityBase {
 
     public SenderScope scope() {
         return new SenderScope(scopeProgram, scopeTrack, scopeYear);
+    }
+
+    /**
+     * The stored form of an erased email's Message-ID: retention writes it, and the importer compares new mail against
+     * it so an erased email is never imported again.
+     */
+    public static String erasedMessageId(String messageId) {
+        if (messageId == null || messageId.startsWith("erased:")) {
+            return messageId;
+        }
+        try {
+            byte[] hash = MessageDigest.getInstance("SHA-256").digest(messageId.getBytes(StandardCharsets.UTF_8));
+            return "erased:" + HexFormat.of().formatHex(hash);
+        } catch (NoSuchAlgorithmException ex) {
+            throw new IllegalStateException(ex);
+        }
     }
 
     public static Optional<EmailEntity> findByMessageId(String messageId) {

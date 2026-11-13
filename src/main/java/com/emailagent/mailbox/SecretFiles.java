@@ -85,13 +85,21 @@ final class SecretFiles {
             throws IOException {
         List<String> names = domain == null || domain.isBlank() ? List.of(user) : List.of(domain + "\\" + user, user);
         for (String name : names) {
-            try {
-                return lookup.lookupPrincipalByName(name);
-            } catch (UserPrincipalNotFoundException e) {
-                // try the next form of the name
+            UserPrincipal found = lookupOrNull(lookup, name);
+            if (found != null) {
+                return found;
             }
         }
         return Files.getOwner(fallback);
+    }
+
+    /** The account with this name, or null when Windows doesn't know it under that form. */
+    private static UserPrincipal lookupOrNull(UserPrincipalLookupService lookup, String name) throws IOException {
+        try {
+            return lookup.lookupPrincipalByName(name);
+        } catch (UserPrincipalNotFoundException e) {
+            return null;
+        }
     }
 
     /** Creates the missing folders of the path, each one owner-only; folders that already exist are left alone. */

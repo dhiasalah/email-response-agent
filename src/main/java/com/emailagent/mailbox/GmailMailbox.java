@@ -1,6 +1,7 @@
 package com.emailagent.mailbox;
 
 import com.emailagent.config.AppConfig;
+import com.emailagent.model.IncomingEmail;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.quarkus.arc.properties.IfBuildProperty;
